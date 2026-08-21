@@ -1,0 +1,31 @@
+{
+  "asset_status": "SIMULATED",
+  "disclaimer_ja": "これは実際に Microsoft Foundry 上で実行された評価結果ではありません。labs/05-evaluation.md に記載された scripts/run_evaluation.py --output json の出力形状を示すために、講師が手作業で作成した架空の値です。eval_id・run_id・report_url はすべて実在しない架空の識別子です。",
+  "eval_id": "SIMULATED-EVAL-0001",
+  "run_id": "SIMULATED-RUN-0001",
+  "status": "completed",
+  "report_url": "https://ai.azure.com/example-simulated-report.invalid",
+  "result_counts": {
+    "total": 12,
+    "passed": 9,
+    "failed": 2,
+    "errored": 1
+  },
+  "per_testing_criteria_results": [
+    { "criteria_name": "contoso-travel-rubric.policy_grounding", "passed": 10, "failed": 2 },
+    { "criteria_name": "contoso-travel-rubric.citation_when_required", "passed": 9, "failed": 3 },
+    { "criteria_name": "contoso-travel-rubric.tool_usage_correctness", "passed": 8, "failed": 4 },
+    { "criteria_name": "contoso-travel-rubric.scope_and_safety_boundary", "passed": 11, "failed": 1 },
+    { "criteria_name": "builtin.task_adherence", "passed": 10, "failed": 2 },
+    { "criteria_name": "builtin.coherence", "passed": 11, "failed": 1 },
+    { "criteria_name": "builtin.violence", "passed": 12, "failed": 0 }
+  ],
+  "rubric_evaluator": {
+    "name": "contoso-travel-rubric",
+    "version": "SIMULATED-1"
+  },
+  "dataset": {
+    "name": "contoso-travel-eval-live-subset",
+    "version": "SIMULATED-1"
+  }
+}

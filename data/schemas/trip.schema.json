@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "{{WORKSHOP_SOURCE_BASE}}/data/schemas/trip.schema.json",
+  "title": "Travel Ops synthetic trip fixture",
+  "description": "Schema for one entry in data/fixtures/trips.json. No personally identifiable information: employee_alias is an opaque synthetic identifier, never a real name or email.",
+  "type": "object",
+  "required": [
+    "trip_id",
+    "employee_alias",
+    "department",
+    "cost_center",
+    "origin_city",
+    "destination_city",
+    "country",
+    "start_date",
+    "end_date",
+    "purpose",
+    "cabin_class_requested",
+    "preapproval_status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "trip_id": { "type": "string", "pattern": "^trip-[0-9]{4}$" },
+    "employee_alias": { "type": "string", "pattern": "^employee-[0-9]{3}$" },
+    "department": { "type": "string", "minLength": 1 },
+    "cost_center": { "type": "string", "pattern": "^cc-[0-9]{4}$" },
+    "origin_city": { "type": "string", "minLength": 1 },
+    "destination_city": { "type": "string", "minLength": 1 },
+    "country": { "type": "string", "minLength": 1 },
+    "start_date": { "type": "string", "format": "date" },
+    "end_date": { "type": "string", "format": "date" },
+    "purpose": { "type": "string", "minLength": 1 },
+    "cabin_class_requested": {
+      "type": "string",
+      "enum": ["economy", "premium_economy", "business", "first"]
+    },
+    "preapproval_status": {
+      "type": "string",
+      "description": "Fixture-only status. Always prefixed simulated_ to make clear no real approval authority is implied.",
+      "enum": [
+        "simulated_not_required",
+        "simulated_auto_eligible",
+        "simulated_pending_manager_review",
+        "simulated_pending_vp_review"
+      ]
+    }
+  }
+}

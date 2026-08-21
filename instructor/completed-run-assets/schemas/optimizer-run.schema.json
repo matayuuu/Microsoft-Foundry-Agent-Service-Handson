@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "instructor/completed-run-assets/schemas/optimizer-run.schema.json",
+  "title": "Simulated/reference Agent Optimizer run (instructor fallback asset)",
+  "description": "Schema for instructor/completed-run-assets/optimizer-run.simulated.json. Mirrors the concepts described in labs/06-optimization.md (baseline vs candidate scores, promote decision) for the Portal-only Agent Optimizer wizard, which has no scriptable JSON output of its own in this repository. Structured to illustrate the comparison the instructor narrates when the live wizard cannot be demoed.",
+  "type": "object",
+  "required": [
+    "asset_status",
+    "disclaimer_ja",
+    "agent_name",
+    "baseline_version",
+    "optimization_run_id",
+    "candidates",
+    "recommendation"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "asset_status": {
+      "type": "string",
+      "enum": ["SIMULATED", "REFERENCE"]
+    },
+    "disclaimer_ja": {
+      "type": "string",
+      "minLength": 1
+    },
+    "agent_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseline_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "optimization_run_id": {
+      "type": "string",
+      "pattern": "^SIMULATED-OPT-[0-9]{4}$"
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "composite_score",
+          "baseline_composite_score",
+          "per_evaluator_scores",
+          "instructions_diff_summary_ja"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "pattern": "^SIMULATED-CANDIDATE-[0-9]{2}$"
+          },
+          "composite_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "baseline_composite_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "per_evaluator_scores": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "instructions_diff_summary_ja": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "required": ["action", "rationale_ja"],
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["promote_candidate", "keep_baseline"]
+        },
+        "promoted_candidate_id": {
+          "type": ["string", "null"],
+          "pattern": "^SIMULATED-CANDIDATE-[0-9]{2}$"
+        },
+        "rationale_ja": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

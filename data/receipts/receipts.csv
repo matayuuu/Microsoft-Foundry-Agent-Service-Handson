@@ -1,0 +1,15 @@
+receipt_id,trip_id,employee_alias,date,category,vendor,currency,amount,amount_jpy,has_image,note
+rcpt-0001,trip-0001,employee-001,2026-05-11,hotel,Northwind Grand Hotel Osaka,JPY,14500,14500,true,"domestic_tier1 上限(15,000円)内"
+rcpt-0002,trip-0001,employee-001,2026-05-11,ground_transport,Woodgrove Taxi,JPY,1200,1200,true,22時以降、終電なしのため利用
+rcpt-0003,trip-0002,employee-002,2026-06-01,flight,Contoso Air,JPY,32000,32000,true,東京-福岡 往復エコノミー
+rcpt-0004,trip-0002,employee-002,2026-06-02,hotel,Tailspin Hotel Fukuoka,JPY,11800,11800,true,"domestic_tier1 上限(15,000円)内"
+rcpt-0005,trip-0003,employee-003,2026-07-10,flight,Fabrikam Airlines,USD,4200,630000,true,東京-ニューヨーク往復ビジネス。VP事前承認済みを想定した架空データ
+rcpt-0006,trip-0003,employee-003,2026-07-11,hotel,Northwind Grand Hotel New York,USD,165,24750,true,"international_tier_a 上限(25,000円)内"
+rcpt-0007,trip-0003,employee-003,2026-07-12,other,Contoso Exhibition Services,USD,300,45000,false,"展示ブース什器レンタル。紛失申告書による精算上限5,000円のみ対象。残額40,000円は別途例外承認が必要な架空データ"
+rcpt-0008,trip-0004,employee-004,2026-05-20,flight,Fabrikam Airlines,JPY,58000,58000,true,東京-シンガポール往復プレミアムエコノミー
+rcpt-0009,trip-0004,employee-004,2026-05-21,hotel,Tailspin Hotel Singapore,SGD,240,26400,true,"international_tier_b 上限(20,000円)を超過。マネージャー事前承認済みを想定した架空データ"
+rcpt-0010,trip-0005,employee-005,2026-08-03,flight,Contoso Air,JPY,28000,28000,true,大阪-札幌往復エコノミー
+rcpt-0011,trip-0006,employee-006,2026-09-01,flight,Fabrikam Airlines,GBP,3100,589000,true,東京-ロンドン往復ビジネス。VP事前承認済みを想定した架空データ
+rcpt-0012,trip-0006,employee-006,2026-09-02,hotel,Northwind Grand Hotel London,GBP,130,24700,true,"international_tier_a 上限(25,000円)内"
+rcpt-0013,trip-0007,employee-007,2026-05-25,flight,Fabrikam Airlines,HKD,4800,91200,true,東京-香港往復エコノミー
+rcpt-0014,trip-0008,employee-008,2026-06-15,ground_transport,Woodgrove Taxi,JPY,3400,3400,false,重量機材運搬のため利用。領収書紛失のため紛失申告書で対応(規程の上限額の適用対象)

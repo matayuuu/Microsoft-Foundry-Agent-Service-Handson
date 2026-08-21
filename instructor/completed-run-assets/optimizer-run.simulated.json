@@ -1,0 +1,36 @@
+{
+  "asset_status": "SIMULATED",
+  "disclaimer_ja": "これは実際に Microsoft Foundry の Agent Optimizer（Portal ウィザード）を実行した結果ではありません。labs/06-optimization.md の比較の考え方（baseline に対する候補のスコア比較、promote/keep の判断基準）を示すために、講師が手作業で作成した架空の値です。Agent Optimizer は Portal ウィザードのみで完結しスクリプトの JSON 出力を持たないため、本ファイルはそのウィザード結果画面を模した参考構造です。",
+  "agent_name": "contoso-travel-assistant",
+  "baseline_version": "1",
+  "optimization_run_id": "SIMULATED-OPT-0001",
+  "candidates": [
+    {
+      "candidate_id": "SIMULATED-CANDIDATE-01",
+      "composite_score": 0.62,
+      "baseline_composite_score": 0.41,
+      "per_evaluator_scores": {
+        "contoso-travel-rubric": 0.58,
+        "builtin.task_adherence": 0.7,
+        "builtin.coherence": 0.75
+      },
+      "instructions_diff_summary_ja": "根拠文書の引用形式、対応範囲外の質問への定型的な断り方、日当・見積もりツールを使うべき場面の判断基準を instructions に明示的に追加。"
+    },
+    {
+      "candidate_id": "SIMULATED-CANDIDATE-02",
+      "composite_score": 0.39,
+      "baseline_composite_score": 0.41,
+      "per_evaluator_scores": {
+        "contoso-travel-rubric": 0.35,
+        "builtin.task_adherence": 0.45,
+        "builtin.coherence": 0.5
+      },
+      "instructions_diff_summary_ja": "instructions を大幅に簡略化しすぎたため、複数文書にまたがる質問での根拠提示が baseline より悪化。"
+    }
+  ],
+  "recommendation": {
+    "action": "promote_candidate",
+    "promoted_candidate_id": "SIMULATED-CANDIDATE-01",
+    "rationale_ja": "candidate-01 は baseline (0.41) に対して composite score が 0.62 まで明確に改善しており、per-evaluator でも全軸で baseline 以上。candidate-02 は baseline を下回るため昇格しない。"
+  }
+}

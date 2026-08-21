@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "instructor/completed-run-assets/schemas/evaluation-run.schema.json",
+  "title": "Simulated/reference evaluation run (instructor fallback asset)",
+  "description": "Schema for instructor/completed-run-assets/evaluation-run.simulated.json. Mirrors the JSON shape documented in labs/05-evaluation.md for `python scripts/run_evaluation.py --output json`, plus mandatory labeling fields that mark the asset as not a real Foundry execution.",
+  "type": "object",
+  "required": [
+    "asset_status",
+    "disclaimer_ja",
+    "eval_id",
+    "run_id",
+    "status",
+    "report_url",
+    "result_counts",
+    "per_testing_criteria_results",
+    "rubric_evaluator",
+    "dataset"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "asset_status": {
+      "type": "string",
+      "enum": ["SIMULATED", "REFERENCE"],
+      "description": "Marks this document as a fabricated fallback asset, never a real Foundry run."
+    },
+    "disclaimer_ja": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Japanese-language statement that this is not a real Foundry execution."
+    },
+    "eval_id": {
+      "type": "string",
+      "pattern": "^SIMULATED-EVAL-[0-9]{4}$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^SIMULATED-RUN-[0-9]{4}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "failed"]
+    },
+    "report_url": {
+      "type": "string",
+      "pattern": "^https://ai\\.azure\\.com/.*\\.invalid.*$|^https://.*\\.invalid(/.*)?$"
+    },
+    "result_counts": {
+      "type": "object",
+      "required": ["total", "passed", "failed", "errored"],
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "errored": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "per_testing_criteria_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["criteria_name", "passed", "failed"],
+        "additionalProperties": false,
+        "properties": {
+          "criteria_name": { "type": "string", "minLength": 1 },
+          "passed": { "type": "integer", "minimum": 0 },
+          "failed": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "rubric_evaluator": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

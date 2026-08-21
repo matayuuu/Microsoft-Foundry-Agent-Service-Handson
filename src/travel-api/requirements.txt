@@ -1,0 +1,6 @@
+# Pinned, minimal runtime dependencies for the Travel Ops API container image.
+# Keep this in sync with the [project.dependencies] list in ./pyproject.toml.
+# Update deliberately and re-run the container build + tests when bumping versions.
+fastapi==0.118.0
+pydantic==2.11.7
+uvicorn==0.37.0

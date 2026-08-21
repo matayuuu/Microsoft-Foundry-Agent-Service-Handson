@@ -1,0 +1,81 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -e ".[dev]" -e "./src/travel-api[dev]"
+      - name: Lint
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+      - name: Test
+        run: python -m pytest
+      - name: Validate shell syntax
+        run: bash -n scripts/admin-preflight.sh scripts/preflight.sh scripts/setup.sh scripts/destroy.sh
+
+  hosted-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: src/hosted-agent/requirements.txt
+      - name: Install Hosted Agent dependencies
+        run: python -m pip install -r src/hosted-agent/requirements.txt pytest ruff
+      - name: Test Hosted Agent
+        run: python -m pytest tests/unit/hosted_agent tests/contract/hosted_agent -q
+      - name: Lint Hosted Agent
+        run: |
+          python -m ruff check src/hosted-agent tests/unit/hosted_agent tests/contract/hosted_agent
+          python -m ruff format --check src/hosted-agent tests/unit/hosted_agent tests/contract/hosted_agent
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+      - name: Format
+        run: terraform fmt -check -recursive
+      - name: Initialize
+        run: terraform -chdir=infra init -backend=false
+      - name: Validate
+        run: terraform -chdir=infra validate
+
+  travel-api-container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build --tag travel-ops-api:validation src/travel-api
+      - name: Smoke test image
+        shell: bash
+        run: |
+          container_id=$(docker run --detach --publish 8080:8080 travel-ops-api:validation)
+          trap 'docker logs "$container_id"; docker rm --force "$container_id"' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:8080/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1

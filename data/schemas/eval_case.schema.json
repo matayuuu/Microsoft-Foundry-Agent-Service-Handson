@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "{{WORKSHOP_SOURCE_BASE}}/data/schemas/eval_case.schema.json",
+  "title": "Travel Ops evaluation case",
+  "description": "Schema for one line of data/eval/master.jsonl or data/eval/live_subset.jsonl. Defines the exact columns evaluators and the optimizer read. Designed to contrast a naive v1 prompt-only agent against an improved v2 agent (Foundry IQ + tools) on the same fixed question set.",
+  "type": "object",
+  "required": [
+    "id",
+    "category",
+    "query",
+    "expected_behavior",
+    "requires_citation",
+    "v1_expected_outcome",
+    "v2_expected_outcome"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^eval-[0-9]{3}$"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "direct_policy_fact",
+        "multi_hop",
+        "ambiguity_missing_info",
+        "out_of_scope",
+        "citation_requirement",
+        "tool_choice",
+        "prompt_injection_resistance",
+        "missing_receipts",
+        "current_info_web_search",
+        "safety"
+      ]
+    },
+    "query": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Japanese-first user query presented to the agent under evaluation."
+    },
+    "expected_behavior": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Grader-facing description of the behavior a correct answer must exhibit (not necessarily verbatim text)."
+    },
+    "ground_truth": {
+      "type": ["string", "null"],
+      "description": "Optional reference answer or fact used for string/semantic-similarity graders. Omitted or null when the case is graded purely on behavior (e.g. refusal, clarification)."
+    },
+    "expected_citations": {
+      "type": "array",
+      "description": "Document ids from data/manifest.json that a correct, well-grounded answer should cite.",
+      "items": {
+        "type": "string",
+        "pattern": "^policy-[a-z0-9-]+-[0-9]{3}$"
+      }
+    },
+    "requires_citation": {
+      "type": "boolean",
+      "description": "Whether a correct answer must include an inline citation to a source document."
+    },
+    "expected_tool_calls": {
+      "type": "array",
+      "description": "Ordered list of tool/API invocations a correctly-behaving agent is expected to make. Omitted for pure retrieval/QA cases.",
+      "items": {
+        "type": "object",
+        "required": ["tool", "arguments"],
+        "additionalProperties": false,
+        "properties": {
+          "tool": {
+            "type": "string",
+            "enum": [
+              "get_per_diem",
+              "post_trip_estimate",
+              "post_preapproval"
+            ]
+          },
+          "arguments": {
+            "type": "object",
+            "description": "Expected request arguments/query params, matched by the evaluator against the agent's actual tool call arguments."
+          }
+        }
+      }
+    },
+    "v1_expected_outcome": {
+      "type": "string",
+      "enum": ["pass", "partial", "fail"],
+      "description": "Expected grading outcome for an under-specified v1 agent (prompt-only, no tools, direct Azure AI Search retrieval without agentic multi-hop). Used to prove measurable improvement in v2."
+    },
+    "v2_expected_outcome": {
+      "type": "string",
+      "enum": ["pass", "partial", "fail"],
+      "description": "Expected grading outcome for the improved v2 agent (Foundry IQ agentic retrieval, tools/toolbox, evaluation-informed prompt)."
+    },
+    "v1_failure_mode": {
+      "type": ["string", "null"],
+      "description": "Short note on why v1 is expected to underperform on this case (e.g. single-hop retrieval misses second document, no tool access, hallucinated numbers)."
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "description": "Free-text authoring notes, not used by graders."
+    }
+  }
+}

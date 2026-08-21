@@ -1,0 +1,106 @@
+name: Publish Travel Ops API
+
+# Builds and publishes the Contoso Travel Ops API container image
+# (src/travel-api) to a public GHCR package. Triggered by pushing a tag
+# matching `travel-api-v*` (e.g. travel-api-v1.0.0) or by manual dispatch.
+#
+# Never publishes a mutable `latest` tag. Terraform (infra/ workstream) must
+# pin to the immutable digest printed in this workflow's job summary and
+# exposed as the `digest` job output, not to a floating tag.
+
+on:
+  push:
+    tags:
+      - "travel-api-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: travel-ops-api
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # required for build provenance attestation
+      attestations: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      image: ${{ steps.image.outputs.full_ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute lowercase image reference
+        id: image
+        shell: bash
+        run: |
+          owner_lower=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          image="ghcr.io/${owner_lower}/${IMAGE_NAME}"
+          echo "ref=${image}" >> "$GITHUB_OUTPUT"
+          echo "full_ref=${image}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute image tags
+        id: tags
+        shell: bash
+        run: |
+          image="${{ steps.image.outputs.ref }}"
+          short_sha="${GITHUB_SHA::12}"
+          tags="${image}:sha-${short_sha}"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#travel-api-v}"
+            tags="${tags},${image}:v${version}"
+          else
+            tags="${tags},${image}:manual-${{ github.run_id }}"
+          fi
+          echo "tags=${tags}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: src/travel-api
+          file: src/travel-api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          provenance: true
+          sbom: true
+
+      - name: Generate build provenance attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.image.outputs.ref }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Publish digest to job summary
+        shell: bash
+        run: |
+          {
+            echo "## Travel Ops API image published"
+            echo ""
+            echo "- Image: \`${{ steps.image.outputs.ref }}\`"
+            echo "- Tags: \`${{ steps.tags.outputs.tags }}\`"
+            echo "- Immutable digest: \`${{ steps.push.outputs.digest }}\`"
+            echo ""
+            echo "Terraform should pin to:"
+            echo ""
+            echo "\`\`\`"
+            echo "${{ steps.image.outputs.ref }}@${{ steps.push.outputs.digest }}"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,23 @@
+# Files excluded from direct code deployment packaging (gitignore syntax).
+# scripts/deploy_hosted_agent.py reads this file and zips everything else
+# under src/hosted-agent/ for the REMOTE_BUILD source-code deploy.
+
+# This repo's workshop scaffold is not azd-based in the core lab, but keep
+# the same exclusion convention as the official Foundry samples in case a
+# participant later adds an optional azd sidecar (see labs/07 "azd column").
+.agentignore
+azure.yaml
+agent.yaml
+agent.manifest.yaml
+
+# Local/dev artifacts that must never be part of the uploaded zip.
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+*.log

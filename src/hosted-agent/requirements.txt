@@ -1,0 +1,27 @@
+# Runtime dependencies for the hosted-agent source-code remote build.
+#
+# Pinned to the exact versions verified against the real PyPI packages at
+# implementation time (2026, via the environment's package-feed proxy which
+# mirrors PyPI). agent-framework-foundry-hosting is still beta-only upstream
+# (no stable release exists yet); pin it exactly rather than with a loose
+# range so a remote build is reproducible.
+#
+# This workflow genuinely calls the Foundry model deployment (every one of
+# intake_agent/policy_agent/planner_agent/approval_agent is a real
+# agent_framework.Agent backed by FoundryChatClient -- see workflow.py), so
+# agent-framework-foundry (the FoundryChatClient package) and azure-identity
+# (DefaultAzureCredential) are required here, not optional.
+#
+# IMPORTANT: agent-framework-foundry==1.11.0 constrains azure-ai-projects to
+# <2.4.0,>=2.2.0, which conflicts with the >=2.5.0 the repo-root
+# scripts/deploy_hosted_agent.py needs for Hosted Agent creation APIs
+# (create_version_from_code/HostedAgentDefinition/CodeConfiguration). Do not
+# try to satisfy both from one virtual environment -- install this file's
+# pins into their own isolated venv (see README.md's "Two Python
+# environments" and labs/07-hosted-multi-agent.md) rather than the repo
+# root's .venv, which intentionally keeps the newer azure-ai-projects for
+# the deploy/delete scripts instead.
+agent-framework-core==1.14.0
+agent-framework-foundry==1.11.0
+agent-framework-foundry-hosting==1.0.0b260813
+azure-identity==1.25.3

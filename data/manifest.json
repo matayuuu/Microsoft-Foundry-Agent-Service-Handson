@@ -1,0 +1,204 @@
+{
+  "corpus_version": "2026.04.1",
+  "language": "ja",
+  "source_url_base_placeholder": "{{WORKSHOP_SOURCE_BASE}}",
+  "chunking": {
+    "strategy": "markdown-heading",
+    "unit": "tokens",
+    "max_tokens": 512,
+    "overlap_tokens": 64
+  },
+  "embedding": {
+    "default_dimensions": 1536,
+    "configurable_by": [
+      "scripts/setup.sh",
+      "scripts/bootstrap_data.py"
+    ]
+  },
+  "citation": {
+    "required_fields": [
+      "id",
+      "title",
+      "source_url",
+      "effective_date"
+    ]
+  },
+  "documents": [
+    {
+      "id": "policy-general-001",
+      "title": "出張・経費規程 総則",
+      "category": "general_policy",
+      "path": "policies/01-general-policy.md",
+      "effective_date": "2026-04-01",
+      "applies_to": [
+        "all_employees"
+      ],
+      "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/01-general-policy.md",
+      "sha256": "a6753050ddfcf9f0bebd5dbdf9eb4acdb388a42e86e579cfddea6283e85aec80",
+      "size_bytes": 2879
+    },
+    {
+      "id": "policy-flights-001",
+      "title": "フライトに関する規程",
+      "category": "flights",
+      "path": "policies/02-flights.md",
+      "effective_date": "2026-04-01",
+      "applies_to": [
+        "all_employees"
+      ],
+      "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/02-flights.md",
+      "sha256": "cb1137046a8cdbe25633df6f684829c7a40ede0fed3f8fe2a18e85f5feab482b",
+      "size_bytes": 2377
+    },
+    {
+      "id": "policy-hotels-001",
+      "title": "宿泊に関する規程",
+      "category": "hotels",
+      "path": "policies/03-hotels.md",
+      "effective_date": "2026-04-01",
+      "applies_to": [
+        "all_employees"
+      ],
+      "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/03-hotels.md",
+      "sha256": "0fa6b5c27082275807c2a19f8233bef1dcc161027ca3a1cf153188d0f83c94b1",
+      "size_bytes": 2165
+    },
+    {
+      "id": "policy-per-diem-001",
+      "title": "日当・食事に関する規程",
+      "category": "per_diem_meals",
+      "path": "policies/04-per-diem-meals.md",
+      "effective_date": "2026-04-01",
+      "applies_to": [
+        "all_employees"
+      ],
+      "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/04-per-diem-meals.md",
+      "sha256": "05cb7c5debacaee6d0da45754fc7df1e5bb39d926edcf69ab20a05687d9fd60a",
+      "size_bytes": 2223
+    },
+    {
+      "id": "policy-ground-transport-001",
+      "title": "陸上交通に関する規程",
+      "category": "ground_transport",
+      "path": "policies/05-ground-transport.md",
+      "effective_date": "2026-04-01",
+      "applies_to": [
+        "all_employees"
+      ],
+      "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/05-ground-transport.md",
+      "sha256": "ccbfa679118f337867a2ca8cfd1b50c87db85ee6aa8707d05ac9a595a316c209",
+      "size_bytes": 1909
+    },
+    {
+      "id": "policy-receipts-001",
+      "title": "領収書に関する規程",
+      "category": "receipts",
+      "path": "policies/06-receipts.md",
+      "effective_date": "2026-04-01",
+      "applies_to": [
+        "all_employees"
+      ],
+      "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/06-receipts.md",
+      "sha256": "b8cac38adf21888910039f589fb28067ba8ca031c26ec59200064efd0185e1a8",
+      "size_bytes": 1994
+    },
+    {
+      "id": "policy-international-security-001",
+      "title": "海外渡航・セキュリティに関する規程",
+      "category": "international_security",
+      "path": "policies/07-international-travel-security.md",
+      "effective_date": "2026-04-01",
+      "applies_to": [
+        "all_employees_international_travel"
+      ],
+      "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/07-international-travel-security.md",
+      "sha256": "a133294897afdf905ac01baf1b4732cc0ac1e39060de9daedeabbc3f60a6969e",
+      "size_bytes": 2016
+    },
+    {
+      "id": "policy-accessibility-exceptions-001",
+      "title": "アクセシビリティ・例外対応に関する規程",
+      "category": "accessibility_exceptions",
+      "path": "policies/08-accessibility-exceptions.md",
+      "effective_date": "2026-04-01",
+      "applies_to": [
+        "employees_with_accommodation_needs",
+        "managers",
+        "hr_team"
+      ],
+      "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/08-accessibility-exceptions.md",
+      "sha256": "befb6674afda4fb0e32decd2fbf980761978f3254a001e318a834088c3ea48ae",
+      "size_bytes": 2483
+    },
+    {
+      "id": "policy-approval-process-001",
+      "title": "承認プロセスに関する規程",
+      "category": "approval_process",
+      "path": "policies/09-approval-process.md",
+      "effective_date": "2026-04-01",
+      "applies_to": [
+        "all_employees",
+        "managers",
+        "department_vps"
+      ],
+      "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/09-approval-process.md",
+      "sha256": "aa8bc0476cb77807fece9f6533bc09f0da20afd84e9683860af7a96ded667d6b",
+      "size_bytes": 2453
+    },
+    {
+      "id": "policy-faq-001",
+      "title": "出張・経費規程 FAQ",
+      "category": "faq",
+      "path": "policies/10-faq.md",
+      "effective_date": "2026-04-01",
+      "applies_to": [
+        "all_employees"
+      ],
+      "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/10-faq.md",
+      "sha256": "a6806b77c4ee44bbc3fcd4553014ad67c0718c720e1e87d44ee0508dbd8bd434",
+      "size_bytes": 3185
+    }
+  ],
+  "receipts": {
+    "files": [
+      {
+        "name": "receipts_csv",
+        "path": "receipts/receipts.csv",
+        "sha256": "f9a6a544c57699a041e53920821d58e0361930db89d3d53e112a78f9d116e3d6",
+        "size_bytes": 2360
+      },
+      {
+        "name": "receipts_json",
+        "path": "receipts/receipts.json",
+        "sha256": "34f95069535394ea7676442aa90b909ae8a18459bc226ec835250bf37706724e",
+        "size_bytes": 5364
+      }
+    ]
+  },
+  "fixtures": {
+    "files": [
+      {
+        "name": "trips_json",
+        "path": "fixtures/trips.json",
+        "sha256": "1038395e90ff714aa478bc6e61b79d8a8bc409c42a828c2a57b975b5c789e5cc",
+        "size_bytes": 3506
+      }
+    ]
+  },
+  "evaluation": {
+    "files": [
+      {
+        "name": "eval_master_jsonl",
+        "path": "eval/master.jsonl",
+        "sha256": "c6886624e7a5a360ca1bb3f822ac75f2b79b2fe2a8991aa08621adda6a9f8320",
+        "size_bytes": 11221
+      },
+      {
+        "name": "eval_live_subset_jsonl",
+        "path": "eval/live_subset.jsonl",
+        "sha256": "7ca5b233ef1971bd24ebac261974760e9d475fb1203d13627e7a6d2d581931bc",
+        "size_bytes": 6192
+      }
+    ]
+  }
+}

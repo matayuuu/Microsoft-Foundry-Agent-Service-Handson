@@ -1,0 +1,29 @@
+# Example tfvars file. Copy to terraform.tfvars (gitignored) and fill in
+# real values, or let scripts/setup.sh generate -var flags for you from
+# scripts/preflight.sh output instead of maintaining this file by hand.
+
+subscription_id     = "00000000-0000-0000-0000-000000000000"
+resource_group_name = "rg-foundry-handson-example"
+location            = "eastus2" # or "swedencentral"
+
+project_name = "contoso-travel"
+
+# Leave empty to default to the identity `terraform` is currently
+# authenticated as (the participant's own `az login` session).
+participant_object_id = ""
+
+# Must be a ghcr.io reference pinned to an immutable @sha256 digest --
+# published by the Travel Ops API workstream's GitHub Actions workflow.
+travel_api_image_ref = "ghcr.io/example-org/travel-ops-api@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+
+# Model deployment overrides. optimizer_model_version has NO default and
+# MUST be supplied -- run scripts/preflight.sh first to discover a version
+# that is actually available in your subscription/region; do not guess it.
+primary_model_name    = "gpt-4.1"
+primary_model_version = "2025-04-14"
+
+optimizer_model_name    = "gpt-5"
+optimizer_model_version = "REPLACE_WITH_PREFLIGHT_VERIFIED_VERSION"
+
+embedding_model_name    = "text-embedding-3-small"
+embedding_model_version = "1"

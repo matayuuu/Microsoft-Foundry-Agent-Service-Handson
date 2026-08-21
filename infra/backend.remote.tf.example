@@ -1,0 +1,32 @@
+# Example remote state backend for organizers who want shared Terraform
+# state across multiple facilitators/co-organizers instead of the default
+# local state file.
+#
+# This file is INACTIVE by design (its extension is .tf.example, not .tf) so
+# that a fresh participant clone always defaults to local state -- which is
+# the correct choice for a single participant working inside one resource
+# group with only Owner access there.
+#
+# To use it:
+#   1. Have your subscription administrator provision (or reuse) a storage
+#      account + container dedicated to Terraform state, OUTSIDE the
+#      participant's workshop resource group (organizer-owned, not
+#      participant-owned).
+#   2. Copy this file to infra/backend.tf and fill in the values below.
+#   3. Run `terraform -chdir=infra init -reconfigure` to migrate state.
+#
+# Terraform state can contain resource IDs and other data that should be
+# treated as sensitive; never commit backend.tf, *.tfstate, or the
+# organizer's storage account key to source control. Prefer
+# `use_azuread_auth = true` (Entra ID) over an access key when the
+# organizer's storage account has RBAC data-plane roles assigned.
+
+# terraform {
+#   backend "azurerm" {
+#     resource_group_name  = "<organizer-owned-state-rg>"
+#     storage_account_name = "<organizer-owned-state-storage-account>"
+#     container_name       = "tfstate"
+#     key                  = "foundry-handson/<participant-or-cohort-id>.tfstate"
+#     use_azuread_auth     = true
+#   }
+# }

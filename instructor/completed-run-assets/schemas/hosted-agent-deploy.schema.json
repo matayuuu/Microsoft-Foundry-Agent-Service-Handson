@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "instructor/completed-run-assets/schemas/hosted-agent-deploy.schema.json",
+  "title": "Simulated/reference Hosted Agent deployment (instructor fallback asset)",
+  "description": "Schema for instructor/completed-run-assets/hosted-agent-deploy.simulated.json. Mirrors the JSON shape documented in labs/07-hosted-multi-agent.md for `python scripts/deploy_hosted_agent.py --output json`, plus mandatory labeling fields that mark the asset as not a real Foundry deployment.",
+  "type": "object",
+  "required": [
+    "asset_status",
+    "disclaimer_ja",
+    "agent_name",
+    "version",
+    "status",
+    "succeeded",
+    "project_endpoint",
+    "portal_url",
+    "ai_services_account_name",
+    "foundry_project_name"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "asset_status": {
+      "type": "string",
+      "enum": ["SIMULATED", "REFERENCE"]
+    },
+    "disclaimer_ja": {
+      "type": "string",
+      "minLength": 1
+    },
+    "agent_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "failed"]
+    },
+    "succeeded": {
+      "type": "boolean"
+    },
+    "project_endpoint": {
+      "type": "string",
+      "pattern": "^https://[a-z0-9-]+\\.services\\.ai\\.azure\\.invalid/api/projects/[a-z0-9-]+$"
+    },
+    "portal_url": {
+      "type": "string",
+      "pattern": "^https://ai\\.azure\\.com$"
+    },
+    "ai_services_account_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "foundry_project_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "failure_hint": {
+      "type": ["string", "null"]
+    }
+  }
+}

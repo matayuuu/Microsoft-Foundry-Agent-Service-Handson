@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+
+# Local workshop state and credentials
+.workshop/
+.azure/
+.env
+.env.*
+!.env.example
+
+# Terraform state and local inputs
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl.backup
+crash.log
+
+# Generated evaluation and deployment artifacts
+artifacts/
+results/
+*.zip
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+*.code-workspace

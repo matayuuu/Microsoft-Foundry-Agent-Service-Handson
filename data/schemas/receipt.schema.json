@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "{{WORKSHOP_SOURCE_BASE}}/data/schemas/receipt.schema.json",
+  "title": "Travel Ops synthetic receipt",
+  "description": "Schema for one entry in data/receipts/receipts.json (and the equivalent CSV columns in data/receipts/receipts.csv). No personally identifiable information: employee_alias is an opaque synthetic identifier, never a real name or email.",
+  "type": "object",
+  "required": [
+    "receipt_id",
+    "trip_id",
+    "employee_alias",
+    "date",
+    "category",
+    "vendor",
+    "currency",
+    "amount",
+    "amount_jpy",
+    "has_image",
+    "note"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "receipt_id": { "type": "string", "pattern": "^rcpt-[0-9]{4}$" },
+    "trip_id": { "type": "string", "pattern": "^trip-[0-9]{4}$" },
+    "employee_alias": { "type": "string", "pattern": "^employee-[0-9]{3}$" },
+    "date": { "type": "string", "format": "date" },
+    "category": {
+      "type": "string",
+      "enum": ["flight", "hotel", "meal", "ground_transport", "other"]
+    },
+    "vendor": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Fictional vendor name (e.g. Contoso/Fabrikam/Woodgrove-style placeholder brand)."
+    },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "amount": { "type": "number", "exclusiveMinimum": 0 },
+    "amount_jpy": { "type": "number", "exclusiveMinimum": 0 },
+    "has_image": { "type": "boolean" },
+    "note": { "type": "string" }
+  }
+}

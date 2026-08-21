@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "microsoft-foundry-agent-service-handson"
+version = "0.1.0"
+description = "Automation and samples for a Microsoft Foundry Agent Service workshop"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "azure-ai-projects==2.5.0",
+  "azure-identity>=1.25.0",
+  "azure-search-documents>=11.6.0",
+  "azure-storage-blob>=12.26.0",
+  "httpx>=0.28.0",
+  "jsonschema>=4.25.0",
+  "openai>=2.15.0",
+  "pydantic>=2.11.0",
+  "python-dotenv>=1.1.0",
+  "PyYAML>=6.0.2",
+  "tiktoken>=0.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "agent-framework-core==1.14.0",
+  "pytest>=8.4.0",
+  "pytest-cov>=7.0.0",
+  "ruff>=0.14.0",
+]
+
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+markers = [
+  "integration: requires an explicitly configured disposable Azure resource group",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = [".terraform", ".venv", "artifacts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
