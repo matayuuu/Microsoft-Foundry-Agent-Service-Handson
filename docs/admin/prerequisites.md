@@ -130,6 +130,24 @@ providers reported as missing. It still never touches quota, policy, resource
 groups, or role assignments. Re-run without `--apply` afterward to confirm every
 check now passes.
 
+## Publish the workshop Travel Ops API image
+
+Before participants run setup, a repository maintainer must publish the immutable
+Travel Ops API image:
+
+1. Push a tag matching `travel-api-v*` (the participant default resolves
+   `travel-api-v1.0.0`) or run **Publish Travel Ops API** manually.
+2. Open the resulting `travel-ops-api` package settings on GitHub and set the
+   package visibility to **Public**. A package built from a private repository
+   remains private by default, and GitHub doesn't provide a supported workflow-token
+   REST operation for changing this setting.
+3. Run participant setup once in a rehearsal RG. Its anonymous OCI lookup must
+   resolve the tag to an immutable `sha256:` digest before Terraform starts.
+
+If your organization can't expose a public GHCR package, publish the same image to
+an approved public registry and pass its immutable digest through
+`--travel-api-image-ref`.
+
 ## Handing off to participants
 
 Once `admin-preflight.sh` (without `--apply`, and with `--participant-count` set to

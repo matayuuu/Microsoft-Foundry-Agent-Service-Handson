@@ -36,6 +36,9 @@
 - [ ] 参加者全員が GitHub Codespaces を起動できることを確認済み。
 - [ ] 参加者全員が `az login --use-device-code` を試せる状態（会社ネットワークの
      デバイスコード認証ブロックがないか事前確認）。
+- [ ] `travel-ops-api:v1.0.0` を GHCR に publish 済みで、package visibility が
+     **Public** になっている（private repository からの初回 publish 後は GitHub
+     package settings で手動変更が必要）。
 - [ ] 画面共有用に、この runbook と `completed-run-assets/` を別ウィンドウで開いておく。
 - [ ] タイマー（各区切りの時間管理）を用意する。
 
