@@ -81,8 +81,23 @@ jobs:
           provenance: true
           sbom: true
 
+      - name: Make the GHCR package publicly pullable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          OWNER_TYPE: ${{ github.event.repository.owner.type }}
+        shell: bash
+        run: |
+          if [[ "$OWNER_TYPE" == "Organization" ]]; then
+            endpoint="/orgs/${OWNER}/packages/container/${IMAGE_NAME}"
+          else
+            endpoint="/user/packages/container/${IMAGE_NAME}"
+          fi
+          gh api --method PATCH "$endpoint" -f visibility=public
+
       - name: Generate build provenance attestation
-        uses: actions/attest-build-provenance@v1
+        if: github.event.repository.visibility == 'public'
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: ${{ steps.image.outputs.ref }}
           subject-digest: ${{ steps.push.outputs.digest }}
