@@ -31,11 +31,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SETUP_SH = REPO_ROOT / "scripts" / "setup.sh"
 
 BASH = shutil.which("bash")
-JQ = shutil.which("jq")
 
 pytestmark = pytest.mark.skipif(
-    BASH is None or JQ is None,
-    reason="hermetic setup.sh retry() contract tests require 'bash' and 'jq' on PATH",
+    BASH is None,
+    reason="hermetic setup.sh retry() contract tests require 'bash' on PATH",
 )
 
 # Same marker as test_setup_travel_api_image_contract.py: everything before
@@ -91,6 +90,13 @@ def extracted_setup_head_with_retry_harness(tmp_path: Path) -> Path:
     lines = SETUP_SH.read_text(encoding="utf-8").splitlines(keepends=True)
     cut_index = next(i for i, line in enumerate(lines) if STEP_1_MARKER in line)
     head_text = "".join(lines[:cut_index])
+    # This contract targets retry() only. The real setup prefix also validates
+    # unrelated runtime tools; replace that loop so CI does not need Terraform
+    # merely to unit-test a shell retry helper.
+    head_text = head_text.replace(
+        "for tool in az terraform jq curl git; do",
+        "for tool in true; do",
+    )
     assert "retry()" in head_text, (
         "extracted head must still include the retry() helper definition; "
         "STEP_1_MARKER or retry()'s position may be stale relative to "
