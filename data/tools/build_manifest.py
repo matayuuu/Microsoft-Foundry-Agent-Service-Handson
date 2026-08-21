@@ -9,7 +9,7 @@ document, receipt fixture, trip fixture, or evaluation JSONL file changes:
 It regenerates data/manifest.json from:
   * the YAML front matter embedded in each data/policies/*.md file (single
     source of truth for id/title/category/effective_date/applies_to/source_url)
-  * SHA-256 checksums computed from the actual file bytes on disk
+  * SHA-256 checksums computed from canonical LF bytes
 
 so that scripts/bootstrap_data.py (owned by another workstream) can verify
 corpus integrity before indexing content into Azure AI Search / Foundry IQ.
@@ -49,8 +49,13 @@ CITATION = {
 }
 
 
+def canonical_bytes(path: Path) -> bytes:
+    """Return text bytes with platform-specific newlines normalized to LF."""
+    return path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(canonical_bytes(path)).hexdigest()
 
 
 def _split_front_matter(text: str) -> dict[str, Any]:
@@ -80,7 +85,7 @@ def _build_documents() -> list[dict[str, Any]]:
                 "applies_to": meta["applies_to"],
                 "source_url": meta["source_url"],
                 "sha256": _sha256(path),
-                "size_bytes": path.stat().st_size,
+                "size_bytes": len(canonical_bytes(path)),
             }
         )
     return documents
@@ -94,7 +99,7 @@ def _file_group(*, base_dir: Path, files: list[tuple[str, Path]]) -> dict[str, A
                 "name": name,
                 "path": str(path.relative_to(DATA_DIR)).replace("\\", "/"),
                 "sha256": _sha256(path),
-                "size_bytes": path.stat().st_size,
+                "size_bytes": len(canonical_bytes(path)),
             }
         )
     return {"files": entries}

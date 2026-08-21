@@ -28,6 +28,10 @@ def _load_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _canonical_bytes(path: Path) -> bytes:
+    return path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+
 def test_manifest_matches_schema(data_dir):
     schema = _load_schema(data_dir, "manifest")
     manifest = _load_json(data_dir / "manifest.json")
@@ -59,12 +63,13 @@ def test_manifest_checksums_match_files_on_disk(data_dir):
 
     manifest = _load_json(data_dir / "manifest.json")
     for doc in manifest["documents"]:
-        actual = hashlib.sha256((data_dir / doc["path"]).read_bytes()).hexdigest()
+        content = _canonical_bytes(data_dir / doc["path"])
+        actual = hashlib.sha256(content).hexdigest()
         assert actual == doc["sha256"], f"checksum drift for {doc['path']}"
-        assert (data_dir / doc["path"]).stat().st_size == doc["size_bytes"]
+        assert len(content) == doc["size_bytes"]
     for group_name in ("receipts", "fixtures", "evaluation"):
         for entry in manifest[group_name]["files"]:
-            actual = hashlib.sha256((data_dir / entry["path"]).read_bytes()).hexdigest()
+            actual = hashlib.sha256(_canonical_bytes(data_dir / entry["path"])).hexdigest()
             assert actual == entry["sha256"], f"checksum drift for {entry['path']}"
 
 

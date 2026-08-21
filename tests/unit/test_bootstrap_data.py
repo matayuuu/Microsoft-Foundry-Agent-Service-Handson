@@ -308,6 +308,13 @@ def test_checksum_error_returns_none_for_matching_content() -> None:
     assert bootstrap_data.checksum_error(document, content) is None
 
 
+def test_checksum_error_normalizes_crlf_to_manifest_lf_bytes() -> None:
+    canonical = b"line one\nline two\n"
+    document = _document_for_bytes(canonical)
+
+    assert bootstrap_data.checksum_error(document, b"line one\r\nline two\r\n") is None
+
+
 def test_checksum_error_reports_sha256_mismatch() -> None:
     document = _document_for_bytes(b"hello world")
 
@@ -740,7 +747,7 @@ def _write_policy_file(rag_dir: Path, relative_path: str, body: str) -> bytes:
     file_path.parent.mkdir(parents=True, exist_ok=True)
     text = f"---\nid: x\n---\n\n{body}"
     file_path.write_text(text, encoding="utf-8")
-    return file_path.read_bytes()
+    return file_path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
 
 
 def test_build_documents_wires_pure_functions_with_injected_adapters(tmp_path: Path) -> None:

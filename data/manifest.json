@@ -34,8 +34,8 @@
         "all_employees"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/01-general-policy.md",
-      "sha256": "a6753050ddfcf9f0bebd5dbdf9eb4acdb388a42e86e579cfddea6283e85aec80",
-      "size_bytes": 2879
+      "sha256": "9bce00262d1e2af56701c526133410fa75e242180d88c4100b65492d7aa43bae",
+      "size_bytes": 2818
     },
     {
       "id": "policy-flights-001",
@@ -47,8 +47,8 @@
         "all_employees"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/02-flights.md",
-      "sha256": "cb1137046a8cdbe25633df6f684829c7a40ede0fed3f8fe2a18e85f5feab482b",
-      "size_bytes": 2377
+      "sha256": "be16c910615a3f930aee83774f6941b41e6d21529e2184175dec85c794733afa",
+      "size_bytes": 2331
     },
     {
       "id": "policy-hotels-001",
@@ -60,8 +60,8 @@
         "all_employees"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/03-hotels.md",
-      "sha256": "0fa6b5c27082275807c2a19f8233bef1dcc161027ca3a1cf153188d0f83c94b1",
-      "size_bytes": 2165
+      "sha256": "59e88e28f140863c80722dc3a40259a58d558384db6288d9eac6ceb4e41a8bdb",
+      "size_bytes": 2116
     },
     {
       "id": "policy-per-diem-001",
@@ -73,8 +73,8 @@
         "all_employees"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/04-per-diem-meals.md",
-      "sha256": "05cb7c5debacaee6d0da45754fc7df1e5bb39d926edcf69ab20a05687d9fd60a",
-      "size_bytes": 2223
+      "sha256": "c0993aeb865d4aa485c62c9fbf7d0c8464832e70dc3420d8af3ef2552ae3f433",
+      "size_bytes": 2175
     },
     {
       "id": "policy-ground-transport-001",
@@ -86,8 +86,8 @@
         "all_employees"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/05-ground-transport.md",
-      "sha256": "ccbfa679118f337867a2ca8cfd1b50c87db85ee6aa8707d05ac9a595a316c209",
-      "size_bytes": 1909
+      "sha256": "5e51f3dd3e5e3dda2919e78ed09dfd623f17e2ae62a6a4a533863fbe9f11a305",
+      "size_bytes": 1865
     },
     {
       "id": "policy-receipts-001",
@@ -99,8 +99,8 @@
         "all_employees"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/06-receipts.md",
-      "sha256": "b8cac38adf21888910039f589fb28067ba8ca031c26ec59200064efd0185e1a8",
-      "size_bytes": 1994
+      "sha256": "de0d4de3347b642bb2569a8ef68412bd2b69f1c87f82583730443a97598a781d",
+      "size_bytes": 1950
     },
     {
       "id": "policy-international-security-001",
@@ -112,8 +112,8 @@
         "all_employees_international_travel"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/07-international-travel-security.md",
-      "sha256": "a133294897afdf905ac01baf1b4732cc0ac1e39060de9daedeabbc3f60a6969e",
-      "size_bytes": 2016
+      "sha256": "b4466f87d3da4e5a42b04d120d3290d39b2bfb67056191c7db89d13afa84b7bd",
+      "size_bytes": 1975
     },
     {
       "id": "policy-accessibility-exceptions-001",
@@ -127,8 +127,8 @@
         "hr_team"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/08-accessibility-exceptions.md",
-      "sha256": "befb6674afda4fb0e32decd2fbf980761978f3254a001e318a834088c3ea48ae",
-      "size_bytes": 2483
+      "sha256": "91dfa1d852e276bca3a1b1ea0663ec3cb284ee4400e0ba914f2015ecc66acf4c",
+      "size_bytes": 2433
     },
     {
       "id": "policy-approval-process-001",
@@ -142,8 +142,8 @@
         "department_vps"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/09-approval-process.md",
-      "sha256": "aa8bc0476cb77807fece9f6533bc09f0da20afd84e9683860af7a96ded667d6b",
-      "size_bytes": 2453
+      "sha256": "6a34cd7beda48e2d7d73ee0b145a3919b1e753300b687394a0462919ca7eec14",
+      "size_bytes": 2404
     },
     {
       "id": "policy-faq-001",
@@ -155,8 +155,8 @@
         "all_employees"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/10-faq.md",
-      "sha256": "a6806b77c4ee44bbc3fcd4553014ad67c0718c720e1e87d44ee0508dbd8bd434",
-      "size_bytes": 3185
+      "sha256": "017448a87b39bb7a3c59c0d273ce3c88a33b4fddf2e5c5a35639232ce5cc5650",
+      "size_bytes": 3126
     }
   ],
   "receipts": {
@@ -170,8 +170,8 @@
       {
         "name": "receipts_json",
         "path": "receipts/receipts.json",
-        "sha256": "34f95069535394ea7676442aa90b909ae8a18459bc226ec835250bf37706724e",
-        "size_bytes": 5364
+        "sha256": "04e7c1a6e7f60664ccb0ed5adeb63d4e63a217bf09c1446ade4a07e0fd59d33b",
+        "size_bytes": 5180
       }
     ]
   },
@@ -180,8 +180,8 @@
       {
         "name": "trips_json",
         "path": "fixtures/trips.json",
-        "sha256": "1038395e90ff714aa478bc6e61b79d8a8bc409c42a828c2a57b975b5c789e5cc",
-        "size_bytes": 3506
+        "sha256": "450ef0066e8179172367ca8802cc148e04049b219cdf26b4846f85f2096c0170",
+        "size_bytes": 3392
       }
     ]
   },

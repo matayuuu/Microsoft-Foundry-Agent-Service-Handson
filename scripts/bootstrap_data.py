@@ -369,17 +369,18 @@ def checksum_error(document: ManifestDocument, content_bytes: bytes) -> str | No
     read from disk for this document) does not match the manifest's
     recorded sha256/size_bytes, or None if it matches. Pure: takes bytes
     already read by an adapter, never touches the filesystem itself."""
-    actual_sha256 = hashlib.sha256(content_bytes).hexdigest()
+    canonical = content_bytes.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    actual_sha256 = hashlib.sha256(canonical).hexdigest()
     if actual_sha256 != document.sha256:
         return (
             f"documents id={document.id}: source file sha256 mismatch "
             f"(manifest={document.sha256}, actual={actual_sha256}); "
             "the file on disk does not match data/manifest.json"
         )
-    if len(content_bytes) != document.size_bytes:
+    if len(canonical) != document.size_bytes:
         return (
             f"documents id={document.id}: source file size mismatch "
-            f"(manifest={document.size_bytes} bytes, actual={len(content_bytes)} bytes)"
+            f"(manifest={document.size_bytes} bytes, actual={len(canonical)} canonical bytes)"
         )
     return None
 
