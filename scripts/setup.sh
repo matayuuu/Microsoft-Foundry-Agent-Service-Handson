@@ -71,7 +71,7 @@ Options:
                                 variable.
   --travel-api-image-tag <tag> Tag to resolve to an immutable digest when
                                 --travel-api-image-ref is not given. Defaults
-                                to v1.0.0 (the planned first published
+                                to v1.0.2 (the latest validated workshop
                                 release). May also be supplied via the
                                 TRAVEL_API_IMAGE_TAG environment variable.
   --location <region>   Preferred region: eastus2 (default) or swedencentral.
@@ -99,7 +99,7 @@ RESOURCE_GROUP_NAME=""
 PREFERRED_LOCATION="eastus2"
 TRAVEL_API_IMAGE_REF="${TRAVEL_API_IMAGE_REF:-}"
 TRAVEL_API_IMAGE_REPO="${TRAVEL_API_IMAGE_REPO:-}"
-TRAVEL_API_IMAGE_TAG="${TRAVEL_API_IMAGE_TAG:-v1.0.0}"
+TRAVEL_API_IMAGE_TAG="${TRAVEL_API_IMAGE_TAG:-v1.0.2}"
 SOURCE_BASE=""
 AUTO_APPROVE="false"
 SKIP_BOOTSTRAP="false"
@@ -134,7 +134,7 @@ if [[ -z "${SUBSCRIPTION_ID}" || -z "${RESOURCE_GROUP_NAME}" ]]; then
   exit 1
 fi
 
-if [[ -n "${TRAVEL_API_IMAGE_REF}" && ( -n "${TRAVEL_API_IMAGE_REPO}" || "${TRAVEL_API_IMAGE_TAG}" != "v1.0.0" ) ]]; then
+if [[ -n "${TRAVEL_API_IMAGE_REF}" && ( -n "${TRAVEL_API_IMAGE_REPO}" || "${TRAVEL_API_IMAGE_TAG}" != "v1.0.2" ) ]]; then
   echo "${SCRIPT_NAME}: --travel-api-image-repo/--travel-api-image-tag are ignored because --travel-api-image-ref was given explicitly" >&2
 fi
 

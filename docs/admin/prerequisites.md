@@ -136,7 +136,7 @@ Before participants run setup, a repository maintainer must publish the immutabl
 Travel Ops API image:
 
 1. Push a tag matching `travel-api-v*` (the participant default resolves
-   `travel-api-v1.0.0`) or run **Publish Travel Ops API** manually.
+   `travel-api-v1.0.2`) or run **Publish Travel Ops API** manually.
 2. Open the resulting `travel-ops-api` package settings on GitHub and set the
    package visibility to **Public**. A package built from a private repository
    remains private by default, and GitHub doesn't provide a supported workflow-token

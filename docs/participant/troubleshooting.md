@@ -21,7 +21,7 @@ resource group 名・subscription ID が管理者から渡されたものと一�
 
 `setup.sh` はすべてのステップが idempotent です。エラーメッセージを読んで、
 指摘された問題を直してから、**同じコマンドでそのまま再実行**してください。
-Travel Ops API の既定 `v1.0.0` image が未公開の場合は、maintainer が
+Travel Ops API の既定 `v1.0.2` image が未公開の場合は、maintainer が
 `publish-travel-api.yml` で GHCR package を Public にしてから再実行します。
 管理者から immutable digest を受け取った場合だけ、
 `--travel-api-image-ref ghcr.io/.../...@sha256:<64桁の16進数>` で上書きできます。
