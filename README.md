@@ -1,3 +1,5 @@
+**日本語** | [English](README.en.md)
+
 # Microsoft Foundry Agent Service Hands-on
 
 Microsoft Foundry Agent Service の主要機能を、1つの「Contoso 社内出張・経費支援」
