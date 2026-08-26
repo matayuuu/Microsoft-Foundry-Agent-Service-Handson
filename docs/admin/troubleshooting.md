@@ -66,6 +66,16 @@ to statically resolve). If the report flags a candidate policy:
    policy-denial error message is authoritative; the preflight scan is a fast,
    non-exhaustive early warning only.
 
+A management-group `modify` policy can also allow Storage creation to report success
+while rewriting `publicNetworkAccess` to `Disabled`. The later data bootstrap then
+fails with Storage `AuthorizationFailure` even when `Storage Blob Data Contributor`
+is present. Confirm this case in the resource Activity Log by looking for
+`Microsoft.Authorization/policies/modify/action` on the Storage account. The core
+workshop intentionally uses public endpoints and does not provision private
+networking, so use a compatible subscription or have an administrator approve a
+resource-group-scoped exemption for that specific policy definition reference.
+Participants must not create governance exemptions themselves.
+
 ## A participant's `preflight.sh` fails even though `admin-preflight.sh` passed
 
 `scripts/preflight.sh` is participant/resource-group scoped and additionally checks
