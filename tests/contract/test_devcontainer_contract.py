@@ -15,4 +15,5 @@ def test_devcontainer_removes_obsolete_yarn_source_before_features_install() -> 
     assert "FROM mcr.microsoft.com/devcontainers/python:${VARIANT}" in dockerfile
     assert "rm -f /etc/apt/sources.list.d/yarn.list" in dockerfile
     assert "ghcr.io/devcontainers/features/azure-cli:1" in config["features"]
+    assert "ghcr.io/devcontainers/features/sshd:1" in config["features"]
     assert "ghcr.io/devcontainers/features/terraform:1" in config["features"]
