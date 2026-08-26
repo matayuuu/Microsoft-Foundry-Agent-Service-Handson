@@ -27,6 +27,18 @@ def test_per_diem_success():
     assert any(ref["id"] == "policy-per-diem-001" for ref in body["policy_references"])
 
 
+def test_policy_reference_urls_use_configured_source_base(monkeypatch):
+    source_base = "https://github.com/example/workshop/blob/main"
+    monkeypatch.setenv("WORKSHOP_SOURCE_BASE", source_base)
+
+    response = client.get("/per-diem", params={"city": "Osaka", "date": "2026-05-11"})
+
+    assert response.status_code == 200
+    source_urls = [ref["source_url"] for ref in response.json()["policy_references"]]
+    assert all(url.startswith(f"{source_base}/data/policies/") for url in source_urls)
+    assert all("{{WORKSHOP_SOURCE_BASE}}" not in url for url in source_urls)
+
+
 def test_per_diem_unknown_city_returns_404():
     response = client.get("/per-diem", params={"city": "Atlantis", "date": "2026-05-11"})
     assert response.status_code == 404

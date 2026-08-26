@@ -52,7 +52,7 @@ az login --use-device-code
 Open the Microsoft Foundry portal link shown after provisioning, then proceed from
 [Lab 0](labs/00-overview.md).
 
-By default, the public Travel Ops API image's `v1.0.2` tag is automatically resolved
+By default, the public Travel Ops API image's `v1.0.3` tag is automatically resolved
 to an immutable digest. If the maintainer has not published the image yet, setup
 stops before Terraform runs and displays publishing instructions that use
 `.github/workflows/publish-travel-api.yml`.

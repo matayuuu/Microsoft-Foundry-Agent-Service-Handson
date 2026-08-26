@@ -65,6 +65,16 @@ variable "travel_api_image_ref" {
   }
 }
 
+variable "source_base" {
+  description = "Public HTTPS base URL substituted into Travel Ops API policy citations."
+  type        = string
+
+  validation {
+    condition     = can(regex("^https://[^/]+/.+", var.source_base))
+    error_message = "source_base must be an absolute public HTTPS URL."
+  }
+}
+
 variable "travel_api_container_port" {
   description = "TCP port the Travel Ops API container listens on inside the container (used for Container App ingress target_port)."
   type        = number

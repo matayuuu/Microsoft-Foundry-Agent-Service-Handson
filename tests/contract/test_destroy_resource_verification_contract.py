@@ -150,6 +150,7 @@ def fixture_repo(tmp_path: Path) -> Path:
         "subscription_id": SUBSCRIPTION_ID,
         "resource_group_name": RESOURCE_GROUP_NAME,
         "location": "eastus2",
+        "source_base": "https://github.com/example/workshop/blob/main",
         "terraform_inputs": {
             "travel_api_image_ref": "ghcr.io/example/travel-ops-api@sha256:" + "0" * 64,
             "optimizer_model_version": "2025-08-07",
@@ -234,6 +235,8 @@ def test_cli_overrides_recover_partial_setup_without_context(fixture_repo: Path)
             image_ref,
             "--location",
             "eastus2",
+            "--source-base",
+            "https://github.com/example/workshop/blob/main",
             "--optimizer-model-version",
             "2025-08-07",
             "--primary-model-version",

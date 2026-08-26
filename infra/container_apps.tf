@@ -26,6 +26,11 @@ resource "azurerm_container_app" "travel_api" {
       image  = var.travel_api_image_ref
       cpu    = var.travel_api_cpu
       memory = var.travel_api_memory
+
+      env {
+        name  = "WORKSHOP_SOURCE_BASE"
+        value = var.source_base
+      }
     }
   }
 

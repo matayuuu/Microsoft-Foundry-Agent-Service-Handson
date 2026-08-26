@@ -24,7 +24,7 @@ for what they are responsible for instead.
 - A Travel Ops API container image. You normally do **not** need to supply
   `--travel-api-image-ref` yourself: `setup.sh` resolves the immutable `@sha256`
   digest for the maintainer's default public GHCR release
-  (`ghcr.io/matayuuu/travel-ops-api:v1.0.2` by default) itself, via an anonymous
+  (`ghcr.io/matayuuu/travel-ops-api:v1.0.3` by default) itself, via an anonymous
   GHCR registry lookup — no image build/push, Docker, or `docker login` needed on
   your side. Only pass `--travel-api-image-ref` explicitly if your administrator
   gives you a different, already-resolved `ghcr.io/...@sha256:<digest>` reference.
@@ -130,7 +130,7 @@ workshop administrator asks you to point citations at a different public mirror.
 
 You do not normally need to pass `--travel-api-image-ref` either. By default,
 `setup.sh` resolves the immutable digest for
-`ghcr.io/matayuuu/travel-ops-api:v1.0.2` itself, using an **anonymous** GHCR
+`ghcr.io/matayuuu/travel-ops-api:v1.0.3` itself, using an **anonymous** GHCR
 registry token + manifest lookup (no credentials, no `docker login`) — the resulting
 `ghcr.io/...@sha256:<digest>` reference is what actually reaches Terraform. This
 keeps setup a genuine one-command flow even though the image is built and published

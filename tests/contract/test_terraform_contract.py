@@ -191,6 +191,15 @@ def test_container_app_environment_uses_log_analytics_destination() -> None:
     assert "log_analytics_workspace_id" in text
 
 
+def test_travel_api_receives_public_citation_source_base() -> None:
+    container_apps = _read("container_apps.tf")
+    variables = _read("variables.tf")
+
+    assert 'name  = "WORKSHOP_SOURCE_BASE"' in container_apps
+    assert "value = var.source_base" in container_apps
+    assert re.search(r'variable\s+"source_base"\s*\{', variables)
+
+
 def test_travel_api_port_matches_container_contract() -> None:
     text = _read("variables.tf")
 

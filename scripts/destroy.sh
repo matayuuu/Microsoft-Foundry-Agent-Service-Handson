@@ -24,6 +24,7 @@
 # Usage:
 #   scripts/destroy.sh [--subscription <id>] [--resource-group <name>]
 #                       [--travel-api-image-ref <ref>] [--location <region>]
+#                       [--source-base <url>]
 #                       [--optimizer-model-version <version>]
 #                       [--primary-model-version <version>]
 #                       [--embedding-model-version <version>] [--auto-approve]
@@ -63,6 +64,7 @@ Options:
                                 the value recorded in .workshop/context.json.
                                 May also be supplied via TRAVEL_API_IMAGE_REF.
   --location <region>          Same Azure region used at setup time.
+  --source-base <url>          Same public citation base URL used at setup time.
   --optimizer-model-version <version>
                                 Same optimizer model version used at setup time.
   --primary-model-version <version>
@@ -88,6 +90,7 @@ SUBSCRIPTION_ID=""
 RESOURCE_GROUP_NAME=""
 TRAVEL_API_IMAGE_REF="${TRAVEL_API_IMAGE_REF:-}"
 LOCATION=""
+SOURCE_BASE=""
 OPTIMIZER_MODEL_VERSION=""
 PRIMARY_MODEL_VERSION=""
 EMBEDDING_MODEL_VERSION=""
@@ -99,6 +102,7 @@ while [[ $# -gt 0 ]]; do
     --resource-group) RESOURCE_GROUP_NAME="${2:-}"; shift 2 ;;
     --travel-api-image-ref) TRAVEL_API_IMAGE_REF="${2:-}"; shift 2 ;;
     --location) LOCATION="${2:-}"; shift 2 ;;
+    --source-base) SOURCE_BASE="${2:-}"; shift 2 ;;
     --optimizer-model-version) OPTIMIZER_MODEL_VERSION="${2:-}"; shift 2 ;;
     --primary-model-version) PRIMARY_MODEL_VERSION="${2:-}"; shift 2 ;;
     --embedding-model-version) EMBEDDING_MODEL_VERSION="${2:-}"; shift 2 ;;
@@ -129,6 +133,7 @@ if [[ -f "${CONTEXT_FILE}" ]]; then
   [[ -z "${RESOURCE_GROUP_NAME}" ]] && RESOURCE_GROUP_NAME="$(jq -r '.resource_group_name // empty' "${CONTEXT_FILE}")"
   [[ -z "${TRAVEL_API_IMAGE_REF}" ]] && TRAVEL_API_IMAGE_REF="$(jq -r '.terraform_inputs.travel_api_image_ref // empty' "${CONTEXT_FILE}")"
   [[ -z "${LOCATION}" ]] && LOCATION="$(jq -r '.location // empty' "${CONTEXT_FILE}")"
+  [[ -z "${SOURCE_BASE}" ]] && SOURCE_BASE="$(jq -r '.source_base // empty' "${CONTEXT_FILE}")"
   [[ -z "${OPTIMIZER_MODEL_VERSION}" ]] && OPTIMIZER_MODEL_VERSION="$(jq -r '.terraform_inputs.optimizer_model_version // empty' "${CONTEXT_FILE}")"
   [[ -z "${PRIMARY_MODEL_VERSION}" ]] && PRIMARY_MODEL_VERSION="$(jq -r '.terraform_inputs.primary_model_version // empty' "${CONTEXT_FILE}")"
   [[ -z "${EMBEDDING_MODEL_VERSION}" ]] && EMBEDDING_MODEL_VERSION="$(jq -r '.terraform_inputs.embedding_model_version // empty' "${CONTEXT_FILE}")"
@@ -143,6 +148,10 @@ if [[ -z "${SUBSCRIPTION_ID}" || -z "${RESOURCE_GROUP_NAME}" || -z "${TRAVEL_API
 fi
 if [[ -z "${LOCATION}" ]]; then
   echo "${SCRIPT_NAME}: could not resolve the deployment location. Pass --location, restore ${CONTEXT_FILE}, or re-run scripts/setup.sh." >&2
+  exit 1
+fi
+if [[ -z "${SOURCE_BASE}" ]]; then
+  echo "${SCRIPT_NAME}: could not resolve source_base. Pass --source-base or restore ${CONTEXT_FILE}." >&2
   exit 1
 fi
 if [[ -z "${OPTIMIZER_MODEL_VERSION}" ]]; then
@@ -210,6 +219,7 @@ TF_VAR_ARGS=(
   -var "resource_group_name=${RESOURCE_GROUP_NAME}"
   -var "location=${LOCATION}"
   -var "travel_api_image_ref=${TRAVEL_API_IMAGE_REF}"
+  -var "source_base=${SOURCE_BASE}"
   -var "optimizer_model_version=${OPTIMIZER_MODEL_VERSION}"
 )
 if [[ -n "${PRIMARY_MODEL_VERSION}" ]]; then

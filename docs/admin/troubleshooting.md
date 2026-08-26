@@ -113,6 +113,7 @@ explicitly so Terraform can destroy the partial state:
   --resource-group "<resource-group>" \
   --travel-api-image-ref "ghcr.io/<owner>/travel-ops-api@sha256:<digest>" \
   --location "<eastus2-or-swedencentral>" \
+  --source-base "https://github.com/<owner>/<repo>/blob/main" \
   --optimizer-model-version "<version>" \
   --primary-model-version "<version>" \
   --embedding-model-version "<version>" \
