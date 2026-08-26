@@ -398,6 +398,26 @@ def _get(obj: Any, key: str, default: Any = None) -> Any:
     return getattr(obj, key, default)
 
 
+def _to_json_compatible(value: Any) -> Any:
+    """Recursively convert supported SDK model values to JSON primitives."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, dict):
+        return {str(key): _to_json_compatible(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_to_json_compatible(item) for item in value]
+
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        return _to_json_compatible(model_dump(mode="json"))
+
+    as_dict = getattr(value, "as_dict", None)
+    if callable(as_dict):
+        return _to_json_compatible(as_dict())
+
+    raise TypeError(f"unsupported evaluation report value type: {type(value).__name__}")
+
+
 def format_report(run: Any, *, eval_id: str, run_id: str) -> dict[str, Any]:
     """Build the machine-readable summary shared by --output human and json."""
     result_counts = _get(run, "result_counts", {}) or {}
@@ -405,15 +425,15 @@ def format_report(run: Any, *, eval_id: str, run_id: str) -> dict[str, Any]:
     return {
         "eval_id": eval_id,
         "run_id": run_id,
-        "status": _get(run, "status"),
-        "report_url": _get(run, "report_url"),
+        "status": _to_json_compatible(_get(run, "status")),
+        "report_url": _to_json_compatible(_get(run, "report_url")),
         "result_counts": {
             "total": _get(result_counts, "total"),
             "passed": _get(result_counts, "passed"),
             "failed": _get(result_counts, "failed"),
             "errored": _get(result_counts, "errored"),
         },
-        "per_testing_criteria_results": per_criteria,
+        "per_testing_criteria_results": _to_json_compatible(per_criteria),
     }
 
 
