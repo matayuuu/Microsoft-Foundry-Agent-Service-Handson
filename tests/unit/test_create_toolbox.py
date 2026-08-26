@@ -214,6 +214,34 @@ def test_mcp_endpoints_strips_trailing_slash_from_project_endpoint() -> None:
 
 
 # ---------------------------------------------------------------------------
+# set_live_server_url
+# ---------------------------------------------------------------------------
+
+
+def test_set_live_server_url_adds_required_openapi_server_without_mutating_input() -> None:
+    original = json.loads(json.dumps(SAMPLE_SPEC))
+
+    normalized = create_toolbox.set_live_server_url(
+        original,
+        "https://travel-api.example.io/",
+    )
+
+    assert normalized["servers"] == [{"url": "https://travel-api.example.io"}]
+    assert "servers" not in original
+
+
+def test_set_live_server_url_replaces_stale_server() -> None:
+    spec = {**SAMPLE_SPEC, "servers": [{"url": "https://stale.example.io"}]}
+
+    normalized = create_toolbox.set_live_server_url(
+        spec,
+        "https://travel-api.example.io",
+    )
+
+    assert normalized["servers"] == [{"url": "https://travel-api.example.io"}]
+
+
+# ---------------------------------------------------------------------------
 # fetch_openapi_spec (httpx stubbed)
 # ---------------------------------------------------------------------------
 
@@ -227,7 +255,10 @@ def test_fetch_openapi_spec_returns_parsed_json(monkeypatch: pytest.MonkeyPatch)
 
     spec = create_toolbox.fetch_openapi_spec("https://travel-api.example.io", "/openapi.json")
 
-    assert spec == SAMPLE_SPEC
+    assert spec == {
+        **SAMPLE_SPEC,
+        "servers": [{"url": "https://travel-api.example.io"}],
+    }
 
 
 def test_fetch_openapi_spec_raises_on_transport_error(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -267,7 +298,10 @@ def test_fetch_openapi_spec_retries_transient_cold_start(
         retry_delay=0.25,
     )
 
-    assert spec == SAMPLE_SPEC
+    assert spec == {
+        **SAMPLE_SPEC,
+        "servers": [{"url": "https://travel-api.example.io"}],
+    }
     assert attempts == 2
     assert delays == [0.25]
 

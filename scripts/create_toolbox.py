@@ -26,6 +26,7 @@ strings are read anywhere in this script.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 import time
@@ -201,6 +202,18 @@ def mcp_endpoints(endpoint: str, toolbox_name: str, version: str) -> dict[str, s
     }
 
 
+def set_live_server_url(spec: dict[str, Any], base_url: str) -> dict[str, Any]:
+    """Return a copy of ``spec`` targeting the deployed Travel Ops API.
+
+    FastAPI omits ``servers`` by default, but Foundry's OpenAPI tool runtime
+    requires it to resolve operation URLs. The live Container App URL from
+    workshop context is authoritative for this toolbox version.
+    """
+    normalized = copy.deepcopy(spec)
+    normalized["servers"] = [{"url": base_url.rstrip("/")}]
+    return normalized
+
+
 # ---------------------------------------------------------------------------
 # I/O adapters
 # ---------------------------------------------------------------------------
@@ -246,7 +259,7 @@ def fetch_openapi_spec(
         raise WorkshopContextError(
             f"response from {url} does not look like an OpenAPI document (missing openapi/paths)."
         )
-    return spec
+    return set_live_server_url(spec, base_url)
 
 
 def get_existing_default_tools(
