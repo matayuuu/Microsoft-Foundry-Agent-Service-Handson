@@ -19,6 +19,7 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+from azure.ai.projects.models import AgentVersionStatus
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = REPO_ROOT / "scripts" / "deploy_hosted_agent.py"
@@ -285,7 +286,7 @@ class _FakeVersion:
     statically declared ``.error`` attribute, only this dict-style access.
     """
 
-    def __init__(self, status: str, version: str = "1", *, error: object = None) -> None:
+    def __init__(self, status: object, version: str = "1", *, error: object = None) -> None:
         self.status = status
         self.version = version
         self._data = {"error": error} if error is not None else {}
@@ -322,6 +323,18 @@ def test_poll_version_returns_once_failed() -> None:
     )
 
     assert result.status == "failed"
+
+
+def test_poll_version_accepts_sdk_status_enum() -> None:
+    result = deploy_hosted_agent.poll_version(
+        retrieve=lambda: _FakeVersion(AgentVersionStatus.ACTIVE),
+        interval_seconds=1.0,
+        timeout_seconds=100.0,
+        sleep=lambda _s: None,
+        now=lambda: 0.0,
+    )
+
+    assert result.status is AgentVersionStatus.ACTIVE
 
 
 def test_poll_version_raises_on_timeout() -> None:
@@ -367,6 +380,26 @@ def test_build_result_succeeded_when_active() -> None:
     assert "failure_hint" not in result
     # No fabricated deep link: only portal_url plus identifiers are present.
     assert "playground_url" not in result
+
+
+def test_build_result_normalizes_sdk_status_enum() -> None:
+    context = {
+        "terraform_outputs": {
+            "foundry_portal_url": {"value": "https://ai.azure.com"},
+            "ai_services_account_name": {"value": "acct-1"},
+            "foundry_project_name": {"value": "proj-1"},
+        }
+    }
+
+    result = deploy_hosted_agent.build_result(
+        agent_name="contoso-travel-hosted-planner",
+        version=_FakeVersion(AgentVersionStatus.ACTIVE, version="1"),
+        context=context,
+        endpoint="https://acct-1.services.ai.azure.com/api/projects/proj-1",
+    )
+
+    assert result["status"] == "active"
+    assert result["succeeded"] is True
 
 
 def test_build_result_includes_failure_hint_when_failed_without_structured_error() -> None:

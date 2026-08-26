@@ -143,6 +143,11 @@ TERMINAL_STATUSES = frozenset({"active", "failed"})
 # ---------------------------------------------------------------------------
 
 
+def normalize_status(status: Any) -> str:
+    value = getattr(status, "value", status)
+    return str(value).lower()
+
+
 def parse_ignore_patterns(text: str) -> list[str]:
     """Parse ``.agentignore`` content into a list of patterns.
 
@@ -342,7 +347,7 @@ def poll_version(
     """
     deadline = now() + timeout_seconds
     version = retrieve()
-    while str(version.status) not in TERMINAL_STATUSES:
+    while normalize_status(version.status) not in TERMINAL_STATUSES:
         if now() >= deadline:
             raise WorkshopContextError(
                 f"agent version did not reach a terminal state within {timeout_seconds:.0f}s "
@@ -403,7 +408,7 @@ def build_result(
     (see module docstring); only identifiers a participant can use to
     navigate the portal by hand are included.
     """
-    status = str(version.status)
+    status = normalize_status(version.status)
     result: dict[str, Any] = {
         "agent_name": agent_name,
         "version": version.version,
