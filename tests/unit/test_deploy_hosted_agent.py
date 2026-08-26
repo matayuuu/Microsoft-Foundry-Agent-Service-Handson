@@ -92,8 +92,7 @@ def _write(path: Path, content: str = "") -> None:
 
 def test_iter_source_files_excludes_ignored_and_sorts(tmp_path: Path) -> None:
     _write(tmp_path / "main.py", "print(1)")
-    _write(tmp_path / "requirements.txt", "agent-framework-core==1.14.0")
-    _write(tmp_path / "domain.py", "x = 1")
+    _write(tmp_path / "requirements.txt", "agent-framework-core==1.15.0")
     _write(tmp_path / "workflow.py", "y = 2")
     _write(tmp_path / "__pycache__" / "main.cpython-313.pyc", "junk")
     _write(tmp_path / ".env", "SECRET=1")
@@ -212,7 +211,7 @@ def test_build_definition_passes_through_environment_variables() -> None:
 
 
 # ---------------------------------------------------------------------------
-# resolve_environment_variables (AZURE_AI_MODEL_DEPLOYMENT_NAME auto-injection)
+# resolve_environment_variables (FOUNDRY_MODEL auto-injection)
 # ---------------------------------------------------------------------------
 
 
@@ -229,7 +228,7 @@ def test_resolve_environment_variables_auto_injects_model_deployment_name() -> N
         {}, context=_context_with_model_deployment("gpt-4o-mini")
     )
 
-    assert result == {"AZURE_AI_MODEL_DEPLOYMENT_NAME": "gpt-4o-mini"}
+    assert result == {"FOUNDRY_MODEL": "gpt-4o-mini"}
 
 
 def test_resolve_environment_variables_keeps_other_explicit_env_vars() -> None:
@@ -239,17 +238,17 @@ def test_resolve_environment_variables_keeps_other_explicit_env_vars() -> None:
 
     assert result == {
         "SOME_OTHER_VAR": "value",
-        "AZURE_AI_MODEL_DEPLOYMENT_NAME": "gpt-4o-mini",
+        "FOUNDRY_MODEL": "gpt-4o-mini",
     }
 
 
 def test_resolve_environment_variables_explicit_override_wins() -> None:
     result = deploy_hosted_agent.resolve_environment_variables(
-        {"AZURE_AI_MODEL_DEPLOYMENT_NAME": "explicit-override"},
+        {"FOUNDRY_MODEL": "explicit-override"},
         context=_context_with_model_deployment("gpt-4o-mini"),
     )
 
-    assert result == {"AZURE_AI_MODEL_DEPLOYMENT_NAME": "explicit-override"}
+    assert result == {"FOUNDRY_MODEL": "explicit-override"}
     # The Terraform output must not even need to be present when overridden.
 
 

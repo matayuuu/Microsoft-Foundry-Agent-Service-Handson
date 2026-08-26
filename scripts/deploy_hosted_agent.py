@@ -20,10 +20,10 @@ the installed 2.5.x SDK -- retrieved 2026-08-21):
 3. Validates that the required entry point/dependency/domain files are
    present in the zip and that ``--cpu``/``--memory`` form one of the three
    documented Hosted Agent tiers, before making any network call.
-4. Auto-injects ``AZURE_AI_MODEL_DEPLOYMENT_NAME`` into the container's
+4. Auto-injects ``FOUNDRY_MODEL`` into the container's
    environment variables from the ``primary_model_deployment_name``
    Terraform output, unless a participant already supplied it via
-   ``--env AZURE_AI_MODEL_DEPLOYMENT_NAME=...``. ``FOUNDRY_PROJECT_ENDPOINT``
+   ``--env FOUNDRY_MODEL=...``. ``FOUNDRY_PROJECT_ENDPOINT``
    is never set here -- the Hosted Agent platform injects it automatically
    (see ``src/hosted-agent/workflow.py``'s ``_default_chat_client``).
 5. Calls ``create_version_from_code`` with a ``HostedAgentDefinition`` using
@@ -124,7 +124,6 @@ DEFAULT_CPU, DEFAULT_MEMORY = "1", "2Gi"
 REQUIRED_SOURCE_FILES: tuple[str, ...] = (
     "main.py",
     "requirements.txt",
-    "domain.py",
     "workflow.py",
 )
 
@@ -233,7 +232,7 @@ def validate_required_files(source_dir: Path, files: list[Path]) -> None:
         )
 
 
-AZURE_AI_MODEL_DEPLOYMENT_NAME_VAR = "AZURE_AI_MODEL_DEPLOYMENT_NAME"
+FOUNDRY_MODEL_VAR = "FOUNDRY_MODEL"
 PRIMARY_MODEL_DEPLOYMENT_OUTPUT = "primary_model_deployment_name"
 
 
@@ -243,12 +242,11 @@ def resolve_environment_variables(
     """Merge ``--env`` overrides with the model deployment name auto-injected
     from Terraform.
 
-    ``AZURE_AI_MODEL_DEPLOYMENT_NAME`` is required at runtime by every real
-    agent in ``src/hosted-agent/workflow.py`` (see
-    ``workflow._default_chat_client``), so it is auto-set here from the
+    ``FOUNDRY_MODEL`` is required at runtime by every participant in
+    ``src/hosted-agent/workflow.py``, so it is auto-set here from the
     ``primary_model_deployment_name`` Terraform output rather than requiring
     every participant to look it up and pass ``--env`` by hand. An explicit
-    ``--env AZURE_AI_MODEL_DEPLOYMENT_NAME=...`` always wins.
+    ``--env FOUNDRY_MODEL=...`` always wins.
 
     ``FOUNDRY_PROJECT_ENDPOINT`` is intentionally never set here: the Hosted
     Agent platform injects it into the container automatically once
@@ -256,10 +254,10 @@ def resolve_environment_variables(
     fingerprint" reference), so setting it explicitly would be redundant at
     best and could shadow the platform's own value at worst.
     """
-    if AZURE_AI_MODEL_DEPLOYMENT_NAME_VAR in explicit_env:
+    if FOUNDRY_MODEL_VAR in explicit_env:
         return dict(explicit_env)
     model_deployment_name = terraform_output(context, PRIMARY_MODEL_DEPLOYMENT_OUTPUT)
-    return {**explicit_env, AZURE_AI_MODEL_DEPLOYMENT_NAME_VAR: model_deployment_name}
+    return {**explicit_env, FOUNDRY_MODEL_VAR: model_deployment_name}
 
 
 def validate_cpu_memory(cpu: str, memory: str) -> None:
