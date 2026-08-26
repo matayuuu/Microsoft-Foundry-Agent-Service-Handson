@@ -23,7 +23,10 @@
 #
 # Usage:
 #   scripts/destroy.sh [--subscription <id>] [--resource-group <name>]
-#                       [--travel-api-image-ref <ref>] [--auto-approve]
+#                       [--travel-api-image-ref <ref>] [--location <region>]
+#                       [--optimizer-model-version <version>]
+#                       [--primary-model-version <version>]
+#                       [--embedding-model-version <version>] [--auto-approve]
 #
 # When --subscription/--resource-group/--travel-api-image-ref are omitted,
 # they are read from .workshop/context.json (written by scripts/setup.sh).
@@ -59,6 +62,16 @@ Options:
   --travel-api-image-ref <ref> Same image ref used at setup time. Defaults to
                                 the value recorded in .workshop/context.json.
                                 May also be supplied via TRAVEL_API_IMAGE_REF.
+  --location <region>          Same Azure region used at setup time.
+  --optimizer-model-version <version>
+                                Same optimizer model version used at setup time.
+  --primary-model-version <version>
+                                Same primary model version used at setup time.
+  --embedding-model-version <version>
+                                Same embedding model version used at setup time.
+                                These values default to .workshop/context.json;
+                                pass them explicitly to recover from a setup
+                                failure that occurred before context was written.
   --auto-approve                Skip the terraform destroy confirmation prompt.
   -h, --help                    Show this help and exit.
 
@@ -74,6 +87,10 @@ EOF
 SUBSCRIPTION_ID=""
 RESOURCE_GROUP_NAME=""
 TRAVEL_API_IMAGE_REF="${TRAVEL_API_IMAGE_REF:-}"
+LOCATION=""
+OPTIMIZER_MODEL_VERSION=""
+PRIMARY_MODEL_VERSION=""
+EMBEDDING_MODEL_VERSION=""
 AUTO_APPROVE="false"
 
 while [[ $# -gt 0 ]]; do
@@ -81,6 +98,10 @@ while [[ $# -gt 0 ]]; do
     --subscription) SUBSCRIPTION_ID="${2:-}"; shift 2 ;;
     --resource-group) RESOURCE_GROUP_NAME="${2:-}"; shift 2 ;;
     --travel-api-image-ref) TRAVEL_API_IMAGE_REF="${2:-}"; shift 2 ;;
+    --location) LOCATION="${2:-}"; shift 2 ;;
+    --optimizer-model-version) OPTIMIZER_MODEL_VERSION="${2:-}"; shift 2 ;;
+    --primary-model-version) PRIMARY_MODEL_VERSION="${2:-}"; shift 2 ;;
+    --embedding-model-version) EMBEDDING_MODEL_VERSION="${2:-}"; shift 2 ;;
     --auto-approve) AUTO_APPROVE="true"; shift 1 ;;
     -h|--help) usage; exit 0 ;;
     *)
@@ -102,20 +123,15 @@ done
 # Resolve required inputs from CLI args, falling back to .workshop/context.json
 # ---------------------------------------------------------------------------
 
-LOCATION=""
-OPTIMIZER_MODEL_VERSION=""
-PRIMARY_MODEL_VERSION=""
-EMBEDDING_MODEL_VERSION=""
-
 if [[ -f "${CONTEXT_FILE}" ]]; then
   echo "==> Reading defaults from ${CONTEXT_FILE}..." >&2
   [[ -z "${SUBSCRIPTION_ID}" ]] && SUBSCRIPTION_ID="$(jq -r '.subscription_id // empty' "${CONTEXT_FILE}")"
   [[ -z "${RESOURCE_GROUP_NAME}" ]] && RESOURCE_GROUP_NAME="$(jq -r '.resource_group_name // empty' "${CONTEXT_FILE}")"
   [[ -z "${TRAVEL_API_IMAGE_REF}" ]] && TRAVEL_API_IMAGE_REF="$(jq -r '.terraform_inputs.travel_api_image_ref // empty' "${CONTEXT_FILE}")"
-  LOCATION="$(jq -r '.location // empty' "${CONTEXT_FILE}")"
-  OPTIMIZER_MODEL_VERSION="$(jq -r '.terraform_inputs.optimizer_model_version // empty' "${CONTEXT_FILE}")"
-  PRIMARY_MODEL_VERSION="$(jq -r '.terraform_inputs.primary_model_version // empty' "${CONTEXT_FILE}")"
-  EMBEDDING_MODEL_VERSION="$(jq -r '.terraform_inputs.embedding_model_version // empty' "${CONTEXT_FILE}")"
+  [[ -z "${LOCATION}" ]] && LOCATION="$(jq -r '.location // empty' "${CONTEXT_FILE}")"
+  [[ -z "${OPTIMIZER_MODEL_VERSION}" ]] && OPTIMIZER_MODEL_VERSION="$(jq -r '.terraform_inputs.optimizer_model_version // empty' "${CONTEXT_FILE}")"
+  [[ -z "${PRIMARY_MODEL_VERSION}" ]] && PRIMARY_MODEL_VERSION="$(jq -r '.terraform_inputs.primary_model_version // empty' "${CONTEXT_FILE}")"
+  [[ -z "${EMBEDDING_MODEL_VERSION}" ]] && EMBEDDING_MODEL_VERSION="$(jq -r '.terraform_inputs.embedding_model_version // empty' "${CONTEXT_FILE}")"
 else
   echo "==> No ${CONTEXT_FILE} found; relying solely on CLI arguments." >&2
 fi
@@ -126,11 +142,11 @@ if [[ -z "${SUBSCRIPTION_ID}" || -z "${RESOURCE_GROUP_NAME}" || -z "${TRAVEL_API
   exit 1
 fi
 if [[ -z "${LOCATION}" ]]; then
-  echo "${SCRIPT_NAME}: could not resolve the deployment location from ${CONTEXT_FILE}; pass it is required for a correct destroy plan. Re-run scripts/setup.sh once to regenerate context.json, or restore infra/terraform.tfstate." >&2
+  echo "${SCRIPT_NAME}: could not resolve the deployment location. Pass --location, restore ${CONTEXT_FILE}, or re-run scripts/setup.sh." >&2
   exit 1
 fi
 if [[ -z "${OPTIMIZER_MODEL_VERSION}" ]]; then
-  echo "${SCRIPT_NAME}: could not resolve optimizer_model_version from ${CONTEXT_FILE} (it has no default and must match what was applied)." >&2
+  echo "${SCRIPT_NAME}: could not resolve optimizer_model_version. Pass --optimizer-model-version or restore ${CONTEXT_FILE}; it has no Terraform default and must match what was applied." >&2
   exit 1
 fi
 

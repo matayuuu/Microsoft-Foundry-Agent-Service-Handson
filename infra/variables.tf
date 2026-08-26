@@ -162,9 +162,9 @@ variable "embedding_model_version" {
 }
 
 variable "embedding_model_sku" {
-  description = "Deployment SKU for the embedding model."
+  description = "Deployment SKU for the embedding model. GlobalStandard is supported in both workshop regions and shares the larger global quota pool."
   type        = string
-  default     = "Standard"
+  default     = "GlobalStandard"
 }
 
 variable "embedding_model_capacity" {

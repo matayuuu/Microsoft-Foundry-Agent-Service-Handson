@@ -168,7 +168,7 @@ REQUIRED_MODELS=("gpt-4.1" "gpt-5" "text-embedding-3-small")
 declare -A REQUIRED_MODEL_SKU=(
   ["gpt-4.1"]="GlobalStandard"
   ["gpt-5"]="GlobalStandard"
-  ["text-embedding-3-small"]="Standard"
+  ["text-embedding-3-small"]="GlobalStandard"
 )
 declare -A REQUIRED_MODEL_CAPACITY_K=(
   ["gpt-4.1"]="40"

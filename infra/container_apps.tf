@@ -5,6 +5,7 @@ resource "azurerm_container_app_environment" "workshop" {
   name                       = local.container_app_env_name
   resource_group_name        = data.azurerm_resource_group.workshop.name
   location                   = var.location
+  logs_destination           = "log-analytics"
   log_analytics_workspace_id = azurerm_log_analytics_workspace.workshop.id
 
   tags = var.tags

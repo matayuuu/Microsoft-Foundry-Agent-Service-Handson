@@ -61,7 +61,7 @@ assignment. It reports, per region (`eastus2` and `swedencentral`):
      subscription/region and reports whichever supported `gpt-5` variant(s) are
      actually available there. Never assume a specific version is available before the
      script confirms it.
-   - `text-embedding-3-small` — SKU `Standard`, required headroom **40K TPM per
+   - `text-embedding-3-small` — SKU `GlobalStandard`, required headroom **40K TPM per
      environment**. The vector index embedding model.
    - For each model/region pair the script reads the model's own
      `model.skus[].usageName` (never guessed or string-built from the model name —

@@ -12,7 +12,7 @@ entries key on `name.value` matching that exact usageName string and report
 
 They assert the behaviors AGENTS.md and the follow-up hardening pass require:
 
-* The specific SKU (GlobalStandard/GlobalStandard/Standard) and per-model
+* The specific SKU (GlobalStandard for all three models) and per-model
   capacity (40/20/40, matching infra/variables.tf) are what gates region
   resolution -- not a generic cross-bucket floor.
 * `usageName` is read from the model's own `skus[]` entry, never
@@ -159,7 +159,7 @@ def _usage_entry(usage_name: str, limit: float, current: float) -> dict:
 # hyphen present in the model name itself.
 GPT41_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt4.1"
 GPT5_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt-5"
-EMBEDDING_STANDARD_USAGE = "OpenAI.Standard.text-embedding-3-small"
+EMBEDDING_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.text-embedding-3-small"
 
 FULL_MODELS_FIXTURE = [
     _model_entry(
@@ -172,8 +172,8 @@ FULL_MODELS_FIXTURE = [
         "text-embedding-3-small",
         "1",
         [
-            ("Standard", EMBEDDING_STANDARD_USAGE),
-            ("GlobalStandard", "OpenAI.GlobalStandard.text-embedding-3-small"),
+            ("Standard", "OpenAI.Standard.text-embedding-3-small"),
+            ("GlobalStandard", EMBEDDING_GLOBALSTANDARD_USAGE),
         ],
     ),
 ]
@@ -190,7 +190,7 @@ MODELS_MISSING_GPT5_SKU_FIXTURE = [
     _model_entry(
         "text-embedding-3-small",
         "1",
-        [("Standard", EMBEDDING_STANDARD_USAGE)],
+        [("GlobalStandard", EMBEDDING_GLOBALSTANDARD_USAGE)],
     ),
 ]
 
@@ -213,7 +213,7 @@ MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
     _model_entry(
         "text-embedding-3-small",
         "1",
-        [("Standard", EMBEDDING_STANDARD_USAGE)],
+        [("GlobalStandard", EMBEDDING_GLOBALSTANDARD_USAGE)],
     ),
 ]
 
@@ -243,7 +243,7 @@ MODELS_ISDEFAULTVERSION_PREFERRED_FIXTURE = [
     _model_entry(
         "text-embedding-3-small",
         "1",
-        [("Standard", EMBEDDING_STANDARD_USAGE)],
+        [("GlobalStandard", EMBEDDING_GLOBALSTANDARD_USAGE)],
         is_default_version=True,
     ),
 ]
@@ -253,7 +253,9 @@ def _sufficient_usage_fixture() -> list[dict]:
     return [
         _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),  # headroom 100 >= 40
         _usage_entry(GPT5_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),  # headroom 100 >= 20
-        _usage_entry(EMBEDDING_STANDARD_USAGE, limit=100.0, current=0.0),  # headroom 100 >= 40
+        _usage_entry(
+            EMBEDDING_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0
+        ),  # headroom 100 >= 40
     ]
 
 
@@ -263,7 +265,7 @@ def _insufficient_gpt5_usage_fixture() -> list[dict]:
         _usage_entry(
             GPT5_GLOBALSTANDARD_USAGE, limit=10.0, current=0.0
         ),  # headroom 10 < 20 required
-        _usage_entry(EMBEDDING_STANDARD_USAGE, limit=100.0, current=0.0),
+        _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),
     ]
 
 
@@ -353,8 +355,8 @@ def test_resolves_preferred_region_with_sufficient_capacity_evidence(
         "required_capacity_k": 20,
     }
     assert evidence["text-embedding-3-small"] == {
-        "sku": "Standard",
-        "usage_name": EMBEDDING_STANDARD_USAGE,
+        "sku": "GlobalStandard",
+        "usage_name": EMBEDDING_GLOBALSTANDARD_USAGE,
         "required_capacity_k": 40,
     }
     assert report["resolved_model_versions"]["gpt-4.1"] == "2025-04-14"

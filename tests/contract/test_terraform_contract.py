@@ -184,6 +184,13 @@ def test_container_app_uses_variable_image_reference_not_a_literal() -> None:
     assert re.search(r"target_port\s*=\s*var\.travel_api_container_port", text)
 
 
+def test_container_app_environment_uses_log_analytics_destination() -> None:
+    text = _read("container_apps.tf")
+
+    assert re.search(r'logs_destination\s*=\s*"log-analytics"', text)
+    assert "log_analytics_workspace_id" in text
+
+
 def test_travel_api_port_matches_container_contract() -> None:
     text = _read("variables.tf")
 
@@ -213,6 +220,22 @@ def test_optimizer_model_version_has_no_default() -> None:
     match = re.search(r'variable\s+"optimizer_model_version"\s*\{(.*?)\n\}', text, re.DOTALL)
     assert match is not None
     assert "default" not in match.group(1)
+
+
+def test_model_deployments_are_serialized_after_project_creation() -> None:
+    text = _read("foundry_deployments.tf")
+
+    assert "depends_on = [azapi_resource.project]" in text
+    assert "depends_on = [azapi_resource.primary_model_deployment]" in text
+    assert "depends_on = [azapi_resource.optimizer_model_deployment]" in text
+
+
+def test_embedding_model_uses_cross_region_global_standard_sku() -> None:
+    text = _read("variables.tf")
+    match = re.search(r'variable\s+"embedding_model_sku"\s*\{(.*?)\n\}', text, re.DOTALL)
+
+    assert match is not None
+    assert re.search(r'default\s*=\s*"GlobalStandard"', match.group(1))
 
 
 EXPECTED_ROLE_IDS = {

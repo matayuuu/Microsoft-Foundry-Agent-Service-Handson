@@ -31,6 +31,21 @@ Never tell participants to proceed against a subscription with confirmed insuffi
 capacity — `terraform apply` will fail late, mid-workshop, with a much worse
 participant experience than catching it here first.
 
+## Azure AI Search reports `InsufficientResourcesAvailable`
+
+Search capacity is a live regional constraint that the resource-provider availability
+metadata cannot predict. Re-run `scripts/setup.sh` with the supported alternate region:
+
+```bash
+./scripts/setup.sh \
+  --subscription "<subscription-id>" \
+  --resource-group "<resource-group>" \
+  --location swedencentral
+```
+
+Use `eastus2` instead when the failed attempt targeted `swedencentral`. Setup is
+idempotent and refreshes its Terraform plan after any partial apply.
+
 ## `admin-preflight.sh` reports an Azure Policy that may deny required resource types
 
 The script's policy scan is **best-effort**: it lists policy assignments whose
@@ -88,6 +103,21 @@ existing state. If it still leaves resources, inspect the exact resource and err
 `destroy.sh` reports; do not delete resources by hand outside of Terraform, since that
 can desynchronize local state from the real resource group and complicate a later
 retry.
+
+If setup failed before `.workshop/context.json` was written, pass the original inputs
+explicitly so Terraform can destroy the partial state:
+
+```bash
+./scripts/destroy.sh \
+  --subscription "<subscription-id>" \
+  --resource-group "<resource-group>" \
+  --travel-api-image-ref "ghcr.io/<owner>/travel-ops-api@sha256:<digest>" \
+  --location "<eastus2-or-swedencentral>" \
+  --optimizer-model-version "<version>" \
+  --primary-model-version "<version>" \
+  --embedding-model-version "<version>" \
+  --auto-approve
+```
 
 ## See also
 

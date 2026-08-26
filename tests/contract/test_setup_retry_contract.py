@@ -1,10 +1,10 @@
 """Hermetic contract tests for scripts/setup.sh's `retry()` helper.
 
-`retry()` is the bounded-retry mechanism that now wraps both the
-bootstrap_data.py (Step 3) and validate_environment.py (Step 4) invocations
-in the real script, to absorb fresh RBAC/data-plane propagation delays right
-after `terraform apply` while still surfacing genuine (non-transient)
-failures. Steps 3-6 themselves require a full Terraform-apply context (real
+`retry()` is the bounded-retry mechanism that wraps Terraform apply,
+bootstrap_data.py (Step 3), and validate_environment.py (Step 4) invocations
+in the real script. Terraform retries must refresh a plan after a partial apply
+changes state, while data-plane retries absorb fresh RBAC propagation delays.
+Steps 3-6 themselves require a full Terraform-apply context (real
 `.workshop/context.json`, populated `TF_OUTPUTS_JSON`, etc.) that is not
 practical to fake hermetically, so this test does not execute those steps
 directly. Instead -- following the same "extract the real script and inject
@@ -84,19 +84,51 @@ fi
 echo "RETRY_ATTEMPTS=$(cat "${COUNTER_FILE}")"
 """
 
+TERRAFORM_RETRY_HARNESS_FOOTER = r"""
+terraform() {
+  local action=""
+  local arg
+  for arg in "$@"; do
+    if [[ "${arg}" == "plan" || "${arg}" == "apply" ]]; then
+      action="${arg}"
+      break
+    fi
+  done
+  if [[ -z "${action}" ]]; then
+    echo "fake terraform: no plan/apply action found: $*" >&2
+    return 1
+  fi
 
-@pytest.fixture
-def extracted_setup_head_with_retry_harness(tmp_path: Path) -> Path:
+  echo "${action}" >>"${TERRAFORM_SEQUENCE_FILE}"
+  if [[ "${action}" == "apply" && "$(grep -c '^apply$' "${TERRAFORM_SEQUENCE_FILE}")" -eq 1 ]]; then
+    echo "fake terraform: simulated partial apply failure" >&2
+    return 1
+  fi
+  return 0
+}
+
+TF_VAR_ARGS=(-var "example=value")
+if retry 3 0 apply_terraform_plan; then
+  echo "TERRAFORM_RETRY_RESULT=success"
+else
+  echo "TERRAFORM_RETRY_RESULT=failure"
+fi
+"""
+
+
+def _extracted_setup_head() -> str:
     lines = SETUP_SH.read_text(encoding="utf-8").splitlines(keepends=True)
     cut_index = next(i for i, line in enumerate(lines) if STEP_1_MARKER in line)
     head_text = "".join(lines[:cut_index])
-    # This contract targets retry() only. The real setup prefix also validates
-    # unrelated runtime tools; replace that loop so CI does not need Terraform
-    # merely to unit-test a shell retry helper.
-    head_text = head_text.replace(
+    return head_text.replace(
         "for tool in az terraform jq curl git; do",
         "for tool in true; do",
     )
+
+
+@pytest.fixture
+def extracted_setup_head_with_retry_harness(tmp_path: Path) -> Path:
+    head_text = _extracted_setup_head()
     assert "retry()" in head_text, (
         "extracted head must still include the retry() helper definition; "
         "STEP_1_MARKER or retry()'s position may be stale relative to "
@@ -107,6 +139,23 @@ def extracted_setup_head_with_retry_harness(tmp_path: Path) -> Path:
     fixture_scripts_dir.mkdir(parents=True)
     extracted_path = fixture_scripts_dir / "setup_retry_harness.sh"
     extracted_path.write_text(head_text + RETRY_HARNESS_FOOTER, encoding="utf-8", newline="\n")
+    extracted_path.chmod(extracted_path.stat().st_mode | stat.S_IEXEC)
+    return extracted_path
+
+
+@pytest.fixture
+def extracted_setup_head_with_terraform_retry_harness(tmp_path: Path) -> Path:
+    head_text = _extracted_setup_head()
+    assert "apply_terraform_plan()" in head_text
+
+    fixture_scripts_dir = tmp_path / "fixture-repo" / "scripts"
+    fixture_scripts_dir.mkdir(parents=True)
+    extracted_path = fixture_scripts_dir / "setup_terraform_retry_harness.sh"
+    extracted_path.write_text(
+        head_text + TERRAFORM_RETRY_HARNESS_FOOTER,
+        encoding="utf-8",
+        newline="\n",
+    )
     extracted_path.chmod(extracted_path.stat().st_mode | stat.S_IEXEC)
     return extracted_path
 
@@ -183,3 +232,28 @@ def test_retry_gives_up_after_bounded_attempts_and_surfaces_failure(
     assert "RETRY_RESULT=failure" in result.stdout
     assert "RETRY_ATTEMPTS=3" in result.stdout
     assert "command failed after 3 attempt(s)" in result.stderr
+
+
+def test_terraform_retry_refreshes_plan_after_partial_apply(
+    extracted_setup_head_with_terraform_retry_harness: Path, tmp_path: Path
+) -> None:
+    sequence_file = tmp_path / "terraform-sequence.txt"
+    sequence_file.write_text("", encoding="utf-8")
+    env = dict(os.environ)
+    env["TERRAFORM_SEQUENCE_FILE"] = str(sequence_file)
+
+    result = subprocess.run(
+        [BASH, str(extracted_setup_head_with_terraform_retry_harness), *DEFAULT_ARGS],
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=str(extracted_setup_head_with_terraform_retry_harness.parent),
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "TERRAFORM_RETRY_RESULT=success" in result.stdout
+    assert sequence_file.read_text(encoding="utf-8").splitlines() == [
+        "apply",
+        "plan",
+        "apply",
+    ]

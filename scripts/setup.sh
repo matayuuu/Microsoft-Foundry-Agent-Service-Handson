@@ -324,6 +324,24 @@ retry() {
   done
 }
 
+TERRAFORM_APPLY_ATTEMPT=0
+apply_terraform_plan() {
+  TERRAFORM_APPLY_ATTEMPT=$((TERRAFORM_APPLY_ATTEMPT + 1))
+
+  # A partial apply changes state, so the original saved plan becomes stale.
+  # Refresh it before every retry while preserving the participant-confirmed
+  # plan for the first attempt.
+  if [[ ${TERRAFORM_APPLY_ATTEMPT} -gt 1 ]]; then
+    echo "    Refreshing Terraform plan before apply attempt ${TERRAFORM_APPLY_ATTEMPT}..." >&2
+    if ! terraform -chdir="${INFRA_DIR}" plan -input=false \
+      -out="${WORKSHOP_DIR}/tfplan" "${TF_VAR_ARGS[@]}"; then
+      return 1
+    fi
+  fi
+
+  terraform -chdir="${INFRA_DIR}" apply -input=false -auto-approve "${WORKSHOP_DIR}/tfplan"
+}
+
 # ---------------------------------------------------------------------------
 # Step 1: preflight (read-only)
 # ---------------------------------------------------------------------------
@@ -402,7 +420,7 @@ if [[ "${AUTO_APPROVE}" != "true" ]]; then
   fi
 fi
 
-retry 3 15 terraform -chdir="${INFRA_DIR}" apply -input=false -auto-approve "${WORKSHOP_DIR}/tfplan"
+retry 3 15 apply_terraform_plan
 
 TF_OUTPUTS_JSON="$(terraform -chdir="${INFRA_DIR}" output -json)"
 

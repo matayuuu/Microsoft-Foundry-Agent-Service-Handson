@@ -162,7 +162,7 @@ def _usage_entry(usage_name: str, limit: float, current: float) -> dict:
 
 GPT41_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt4.1"
 GPT5_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt-5"
-EMBEDDING_STANDARD_USAGE = "OpenAI.Standard.text-embedding-3-small"
+EMBEDDING_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.text-embedding-3-small"
 
 FULL_MODELS_FIXTURE = [
     _model_entry(
@@ -175,8 +175,8 @@ FULL_MODELS_FIXTURE = [
         "text-embedding-3-small",
         "1",
         [
-            ("Standard", EMBEDDING_STANDARD_USAGE),
-            ("GlobalStandard", "OpenAI.GlobalStandard.text-embedding-3-small"),
+            ("Standard", "OpenAI.Standard.text-embedding-3-small"),
+            ("GlobalStandard", EMBEDDING_GLOBALSTANDARD_USAGE),
         ],
     ),
 ]
@@ -198,7 +198,7 @@ MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
     _model_entry(
         "text-embedding-3-small",
         "1",
-        [("Standard", EMBEDDING_STANDARD_USAGE)],
+        [("GlobalStandard", EMBEDDING_GLOBALSTANDARD_USAGE)],
     ),
 ]
 
@@ -209,7 +209,7 @@ def _usage_fixture_with_headroom(headroom_k: float) -> list[dict]:
     return [
         _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
         _usage_entry(GPT5_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
-        _usage_entry(EMBEDDING_STANDARD_USAGE, limit=headroom_k, current=0.0),
+        _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
     ]
 
 

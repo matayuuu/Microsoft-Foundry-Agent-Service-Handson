@@ -49,7 +49,9 @@ The script must:
 
 If cleanup fails, do not delete Terraform state. Follow
 [administrator troubleshooting](admin/troubleshooting.md) with the exact resource and
-operation reported by the script.
+operation reported by the script. If setup failed before `.workshop/context.json` was
+written, `destroy.sh` accepts explicit location and model-version arguments for
+recovering the partial Terraform state.
 
 ## State handling
 
