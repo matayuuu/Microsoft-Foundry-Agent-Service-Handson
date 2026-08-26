@@ -383,6 +383,7 @@ def test_falls_back_to_swedencentral_when_eastus2_headroom_insufficient(
     )
 
     assert report["resolved_location"] == "swedencentral"
+    assert report["overall_status"] == "pass"
     # The eastus2 shortfall must be visible as an explicit failed check, not
     # silently swallowed.
     eastus2_gpt5_checks = [c for c in report["checks"] if c["name"] == "quota-usage:gpt-5/eastus2"]
@@ -475,6 +476,37 @@ def test_fails_when_usage_list_call_itself_fails_rather_than_assuming_sufficient
         "expected quota-usage checks for eastus2 even when the usage-list call failed"
     )
     assert all(c["status"] == "fail" for c in eastus2_checks)
+    assert report["overall_status"] == "pass"
+
+
+def test_unused_fallback_failure_does_not_fail_successful_preferred_region(
+    fake_az_bin: Path, tmp_path: Path
+) -> None:
+    report = _run_preflight(
+        fake_az_bin,
+        tmp_path,
+        {
+            "FAKE_MODELS_EASTUS2": _write_json(
+                tmp_path, "models-eastus2.json", FULL_MODELS_FIXTURE
+            ),
+            "FAKE_USAGE_EASTUS2": _write_json(
+                tmp_path, "usage-eastus2.json", _sufficient_usage_fixture()
+            ),
+            "FAKE_MODELS_SWEDENCENTRAL": _write_json(
+                tmp_path, "models-sc.json", MODELS_MISSING_GPT5_SKU_FIXTURE
+            ),
+            "FAKE_USAGE_SWEDENCENTRAL": _write_json(
+                tmp_path, "usage-sc.json", _sufficient_usage_fixture()
+            ),
+        },
+    )
+
+    assert report["resolved_location"] == "eastus2"
+    assert report["overall_status"] == "pass"
+    fallback_check = next(
+        check for check in report["checks"] if check["name"] == "model-sku:gpt-5/swedencentral"
+    )
+    assert fallback_check["status"] == "fail"
 
 
 def test_resolves_the_sku_supporting_version_not_the_highest_overall_version(
