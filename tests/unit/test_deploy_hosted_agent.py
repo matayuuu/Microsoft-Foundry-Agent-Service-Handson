@@ -137,6 +137,18 @@ def test_build_zip_bytes_contains_relative_arcnames(tmp_path: Path) -> None:
     assert names == {"main.py", "sub/nested.txt"}
 
 
+def test_build_zip_stream_exposes_zip_filename() -> None:
+    stream = deploy_hosted_agent.build_zip_stream(b"zip-data", "planner.zip")
+
+    assert stream.name == "planner.zip"
+    assert stream.read() == b"zip-data"
+
+
+def test_build_zip_stream_rejects_non_zip_filename() -> None:
+    with pytest.raises(deploy_hosted_agent.WorkshopContextError, match=r"must end with '\.zip'"):
+        deploy_hosted_agent.build_zip_stream(b"zip-data", "planner.bin")
+
+
 def test_sha256_hex_is_deterministic() -> None:
     a = deploy_hosted_agent.sha256_hex(b"same bytes")
     b = deploy_hosted_agent.sha256_hex(b"same bytes")

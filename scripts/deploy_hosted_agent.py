@@ -279,6 +279,15 @@ def build_zip_bytes(source_dir: Path, files: list[Path]) -> bytes:
     return buffer.getvalue()
 
 
+def build_zip_stream(data: bytes, filename: str = "hosted-agent.zip") -> io.BytesIO:
+    """Return a named in-memory zip stream for the SDK multipart upload."""
+    if not filename.lower().endswith(".zip"):
+        raise WorkshopContextError("Hosted Agent code upload filename must end with '.zip'.")
+    stream = io.BytesIO(data)
+    stream.name = filename
+    return stream
+
+
 def sha256_hex(data: bytes) -> str:
     """SHA-256 hex digest, passed as ``code_zip_sha256`` so the service can
     verify upload integrity."""
@@ -519,10 +528,11 @@ def main(argv: list[str] | None = None) -> int:
     credential = build_credential(args.credential)
     try:
         with AIProjectClient(endpoint=endpoint, credential=credential) as client:
+            code_stream = build_zip_stream(zip_bytes, f"{args.agent_name}.zip")
             created = client.agents.create_version_from_code(
                 args.agent_name,
                 definition=definition,
-                code=io.BytesIO(zip_bytes),
+                code=code_stream,
                 code_zip_sha256=sha256_hex(zip_bytes),
                 description=args.description or DEFAULT_VERSION_DESCRIPTION,
             )
