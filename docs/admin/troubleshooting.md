@@ -31,6 +31,21 @@ Never tell participants to proceed against a subscription with confirmed insuffi
 capacity — `terraform apply` will fail late, mid-workshop, with a much worse
 participant experience than catching it here first.
 
+## Azure AI Search reports `InsufficientResourcesAvailable`
+
+Search capacity is a live regional constraint that the resource-provider availability
+metadata cannot predict. Re-run `scripts/setup.sh` with the supported alternate region:
+
+```bash
+./scripts/setup.sh \
+  --subscription "<subscription-id>" \
+  --resource-group "<resource-group>" \
+  --location swedencentral
+```
+
+Use `eastus2` instead when the failed attempt targeted `swedencentral`. Setup is
+idempotent and refreshes its Terraform plan after any partial apply.
+
 ## `admin-preflight.sh` reports an Azure Policy that may deny required resource types
 
 The script's policy scan is **best-effort**: it lists policy assignments whose
@@ -50,6 +65,16 @@ to statically resolve). If the report flags a candidate policy:
    none matched the script's heuristics. A real `terraform apply` failure with a
    policy-denial error message is authoritative; the preflight scan is a fast,
    non-exhaustive early warning only.
+
+A management-group `modify` policy can also allow Storage creation to report success
+while rewriting `publicNetworkAccess` to `Disabled`. The later data bootstrap then
+fails with Storage `AuthorizationFailure` even when `Storage Blob Data Contributor`
+is present. Confirm this case in the resource Activity Log by looking for
+`Microsoft.Authorization/policies/modify/action` on the Storage account. The core
+workshop intentionally uses public endpoints and does not provision private
+networking, so use a compatible subscription or have an administrator approve a
+resource-group-scoped exemption for that specific policy definition reference.
+Participants must not create governance exemptions themselves.
 
 ## A participant's `preflight.sh` fails even though `admin-preflight.sh` passed
 
@@ -88,6 +113,22 @@ existing state. If it still leaves resources, inspect the exact resource and err
 `destroy.sh` reports; do not delete resources by hand outside of Terraform, since that
 can desynchronize local state from the real resource group and complicate a later
 retry.
+
+If setup failed before `.workshop/context.json` was written, pass the original inputs
+explicitly so Terraform can destroy the partial state:
+
+```bash
+./scripts/destroy.sh \
+  --subscription "<subscription-id>" \
+  --resource-group "<resource-group>" \
+  --travel-api-image-ref "ghcr.io/<owner>/travel-ops-api@sha256:<digest>" \
+  --location "<eastus2-or-swedencentral>" \
+  --source-base "https://github.com/<owner>/<repo>/blob/main" \
+  --optimizer-model-version "<version>" \
+  --primary-model-version "<version>" \
+  --embedding-model-version "<version>" \
+  --auto-approve
+```
 
 ## See also
 

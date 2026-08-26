@@ -143,6 +143,11 @@ TERMINAL_STATUSES = frozenset({"active", "failed"})
 # ---------------------------------------------------------------------------
 
 
+def normalize_status(status: Any) -> str:
+    value = getattr(status, "value", status)
+    return str(value).lower()
+
+
 def parse_ignore_patterns(text: str) -> list[str]:
     """Parse ``.agentignore`` content into a list of patterns.
 
@@ -279,6 +284,15 @@ def build_zip_bytes(source_dir: Path, files: list[Path]) -> bytes:
     return buffer.getvalue()
 
 
+def build_zip_stream(data: bytes, filename: str = "hosted-agent.zip") -> io.BytesIO:
+    """Return a named in-memory zip stream for the SDK multipart upload."""
+    if not filename.lower().endswith(".zip"):
+        raise WorkshopContextError("Hosted Agent code upload filename must end with '.zip'.")
+    stream = io.BytesIO(data)
+    stream.name = filename
+    return stream
+
+
 def sha256_hex(data: bytes) -> str:
     """SHA-256 hex digest, passed as ``code_zip_sha256`` so the service can
     verify upload integrity."""
@@ -333,7 +347,7 @@ def poll_version(
     """
     deadline = now() + timeout_seconds
     version = retrieve()
-    while str(version.status) not in TERMINAL_STATUSES:
+    while normalize_status(version.status) not in TERMINAL_STATUSES:
         if now() >= deadline:
             raise WorkshopContextError(
                 f"agent version did not reach a terminal state within {timeout_seconds:.0f}s "
@@ -394,7 +408,7 @@ def build_result(
     (see module docstring); only identifiers a participant can use to
     navigate the portal by hand are included.
     """
-    status = str(version.status)
+    status = normalize_status(version.status)
     result: dict[str, Any] = {
         "agent_name": agent_name,
         "version": version.version,
@@ -519,10 +533,11 @@ def main(argv: list[str] | None = None) -> int:
     credential = build_credential(args.credential)
     try:
         with AIProjectClient(endpoint=endpoint, credential=credential) as client:
+            code_stream = build_zip_stream(zip_bytes, f"{args.agent_name}.zip")
             created = client.agents.create_version_from_code(
                 args.agent_name,
                 definition=definition,
-                code=io.BytesIO(zip_bytes),
+                code=code_stream,
                 code_zip_sha256=sha256_hex(zip_bytes),
                 description=args.description or DEFAULT_VERSION_DESCRIPTION,
             )

@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from travel_api.application.use_cases import PolicyReference
+from travel_api.application.use_cases import SOURCE_URL_BASE_PLACEHOLDER, PolicyReference
 from travel_api.domain.per_diem import PerDiemResult
 from travel_api.domain.preapproval import PreapprovalResult
 from travel_api.domain.trip_estimate import TripEstimateResult
@@ -19,15 +19,25 @@ class PolicyReferenceModel(BaseModel):
     id: str = Field(description="Document id from data/manifest.json")
     source_url: str = Field(
         description=(
-            "Source URL for the referenced policy document. Contains the "
-            "{{WORKSHOP_SOURCE_BASE}} placeholder until bootstrap/setup "
-            "tooling substitutes a configured, stable repository base."
+            "Source URL for the referenced policy document. The deployed API "
+            "resolves it against the configured workshop source base."
         )
     )
 
     @classmethod
-    def from_domain(cls, ref: PolicyReference) -> PolicyReferenceModel:
-        return cls(id=ref.id, source_url=ref.source_url)
+    def from_domain(
+        cls,
+        ref: PolicyReference,
+        *,
+        source_base: str | None = None,
+    ) -> PolicyReferenceModel:
+        source_url = ref.source_url
+        if source_base is not None:
+            source_url = source_url.replace(
+                SOURCE_URL_BASE_PLACEHOLDER,
+                source_base.rstrip("/"),
+            )
+        return cls(id=ref.id, source_url=source_url)
 
 
 class HealthResponse(BaseModel):
@@ -50,7 +60,11 @@ class PerDiemResponse(BaseModel):
 
     @classmethod
     def from_domain(
-        cls, result: PerDiemResult, policy_references: tuple[PolicyReference, ...]
+        cls,
+        result: PerDiemResult,
+        policy_references: tuple[PolicyReference, ...],
+        *,
+        source_base: str | None = None,
     ) -> PerDiemResponse:
         return cls(
             city=result.city,
@@ -59,7 +73,10 @@ class PerDiemResponse(BaseModel):
             currency=result.currency,
             meal_allowance=result.meal_allowance,
             lodging_cap=result.lodging_cap,
-            policy_references=[PolicyReferenceModel.from_domain(r) for r in policy_references],
+            policy_references=[
+                PolicyReferenceModel.from_domain(r, source_base=source_base)
+                for r in policy_references
+            ],
         )
 
 
@@ -99,7 +116,11 @@ class TripEstimateResponse(BaseModel):
 
     @classmethod
     def from_domain(
-        cls, result: TripEstimateResult, policy_references: tuple[PolicyReference, ...]
+        cls,
+        result: TripEstimateResult,
+        policy_references: tuple[PolicyReference, ...],
+        *,
+        source_base: str | None = None,
     ) -> TripEstimateResponse:
         return cls(
             trip_reference_id=result.trip_reference_id,
@@ -122,7 +143,10 @@ class TripEstimateResponse(BaseModel):
             manager_preapproval_required=result.manager_preapproval_required,
             vp_preapproval_required=result.vp_preapproval_required,
             preapproval_reasons=list(result.preapproval_reasons),
-            policy_references=[PolicyReferenceModel.from_domain(r) for r in policy_references],
+            policy_references=[
+                PolicyReferenceModel.from_domain(r, source_base=source_base)
+                for r in policy_references
+            ],
         )
 
 
@@ -168,7 +192,11 @@ class PreapprovalResponse(BaseModel):
 
     @classmethod
     def from_domain(
-        cls, result: PreapprovalResult, policy_references: tuple[PolicyReference, ...]
+        cls,
+        result: PreapprovalResult,
+        policy_references: tuple[PolicyReference, ...],
+        *,
+        source_base: str | None = None,
     ) -> PreapprovalResponse:
         return cls(
             simulation=result.simulation,
@@ -176,6 +204,13 @@ class PreapprovalResponse(BaseModel):
             decision=result.decision,  # type: ignore[arg-type]
             disclaimer=result.disclaimer,
             justification=result.justification,
-            trip_estimate=TripEstimateResponse.from_domain(result.trip_estimate, policy_references),
-            policy_references=[PolicyReferenceModel.from_domain(r) for r in policy_references],
+            trip_estimate=TripEstimateResponse.from_domain(
+                result.trip_estimate,
+                policy_references,
+                source_base=source_base,
+            ),
+            policy_references=[
+                PolicyReferenceModel.from_domain(r, source_base=source_base)
+                for r in policy_references
+            ],
         )

@@ -13,6 +13,9 @@ resource "azapi_resource" "primary_model_deployment" {
   name      = "primary"
   parent_id = azapi_resource.ai_services.id
 
+  # Cognitive Services rejects concurrent child PUTs on a fresh account.
+  depends_on = [azapi_resource.project]
+
   body = {
     sku = {
       name     = var.primary_model_sku
@@ -33,6 +36,8 @@ resource "azapi_resource" "optimizer_model_deployment" {
   name      = "optimizer"
   parent_id = azapi_resource.ai_services.id
 
+  depends_on = [azapi_resource.primary_model_deployment]
+
   body = {
     sku = {
       name     = var.optimizer_model_sku
@@ -52,6 +57,8 @@ resource "azapi_resource" "embedding_model_deployment" {
   type      = "Microsoft.CognitiveServices/accounts/deployments@2026-05-01"
   name      = "embedding"
   parent_id = azapi_resource.ai_services.id
+
+  depends_on = [azapi_resource.optimizer_model_deployment]
 
   body = {
     sku = {

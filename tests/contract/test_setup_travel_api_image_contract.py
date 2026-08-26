@@ -24,7 +24,7 @@ GHCR-digest hardening pass:
 
 * `--travel-api-image-ref` is optional; when given explicitly, resolution
   is skipped entirely (no curl/ghcr.io calls happen).
-* When omitted, the default `ghcr.io/<owner>/travel-ops-api:v1.0.2` (or an
+* When omitted, the default `ghcr.io/<owner>/travel-ops-api:v1.0.3` (or an
   explicit `--travel-api-image-repo`/`--travel-api-image-tag` override) is
   resolved to an immutable `@sha256:<digest>` reference via curl+jq.
 * Both distinct "not anonymously pullable yet" GHCR failure modes --  a

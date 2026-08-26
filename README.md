@@ -48,7 +48,7 @@ az login --use-device-code
 構築後に表示される Microsoft Foundry portal link を開き、
 [Lab 0](labs/00-overview.md) から順に進めます。
 
-Travel Ops API の公開 image は既定の `v1.0.2` tag から immutable digest へ自動解決
+Travel Ops API の公開 image は既定の `v1.0.3` tag から immutable digest へ自動解決
 されます。maintainer がまだ image を公開していない場合、setup は Terraform 実行前に
 停止し、`.github/workflows/publish-travel-api.yml` を使った公開手順を表示します。
 

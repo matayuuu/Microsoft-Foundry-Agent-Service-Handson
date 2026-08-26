@@ -339,6 +339,40 @@ def test_format_report_reads_object_style_run() -> None:
     assert report["result_counts"]["failed"] == 1
 
 
+def test_format_report_serializes_sdk_model_criteria() -> None:
+    class FakeCriterionResult:
+        def model_dump(self, *, mode: str) -> dict:
+            assert mode == "json"
+            return {
+                "testing_criteria": "policy_rubric",
+                "passed": 7,
+                "failed": 1,
+            }
+
+    run = SimpleNamespace(
+        status="completed",
+        report_url="https://ai.azure.com/eval/criteria",
+        result_counts=SimpleNamespace(total=8, passed=7, failed=1, errored=0),
+        per_testing_criteria_results=[FakeCriterionResult()],
+    )
+
+    report = run_evaluation.format_report(run, eval_id="eval-3", run_id="run-3")
+
+    assert report["per_testing_criteria_results"] == [
+        {
+            "testing_criteria": "policy_rubric",
+            "passed": 7,
+            "failed": 1,
+        }
+    ]
+    json.dumps(report)
+
+
+def test_report_serialization_rejects_unknown_sdk_value_type() -> None:
+    with pytest.raises(TypeError, match="unsupported evaluation report value type"):
+        run_evaluation._to_json_compatible(object())
+
+
 # ---------------------------------------------------------------------------
 # ensure_dataset / ensure_rubric_evaluator (fake SDK adapters)
 # ---------------------------------------------------------------------------

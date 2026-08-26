@@ -60,13 +60,10 @@ data.
 
 Everything here is keyless: Azure Search/Storage access uses
 ``azure.identity.DefaultAzureCredential`` (the participant's own ``az
-login`` session, or the caller's ambient identity); embeddings are requested
-through ``azure.ai.projects.AIProjectClient(<Foundry project endpoint>,
-credential).get_openai_client()`` -- the current official Entra-ID-
-authenticated path to an OpenAI-compatible client for a Foundry project,
-avoiding both the ambiguous AI Services *account* endpoint and a
-hand-maintained, potentially stale ``AzureOpenAI`` API version string. No
-API keys are read or generated anywhere in this script.
+login`` session, or the caller's ambient identity); embeddings use the
+resource's Azure OpenAI v1 endpoint with an Entra ID bearer-token provider.
+The Foundry project endpoint does not route embedding requests. No API keys
+are read or generated anywhere in this script.
 """
 
 from __future__ import annotations
@@ -773,17 +770,17 @@ def build_credential() -> Any:
     return DefaultAzureCredential()
 
 
-def build_openai_client(project_endpoint: str, credential: Any) -> Any:
-    """Adapter: returns an OpenAI-compatible client scoped to a Foundry
-    *project* endpoint via ``azure.ai.projects.AIProjectClient(...)
-    .get_openai_client()`` -- the current official, keyless (Entra ID
-    bearer-token) path for embeddings/completions against a Foundry
-    project, avoiding both the ambiguous AI Services *account* endpoint and
-    a hand-pinned, potentially stale ``AzureOpenAI`` API version string."""
-    from azure.ai.projects import AIProjectClient
+def build_openai_client(openai_endpoint: str, credential: Any) -> Any:
+    """Returns a keyless OpenAI client for the resource's v1 endpoint.
 
-    project_client = AIProjectClient(endpoint=project_endpoint, credential=credential)
-    return project_client.get_openai_client()
+    Microsoft Learn's SDK endpoint guidance (retrieved 2026-08-26) states
+    that the Foundry project endpoint does not route embedding requests.
+    """
+    from azure.identity import get_bearer_token_provider
+    from openai import OpenAI
+
+    token_provider = get_bearer_token_provider(credential, "https://ai.azure.com/.default")
+    return OpenAI(base_url=openai_endpoint, api_key=token_provider)
 
 
 # ---------------------------------------------------------------------------
@@ -824,11 +821,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--storage-account-name", required=True)
     parser.add_argument("--storage-container", required=True)
     parser.add_argument(
-        "--project-endpoint",
+        "--openai-endpoint",
         required=True,
-        help="Foundry project endpoint (https://<account>.services.ai.azure.com/api/projects/"
-        "<project>), used via azure.ai.projects.AIProjectClient(...).get_openai_client() "
-        "for keyless embedding calls. Not the AI Services account endpoint.",
+        help="Azure OpenAI v1 endpoint "
+        "(https://<account>.openai.azure.com/openai/v1/) used for keyless embedding calls.",
     )
     parser.add_argument("--embedding-deployment", required=True)
     parser.add_argument(
@@ -1023,7 +1019,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         credential=credential,
     )
     tokenizer = build_tokenizer()
-    openai_client = build_openai_client(args.project_endpoint, credential)
+    openai_client = build_openai_client(args.openai_endpoint, credential)
 
     def _embedding_fn(deployment: str, text: str) -> list[float]:
         return get_embedding(openai_client, deployment, text)

@@ -71,7 +71,7 @@ Options:
                                 variable.
   --travel-api-image-tag <tag> Tag to resolve to an immutable digest when
                                 --travel-api-image-ref is not given. Defaults
-                                to v1.0.2 (the latest validated workshop
+                                to v1.0.3 (the latest validated workshop
                                 release). May also be supplied via the
                                 TRAVEL_API_IMAGE_TAG environment variable.
   --location <region>   Preferred region: eastus2 (default) or swedencentral.
@@ -99,7 +99,7 @@ RESOURCE_GROUP_NAME=""
 PREFERRED_LOCATION="eastus2"
 TRAVEL_API_IMAGE_REF="${TRAVEL_API_IMAGE_REF:-}"
 TRAVEL_API_IMAGE_REPO="${TRAVEL_API_IMAGE_REPO:-}"
-TRAVEL_API_IMAGE_TAG="${TRAVEL_API_IMAGE_TAG:-v1.0.2}"
+TRAVEL_API_IMAGE_TAG="${TRAVEL_API_IMAGE_TAG:-v1.0.3}"
 SOURCE_BASE=""
 AUTO_APPROVE="false"
 SKIP_BOOTSTRAP="false"
@@ -134,7 +134,7 @@ if [[ -z "${SUBSCRIPTION_ID}" || -z "${RESOURCE_GROUP_NAME}" ]]; then
   exit 1
 fi
 
-if [[ -n "${TRAVEL_API_IMAGE_REF}" && ( -n "${TRAVEL_API_IMAGE_REPO}" || "${TRAVEL_API_IMAGE_TAG}" != "v1.0.2" ) ]]; then
+if [[ -n "${TRAVEL_API_IMAGE_REF}" && ( -n "${TRAVEL_API_IMAGE_REPO}" || "${TRAVEL_API_IMAGE_TAG}" != "v1.0.3" ) ]]; then
   echo "${SCRIPT_NAME}: --travel-api-image-repo/--travel-api-image-tag are ignored because --travel-api-image-ref was given explicitly" >&2
 fi
 
@@ -324,6 +324,24 @@ retry() {
   done
 }
 
+TERRAFORM_APPLY_ATTEMPT=0
+apply_terraform_plan() {
+  TERRAFORM_APPLY_ATTEMPT=$((TERRAFORM_APPLY_ATTEMPT + 1))
+
+  # A partial apply changes state, so the original saved plan becomes stale.
+  # Refresh it before every retry while preserving the participant-confirmed
+  # plan for the first attempt.
+  if [[ ${TERRAFORM_APPLY_ATTEMPT} -gt 1 ]]; then
+    echo "    Refreshing Terraform plan before apply attempt ${TERRAFORM_APPLY_ATTEMPT}..." >&2
+    if ! terraform -chdir="${INFRA_DIR}" plan -input=false \
+      -out="${WORKSHOP_DIR}/tfplan" "${TF_VAR_ARGS[@]}"; then
+      return 1
+    fi
+  fi
+
+  terraform -chdir="${INFRA_DIR}" apply -input=false -auto-approve "${WORKSHOP_DIR}/tfplan"
+}
+
 # ---------------------------------------------------------------------------
 # Step 1: preflight (read-only)
 # ---------------------------------------------------------------------------
@@ -381,6 +399,7 @@ TF_VAR_ARGS=(
   -var "resource_group_name=${RESOURCE_GROUP_NAME}"
   -var "location=${RESOLVED_LOCATION}"
   -var "travel_api_image_ref=${TRAVEL_API_IMAGE_REF}"
+  -var "source_base=${SOURCE_BASE}"
   -var "optimizer_model_version=${OPTIMIZER_MODEL_VERSION}"
 )
 if [[ -n "${PRIMARY_MODEL_VERSION}" && "${PRIMARY_MODEL_VERSION}" != "null" ]]; then
@@ -402,7 +421,7 @@ if [[ "${AUTO_APPROVE}" != "true" ]]; then
   fi
 fi
 
-retry 3 15 terraform -chdir="${INFRA_DIR}" apply -input=false -auto-approve "${WORKSHOP_DIR}/tfplan"
+retry 3 15 apply_terraform_plan
 
 TF_OUTPUTS_JSON="$(terraform -chdir="${INFRA_DIR}" output -json)"
 
@@ -442,7 +461,7 @@ else
   SEARCH_ENDPOINT="$(jq -r '.search_service_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
   STORAGE_ACCOUNT_NAME="$(jq -r '.storage_account_name.value' <<<"${TF_OUTPUTS_JSON}")"
   RAG_CONTAINER_NAME="$(jq -r '.rag_container_name.value' <<<"${TF_OUTPUTS_JSON}")"
-  FOUNDRY_PROJECT_ENDPOINT="$(jq -r '.foundry_project_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
+  OPENAI_ENDPOINT="$(jq -r '.openai_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
   EMBEDDING_DEPLOYMENT_NAME="$(jq -r '.embedding_model_deployment_name.value' <<<"${TF_OUTPUTS_JSON}")"
 
   # --embedding-dimensions and --max-tokens/--overlap-tokens are intentionally
@@ -464,7 +483,7 @@ else
     --search-endpoint "${SEARCH_ENDPOINT}" \
     --storage-account-name "${STORAGE_ACCOUNT_NAME}" \
     --storage-container "${RAG_CONTAINER_NAME}" \
-    --project-endpoint "${FOUNDRY_PROJECT_ENDPOINT}" \
+    --openai-endpoint "${OPENAI_ENDPOINT}" \
     --embedding-deployment "${EMBEDDING_DEPLOYMENT_NAME}" \
     --source-base "${SOURCE_BASE}" \
     --index-name "contoso-travel-policy"

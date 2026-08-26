@@ -127,7 +127,7 @@ REQUIRED_MODELS=("gpt-4.1" "gpt-5" "text-embedding-3-small")
 declare -A REQUIRED_MODEL_SKU=(
   ["gpt-4.1"]="GlobalStandard"
   ["gpt-5"]="GlobalStandard"
-  ["text-embedding-3-small"]="Standard"
+  ["text-embedding-3-small"]="GlobalStandard"
 )
 declare -A REQUIRED_MODEL_CAPACITY_K=(
   ["gpt-4.1"]="40"
@@ -143,11 +143,14 @@ declare -A RESOLVED_MODEL_SKU
 declare -A RESOLVED_MODEL_USAGE_NAME
 
 add_check() {
-  local name="$1" status="$2" detail="$3"
+  local name="$1" status="$2" detail="$3" affects_overall="${4:-true}"
   local entry
   entry="$(jq -n --arg name "${name}" --arg status "${status}" --arg detail "${detail}" \
     '{name: $name, status: $status, detail: $detail}')"
   CHECKS_JSON="$(jq -c --argjson entry "${entry}" '. + [$entry]' <<<"${CHECKS_JSON}")"
+  if [[ "${affects_overall}" != "true" ]]; then
+    return
+  fi
   if [[ "${status}" == "fail" ]]; then
     OVERALL_STATUS="fail"
   elif [[ "${status}" == "warn" && "${OVERALL_STATUS}" == "pass" ]]; then
@@ -267,10 +270,12 @@ done
 #      (limit - currentValue) >= REQUIRED_MODEL_CAPACITY_K for that model.
 #
 # Any of these being false, OR the usage-list call itself failing, is a hard
-# "fail" for that region -- never a "warn" that still lets the region be
-# selected. The FIRST region (starting with --location) where every required
-# model clears all three checks is selected as RESOLVED_LOCATION. Model
-# versions/skus/usageNames actually confirmed there are recorded in
+# "fail" check for that candidate region -- never a "warn" that still lets the
+# region be selected. Candidate failures do not fail the whole preflight when
+# another region resolves successfully; region-resolution below owns that
+# aggregate decision. The FIRST region (starting with --location) where every
+# required model clears all three checks is selected as RESOLVED_LOCATION.
+# Model versions/skus/usageNames actually confirmed there are recorded in
 # RESOLVED_MODEL_VERSION / RESOLVED_MODEL_SKU / RESOLVED_MODEL_USAGE_NAME so
 # setup.sh can pass real, discovered values to Terraform instead of guessing.
 # ---------------------------------------------------------------------------
@@ -287,7 +292,7 @@ for loc in "${ordered_locations[@]}"; do
   usage_json="$(az_json az cognitiveservices usage list --location "${loc}")"
 
   if [[ "${models_json}" == "null" ]]; then
-    add_check "model-list:${loc}" "fail" "'az cognitiveservices model list --location ${loc}' failed; cannot verify model availability in ${loc}."
+    add_check "model-list:${loc}" "fail" "'az cognitiveservices model list --location ${loc}' failed; cannot verify model availability in ${loc}." "false"
     continue
   fi
 
@@ -303,7 +308,7 @@ for loc in "${ordered_locations[@]}"; do
     matches="$(jq -c --arg m "${model}" '[.[] | select(.model.name == $m)]' <<<"${models_json}")"
     count="$(jq 'length' <<<"${matches}")"
     if [[ "${count}" -eq 0 ]]; then
-      add_check "model:${model}/${loc}" "fail" "Model '${model}' is not offered in ${loc} for this subscription."
+      add_check "model:${model}/${loc}" "fail" "Model '${model}' is not offered in ${loc} for this subscription." "false"
       loc_ok="false"
       continue
     fi
@@ -318,7 +323,7 @@ for loc in "${ordered_locations[@]}"; do
     sku_count="$(jq 'length' <<<"${sku_matches}")"
     if [[ "${sku_count}" -eq 0 ]]; then
       offered_versions="$(jq -r '[.[].model.version] | unique | join(", ")' <<<"${matches}")"
-      add_check "model-sku:${model}/${loc}" "fail" "Model '${model}' is offered in ${loc} (version(s)=[${offered_versions}]) but none of those versions expose the required SKU '${required_sku}' in their skus[] list. This workshop's Terraform requests '${required_sku}' capacity for this model; ${loc} cannot satisfy it."
+      add_check "model-sku:${model}/${loc}" "fail" "Model '${model}' is offered in ${loc} (version(s)=[${offered_versions}]) but none of those versions expose the required SKU '${required_sku}' in their skus[] list. This workshop's Terraform requests '${required_sku}' capacity for this model; ${loc} cannot satisfy it." "false"
       loc_ok="false"
       continue
     fi
@@ -357,7 +362,7 @@ for loc in "${ordered_locations[@]}"; do
       '[.model.skus[] | select(.name == $sku) | .usageName] | first' <<<"${selected_entry}")"
 
     if [[ "${usage_json}" == "null" ]]; then
-      add_check "quota-usage:${model}/${loc}" "fail" "'az cognitiveservices usage list --location ${loc}' failed; TPM headroom for usageName='${usage_name}' (required ${required_capacity}K) is UNKNOWN in ${loc} -- not treated as sufficient."
+      add_check "quota-usage:${model}/${loc}" "fail" "'az cognitiveservices usage list --location ${loc}' failed; TPM headroom for usageName='${usage_name}' (required ${required_capacity}K) is UNKNOWN in ${loc} -- not treated as sufficient." "false"
       loc_ok="false"
       continue
     fi
@@ -372,7 +377,7 @@ for loc in "${ordered_locations[@]}"; do
     ' <<<"${usage_json}")"
     found="$(jq -r '.found' <<<"${quota_result}")"
     if [[ "${found}" != "true" ]]; then
-      add_check "quota-usage:${model}/${loc}" "fail" "Quota bucket usageName='${usage_name}' (SKU '${required_sku}' for model '${model}') was not present in 'az cognitiveservices usage list --location ${loc}' output; headroom is UNKNOWN, not treated as sufficient."
+      add_check "quota-usage:${model}/${loc}" "fail" "Quota bucket usageName='${usage_name}' (SKU '${required_sku}' for model '${model}') was not present in 'az cognitiveservices usage list --location ${loc}' output; headroom is UNKNOWN, not treated as sufficient." "false"
       loc_ok="false"
       continue
     fi
@@ -382,7 +387,7 @@ for loc in "${ordered_locations[@]}"; do
     current_k="$(jq -r '.current' <<<"${quota_result}")"
     headroom_k="$(jq -r '.headroom' <<<"${quota_result}")"
     if [[ "${sufficient}" != "true" ]]; then
-      add_check "quota-usage:${model}/${loc}" "fail" "Insufficient TPM headroom for usageName='${usage_name}' in ${loc}: headroom=${headroom_k}K (limit=${limit_k}K, current=${current_k}K) < required ${required_capacity}K."
+      add_check "quota-usage:${model}/${loc}" "fail" "Insufficient TPM headroom for usageName='${usage_name}' in ${loc}: headroom=${headroom_k}K (limit=${limit_k}K, current=${current_k}K) < required ${required_capacity}K." "false"
       loc_ok="false"
       continue
     fi
@@ -390,7 +395,7 @@ for loc in "${ordered_locations[@]}"; do
     loc_versions["${model}"]="${chosen_version}"
     loc_skus["${model}"]="${required_sku}"
     loc_usage_names["${model}"]="${usage_name}"
-    add_check "model:${model}/${loc}" "pass" "Offered, resolved version='${chosen_version}' (${selection_basis}), sku='${required_sku}', usageName='${usage_name}', headroom=${headroom_k}K (limit=${limit_k}K, current=${current_k}K) >= required ${required_capacity}K TPM."
+    add_check "model:${model}/${loc}" "pass" "Offered, resolved version='${chosen_version}' (${selection_basis}), sku='${required_sku}', usageName='${usage_name}', headroom=${headroom_k}K (limit=${limit_k}K, current=${current_k}K) >= required ${required_capacity}K TPM." "false"
   done
 
   if [[ "${loc_ok}" == "true" && -z "${RESOLVED_LOCATION}" ]]; then

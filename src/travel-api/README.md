@@ -54,7 +54,9 @@ curl "http://127.0.0.1:8080/per-diem?city=Osaka&date=2026-05-11"
 
 ```bash
 docker build -t travel-ops-api:local .
-docker run --rm -p 8080:8080 travel-ops-api:local
+docker run --rm -p 8080:8080 \
+  -e WORKSHOP_SOURCE_BASE=https://github.com/example/workshop/blob/main \
+  travel-ops-api:local
 curl http://127.0.0.1:8080/health
 ```
 
@@ -62,6 +64,9 @@ The container runs as a non-root user, listens on port 8080, and declares a
 `HEALTHCHECK` that probes `/health` with Python's standard library (the
 `-slim` base image has no `curl`/`wget`). It has no persistent volumes, so it
 is safe for Azure Container Apps to scale it to zero between requests.
+`WORKSHOP_SOURCE_BASE` replaces the synthetic policy-reference placeholder in
+API responses; local runs may omit it when unresolved placeholder URLs are
+acceptable.
 
 ## Tests
 

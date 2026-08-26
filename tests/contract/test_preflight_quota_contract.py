@@ -12,7 +12,7 @@ entries key on `name.value` matching that exact usageName string and report
 
 They assert the behaviors AGENTS.md and the follow-up hardening pass require:
 
-* The specific SKU (GlobalStandard/GlobalStandard/Standard) and per-model
+* The specific SKU (GlobalStandard for all three models) and per-model
   capacity (40/20/40, matching infra/variables.tf) are what gates region
   resolution -- not a generic cross-bucket floor.
 * `usageName` is read from the model's own `skus[]` entry, never
@@ -159,7 +159,7 @@ def _usage_entry(usage_name: str, limit: float, current: float) -> dict:
 # hyphen present in the model name itself.
 GPT41_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt4.1"
 GPT5_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt-5"
-EMBEDDING_STANDARD_USAGE = "OpenAI.Standard.text-embedding-3-small"
+EMBEDDING_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.text-embedding-3-small"
 
 FULL_MODELS_FIXTURE = [
     _model_entry(
@@ -172,8 +172,8 @@ FULL_MODELS_FIXTURE = [
         "text-embedding-3-small",
         "1",
         [
-            ("Standard", EMBEDDING_STANDARD_USAGE),
-            ("GlobalStandard", "OpenAI.GlobalStandard.text-embedding-3-small"),
+            ("Standard", "OpenAI.Standard.text-embedding-3-small"),
+            ("GlobalStandard", EMBEDDING_GLOBALSTANDARD_USAGE),
         ],
     ),
 ]
@@ -190,7 +190,7 @@ MODELS_MISSING_GPT5_SKU_FIXTURE = [
     _model_entry(
         "text-embedding-3-small",
         "1",
-        [("Standard", EMBEDDING_STANDARD_USAGE)],
+        [("GlobalStandard", EMBEDDING_GLOBALSTANDARD_USAGE)],
     ),
 ]
 
@@ -213,7 +213,7 @@ MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
     _model_entry(
         "text-embedding-3-small",
         "1",
-        [("Standard", EMBEDDING_STANDARD_USAGE)],
+        [("GlobalStandard", EMBEDDING_GLOBALSTANDARD_USAGE)],
     ),
 ]
 
@@ -243,7 +243,7 @@ MODELS_ISDEFAULTVERSION_PREFERRED_FIXTURE = [
     _model_entry(
         "text-embedding-3-small",
         "1",
-        [("Standard", EMBEDDING_STANDARD_USAGE)],
+        [("GlobalStandard", EMBEDDING_GLOBALSTANDARD_USAGE)],
         is_default_version=True,
     ),
 ]
@@ -253,7 +253,9 @@ def _sufficient_usage_fixture() -> list[dict]:
     return [
         _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),  # headroom 100 >= 40
         _usage_entry(GPT5_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),  # headroom 100 >= 20
-        _usage_entry(EMBEDDING_STANDARD_USAGE, limit=100.0, current=0.0),  # headroom 100 >= 40
+        _usage_entry(
+            EMBEDDING_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0
+        ),  # headroom 100 >= 40
     ]
 
 
@@ -263,7 +265,7 @@ def _insufficient_gpt5_usage_fixture() -> list[dict]:
         _usage_entry(
             GPT5_GLOBALSTANDARD_USAGE, limit=10.0, current=0.0
         ),  # headroom 10 < 20 required
-        _usage_entry(EMBEDDING_STANDARD_USAGE, limit=100.0, current=0.0),
+        _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),
     ]
 
 
@@ -353,8 +355,8 @@ def test_resolves_preferred_region_with_sufficient_capacity_evidence(
         "required_capacity_k": 20,
     }
     assert evidence["text-embedding-3-small"] == {
-        "sku": "Standard",
-        "usage_name": EMBEDDING_STANDARD_USAGE,
+        "sku": "GlobalStandard",
+        "usage_name": EMBEDDING_GLOBALSTANDARD_USAGE,
         "required_capacity_k": 40,
     }
     assert report["resolved_model_versions"]["gpt-4.1"] == "2025-04-14"
@@ -383,6 +385,7 @@ def test_falls_back_to_swedencentral_when_eastus2_headroom_insufficient(
     )
 
     assert report["resolved_location"] == "swedencentral"
+    assert report["overall_status"] == "pass"
     # The eastus2 shortfall must be visible as an explicit failed check, not
     # silently swallowed.
     eastus2_gpt5_checks = [c for c in report["checks"] if c["name"] == "quota-usage:gpt-5/eastus2"]
@@ -475,6 +478,37 @@ def test_fails_when_usage_list_call_itself_fails_rather_than_assuming_sufficient
         "expected quota-usage checks for eastus2 even when the usage-list call failed"
     )
     assert all(c["status"] == "fail" for c in eastus2_checks)
+    assert report["overall_status"] == "pass"
+
+
+def test_unused_fallback_failure_does_not_fail_successful_preferred_region(
+    fake_az_bin: Path, tmp_path: Path
+) -> None:
+    report = _run_preflight(
+        fake_az_bin,
+        tmp_path,
+        {
+            "FAKE_MODELS_EASTUS2": _write_json(
+                tmp_path, "models-eastus2.json", FULL_MODELS_FIXTURE
+            ),
+            "FAKE_USAGE_EASTUS2": _write_json(
+                tmp_path, "usage-eastus2.json", _sufficient_usage_fixture()
+            ),
+            "FAKE_MODELS_SWEDENCENTRAL": _write_json(
+                tmp_path, "models-sc.json", MODELS_MISSING_GPT5_SKU_FIXTURE
+            ),
+            "FAKE_USAGE_SWEDENCENTRAL": _write_json(
+                tmp_path, "usage-sc.json", _sufficient_usage_fixture()
+            ),
+        },
+    )
+
+    assert report["resolved_location"] == "eastus2"
+    assert report["overall_status"] == "pass"
+    fallback_check = next(
+        check for check in report["checks"] if check["name"] == "model-sku:gpt-5/swedencentral"
+    )
+    assert fallback_check["status"] == "fail"
 
 
 def test_resolves_the_sku_supporting_version_not_the_highest_overall_version(

@@ -27,6 +27,8 @@ They assert the behavior this hardening pass requires:
 * If the `az resource list` call itself fails, the script fails the same
   fail-safe way -- exits non-zero, touches no local state -- rather than
   assuming an unqueried resource group is clean.
+* A partial setup can be destroyed without context.json when all required
+  Terraform inputs are supplied explicitly on the command line.
 * The resource group itself is never referenced in any `az resource
   group delete`/similar call by this script (defense in depth: the fake `az`
   function fails loudly on any unexpected subcommand, so an accidental RG
@@ -148,6 +150,7 @@ def fixture_repo(tmp_path: Path) -> Path:
         "subscription_id": SUBSCRIPTION_ID,
         "resource_group_name": RESOURCE_GROUP_NAME,
         "location": "eastus2",
+        "source_base": "https://github.com/example/workshop/blob/main",
         "terraform_inputs": {
             "travel_api_image_ref": "ghcr.io/example/travel-ops-api@sha256:" + "0" * 64,
             "optimizer_model_version": "2025-08-07",
@@ -211,3 +214,43 @@ def test_resource_list_call_failure_fails_safe_and_preserves_all_local_state(
     assert (workshop_dir / "context.json").exists()
     assert (infra_dir / "terraform.tfstate").exists()
     assert (infra_dir / "terraform.tfstate.backup").exists()
+
+
+def test_cli_overrides_recover_partial_setup_without_context(fixture_repo: Path) -> None:
+    workshop_dir = fixture_repo / ".workshop"
+    (workshop_dir / "context.json").unlink()
+    env = dict(os.environ)
+    env["FAKE_AZ_RESOURCE_LIST_MODE"] = "empty"
+    image_ref = "ghcr.io/example/travel-ops-api@sha256:" + "0" * 64
+
+    result = subprocess.run(
+        [
+            BASH,
+            str(fixture_repo / "scripts" / "destroy.sh"),
+            "--subscription",
+            SUBSCRIPTION_ID,
+            "--resource-group",
+            RESOURCE_GROUP_NAME,
+            "--travel-api-image-ref",
+            image_ref,
+            "--location",
+            "eastus2",
+            "--source-base",
+            "https://github.com/example/workshop/blob/main",
+            "--optimizer-model-version",
+            "2025-08-07",
+            "--primary-model-version",
+            "2025-04-14",
+            "--embedding-model-version",
+            "1",
+            "--auto-approve",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=str(fixture_repo),
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "relying solely on CLI arguments" in result.stderr
+    assert not (fixture_repo / "infra" / "terraform.tfstate").exists()

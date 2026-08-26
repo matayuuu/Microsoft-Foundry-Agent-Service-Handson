@@ -900,6 +900,53 @@ def test_delete_chunk_documents_deletes_given_ids() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Azure OpenAI adapter
+# ---------------------------------------------------------------------------
+
+
+def test_build_openai_client_uses_v1_endpoint_and_entra_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import azure.identity
+    import openai
+
+    credential = object()
+    token_provider = object()
+    client = object()
+    calls: dict[str, object] = {}
+
+    def fake_get_bearer_token_provider(received_credential: object, scope: str) -> object:
+        calls["credential"] = received_credential
+        calls["scope"] = scope
+        return token_provider
+
+    def fake_openai(*, base_url: str, api_key: object) -> object:
+        calls["base_url"] = base_url
+        calls["api_key"] = api_key
+        return client
+
+    monkeypatch.setattr(
+        azure.identity,
+        "get_bearer_token_provider",
+        fake_get_bearer_token_provider,
+    )
+    monkeypatch.setattr(openai, "OpenAI", fake_openai)
+
+    result = bootstrap_data.build_openai_client(
+        "https://example.openai.azure.com/openai/v1/",
+        credential,
+    )
+
+    assert result is client
+    assert calls == {
+        "credential": credential,
+        "scope": "https://ai.azure.com/.default",
+        "base_url": "https://example.openai.azure.com/openai/v1/",
+        "api_key": token_provider,
+    }
+
+
+# ---------------------------------------------------------------------------
 # main() integration (dry-run only -- no Azure calls)
 # ---------------------------------------------------------------------------
 
@@ -946,8 +993,8 @@ def _base_cli_args(manifest_path: Path, schema_path: Path) -> list[str]:
         "stexample",
         "--storage-container",
         "travel-policy-rag",
-        "--project-endpoint",
-        "https://example.services.ai.azure.com/api/projects/example-project",
+        "--openai-endpoint",
+        "https://example.openai.azure.com/openai/v1/",
         "--embedding-deployment",
         "embedding",
         "--dry-run",

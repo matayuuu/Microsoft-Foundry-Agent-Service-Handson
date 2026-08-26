@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from travel_api.application import use_cases
 from travel_api.domain.errors import TravelOpsDomainError
 
+from .config import workshop_source_base
 from .schemas import (
     ErrorResponse,
     HealthResponse,
@@ -72,7 +73,11 @@ def get_per_diem(
     except TravelOpsDomainError as error:
         _raise_from_domain_error(error)
         raise  # pragma: no cover - _raise_from_domain_error always raises
-    return PerDiemResponse.from_domain(use_case_result.result, use_case_result.policy_references)
+    return PerDiemResponse.from_domain(
+        use_case_result.result,
+        use_case_result.policy_references,
+        source_base=workshop_source_base(),
+    )
 
 
 @router.post(
@@ -96,7 +101,9 @@ def create_trip_estimate(payload: TripEstimateRequest) -> TripEstimateResponse:
         _raise_from_domain_error(error)
         raise  # pragma: no cover
     return TripEstimateResponse.from_domain(
-        use_case_result.result, use_case_result.policy_references
+        use_case_result.result,
+        use_case_result.policy_references,
+        source_base=workshop_source_base(),
     )
 
 
@@ -122,5 +129,7 @@ def create_preapproval(payload: PreapprovalRequest) -> PreapprovalResponse:
         _raise_from_domain_error(error)
         raise  # pragma: no cover
     return PreapprovalResponse.from_domain(
-        use_case_result.result, use_case_result.policy_references
+        use_case_result.result,
+        use_case_result.policy_references,
+        source_base=workshop_source_base(),
     )

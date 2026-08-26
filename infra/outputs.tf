@@ -19,6 +19,11 @@ output "ai_services_endpoint" {
   value = azapi_resource.ai_services.output.properties.endpoint
 }
 
+output "openai_endpoint" {
+  description = "Azure OpenAI v1 endpoint used for embeddings, which are not routed by the Foundry project endpoint."
+  value       = "https://${azapi_resource.ai_services.name}.openai.azure.com/openai/v1/"
+}
+
 output "foundry_project_name" {
   value = azapi_resource.project.name
 }

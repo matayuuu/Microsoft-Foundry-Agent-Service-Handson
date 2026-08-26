@@ -26,8 +26,10 @@ strings are read anywhere in this script.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +62,8 @@ from lib.workshop_context import (
 DEFAULT_TOOL_NAME = "travel_ops_api"
 DEFAULT_OPENAPI_PATH = "/openapi.json"
 OPENAPI_FETCH_TIMEOUT_SECONDS = 15.0
+OPENAPI_FETCH_MAX_ATTEMPTS = 5
+OPENAPI_FETCH_RETRY_DELAY_SECONDS = 3.0
 
 
 # ---------------------------------------------------------------------------
@@ -198,24 +202,55 @@ def mcp_endpoints(endpoint: str, toolbox_name: str, version: str) -> dict[str, s
     }
 
 
+def set_live_server_url(spec: dict[str, Any], base_url: str) -> dict[str, Any]:
+    """Return a copy of ``spec`` targeting the deployed Travel Ops API.
+
+    FastAPI omits ``servers`` by default, but Foundry's OpenAPI tool runtime
+    requires it to resolve operation URLs. The live Container App URL from
+    workshop context is authoritative for this toolbox version.
+    """
+    normalized = copy.deepcopy(spec)
+    normalized["servers"] = [{"url": base_url.rstrip("/")}]
+    return normalized
+
+
 # ---------------------------------------------------------------------------
 # I/O adapters
 # ---------------------------------------------------------------------------
 
 
-def fetch_openapi_spec(base_url: str, openapi_path: str) -> dict[str, Any]:
+def fetch_openapi_spec(
+    base_url: str,
+    openapi_path: str,
+    *,
+    max_attempts: int = OPENAPI_FETCH_MAX_ATTEMPTS,
+    retry_delay: float = OPENAPI_FETCH_RETRY_DELAY_SECONDS,
+) -> dict[str, Any]:
     """Fetch the live OpenAPI 3.1 document from the deployed Travel Ops API.
 
     Fetched live (never vendored into this repo) so the toolbox always
     reflects the actually-deployed API image, per docs/architecture.md's
     "single source of truth" rule for the Travel Ops API contract.
     """
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be at least 1")
+
     url = f"{base_url.rstrip('/')}{openapi_path}"
-    try:
-        response = httpx.get(url, timeout=OPENAPI_FETCH_TIMEOUT_SECONDS)
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise WorkshopContextError(f"could not fetch OpenAPI spec from {url}: {exc}") from exc
+    response: httpx.Response | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = httpx.get(url, timeout=OPENAPI_FETCH_TIMEOUT_SECONDS)
+            response.raise_for_status()
+            break
+        except httpx.HTTPError as exc:
+            if attempt >= max_attempts:
+                raise WorkshopContextError(
+                    f"could not fetch OpenAPI spec from {url} after "
+                    f"{max_attempts} attempt(s): {exc}"
+                ) from exc
+            time.sleep(retry_delay)
+
+    assert response is not None
     try:
         spec = response.json()
     except json.JSONDecodeError as exc:
@@ -224,7 +259,7 @@ def fetch_openapi_spec(base_url: str, openapi_path: str) -> dict[str, Any]:
         raise WorkshopContextError(
             f"response from {url} does not look like an OpenAPI document (missing openapi/paths)."
         )
-    return spec
+    return set_live_server_url(spec, base_url)
 
 
 def get_existing_default_tools(
