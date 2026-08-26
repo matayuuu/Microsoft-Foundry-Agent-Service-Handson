@@ -43,9 +43,8 @@ reviewer_agent = chat_client.as_agent(
     instructions="案をレビューし、最終回答を返す...",
 )
 
-workflow = SequentialBuilder(
-    participants=[policy_agent, planner_agent, reviewer_agent]
-).build()
+participants = [policy_agent, planner_agent, reviewer_agent]
+workflow = SequentialBuilder(participants=participants).build()
 ```
 
 確認ポイントは3つだけです。
