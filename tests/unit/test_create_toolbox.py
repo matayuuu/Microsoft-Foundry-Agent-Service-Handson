@@ -237,7 +237,39 @@ def test_fetch_openapi_spec_raises_on_transport_error(monkeypatch: pytest.Monkey
     monkeypatch.setattr(create_toolbox.httpx, "get", fake_get)
 
     with pytest.raises(create_toolbox.WorkshopContextError, match="could not fetch"):
-        create_toolbox.fetch_openapi_spec("https://travel-api.example.io", "/openapi.json")
+        create_toolbox.fetch_openapi_spec(
+            "https://travel-api.example.io",
+            "/openapi.json",
+            max_attempts=1,
+        )
+
+
+def test_fetch_openapi_spec_retries_transient_cold_start(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+    delays: list[float] = []
+
+    def fake_get(url: str, timeout: float) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise httpx.ReadTimeout("cold start", request=httpx.Request("GET", url))
+        return httpx.Response(200, json=SAMPLE_SPEC, request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(create_toolbox.httpx, "get", fake_get)
+    monkeypatch.setattr(create_toolbox.time, "sleep", delays.append)
+
+    spec = create_toolbox.fetch_openapi_spec(
+        "https://travel-api.example.io",
+        "/openapi.json",
+        max_attempts=3,
+        retry_delay=0.25,
+    )
+
+    assert spec == SAMPLE_SPEC
+    assert attempts == 2
+    assert delays == [0.25]
 
 
 def test_fetch_openapi_spec_rejects_non_openapi_document(monkeypatch: pytest.MonkeyPatch) -> None:

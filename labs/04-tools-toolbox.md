@@ -64,7 +64,8 @@ Foundry Toolkit の Tool Catalog / Toolbox 画面から、次の内容で v1 を
 `scripts/create_toolbox.py` は、実際にデプロイされている Travel Ops API の
 `/openapi.json` をそのライブ URL から取得し、それを OpenAPI ツールとして
 含む新しい Toolbox version を作成（または、内容が変わっていなければ何もせず
-再利用）します。
+再利用）します。Container App が scale-to-zero から起動中の場合は、有限回数で
+OpenAPI 取得を再試行します。
 
 ```bash
 .venv/bin/python scripts/create_toolbox.py --output json
