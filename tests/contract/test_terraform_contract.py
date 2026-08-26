@@ -238,6 +238,13 @@ def test_embedding_model_uses_cross_region_global_standard_sku() -> None:
     assert re.search(r'default\s*=\s*"GlobalStandard"', match.group(1))
 
 
+def test_outputs_include_openai_v1_endpoint_for_embeddings() -> None:
+    text = _read("outputs.tf")
+
+    assert 'output "openai_endpoint"' in text
+    assert ".openai.azure.com/openai/v1/" in text
+
+
 EXPECTED_ROLE_IDS = {
     "foundry_user": "53ca6127-db72-4b80-b1b0-d745d6d5456d",
     "foundry_project_manager": "eadc314b-1a2d-4efa-be10-5d325db5065e",

@@ -111,6 +111,7 @@ jq '.terraform_outputs | keys' .workshop/context.json
 |---|---|
 | `resource_group_name` / `location` | 構築先 resource group と region |
 | `ai_services_account_name` / `ai_services_endpoint` | Foundry account（AIServices） |
+| `openai_endpoint` | embedding 呼び出しに使う Azure OpenAI v1 endpoint |
 | `foundry_project_name` / `foundry_project_id` / `foundry_project_endpoint` | Foundry project。`foundry_project_endpoint` は Lab 4/5 の SDK スクリプトがそのまま使う完全な URL です |
 | `primary_model_deployment_name` / `optimizer_model_deployment_name` / `embedding_model_deployment_name` | Lab 2〜6 で使う model deployment 名 |
 | `search_service_name` / `search_service_endpoint` | Lab 3 で使う Azure AI Search |

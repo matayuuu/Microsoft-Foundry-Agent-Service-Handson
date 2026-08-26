@@ -460,7 +460,7 @@ else
   SEARCH_ENDPOINT="$(jq -r '.search_service_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
   STORAGE_ACCOUNT_NAME="$(jq -r '.storage_account_name.value' <<<"${TF_OUTPUTS_JSON}")"
   RAG_CONTAINER_NAME="$(jq -r '.rag_container_name.value' <<<"${TF_OUTPUTS_JSON}")"
-  FOUNDRY_PROJECT_ENDPOINT="$(jq -r '.foundry_project_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
+  OPENAI_ENDPOINT="$(jq -r '.openai_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
   EMBEDDING_DEPLOYMENT_NAME="$(jq -r '.embedding_model_deployment_name.value' <<<"${TF_OUTPUTS_JSON}")"
 
   # --embedding-dimensions and --max-tokens/--overlap-tokens are intentionally
@@ -482,7 +482,7 @@ else
     --search-endpoint "${SEARCH_ENDPOINT}" \
     --storage-account-name "${STORAGE_ACCOUNT_NAME}" \
     --storage-container "${RAG_CONTAINER_NAME}" \
-    --project-endpoint "${FOUNDRY_PROJECT_ENDPOINT}" \
+    --openai-endpoint "${OPENAI_ENDPOINT}" \
     --embedding-deployment "${EMBEDDING_DEPLOYMENT_NAME}" \
     --source-base "${SOURCE_BASE}" \
     --index-name "contoso-travel-policy"

@@ -310,6 +310,7 @@ REQUIRED_TERRAFORM_OUTPUTS = (
     "location",
     "ai_services_account_name",
     "ai_services_endpoint",
+    "openai_endpoint",
     "foundry_project_name",
     "foundry_project_id",
     "foundry_project_endpoint",
