@@ -123,7 +123,7 @@
 - **チェックポイント**: `.venv/bin/python scripts/deploy_hosted_agent.py --output json` が
   `"succeeded": true` を返し、Playground でストリーミング応答が確認できること。
 - **リモートビルド待ち時間の目安**: 数分程度かかることがあるため、待ち時間中に
-  `src/hosted-agent/main.py`・`domain.py` のコードを解説する時間に充てる。
+  `src/hosted-agent/workflow.py` の3エージェントと `SequentialBuilder` を解説する時間に充てる。
 - **live 実行が難しい場合**（リモートビルドの混雑・失敗が続く場合）:
   [completed-run-assets/hosted-agent-deploy.simulated.json](completed-run-assets/hosted-agent-deploy.simulated.json)
   を画面共有し、`agent_name`/`version`/`status`/`portal_url` の各フィールドが何を

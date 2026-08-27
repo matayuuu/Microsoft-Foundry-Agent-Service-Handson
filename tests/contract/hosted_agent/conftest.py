@@ -20,12 +20,5 @@ from fakes import ScriptedChatClient  # noqa: E402  (path must be set up first)
 
 @pytest.fixture
 def chat_client() -> ScriptedChatClient:
-    """A fresh scripted fake chat client for a single test.
-
-    Injected into ``build_workflow``/``run_workflow_once``/
-    ``run_workflow_agent_turns`` so every contract test in this package runs
-    the real ``agent_framework`` ``Agent``/``AgentExecutor``/
-    ``WorkflowBuilder`` code paths without Azure credentials, network
-    access, or a real model deployment. See ``fakes.py``.
-    """
+    """A fresh FoundryChatClient-compatible fake for a single test."""
     return ScriptedChatClient()
