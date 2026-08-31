@@ -33,6 +33,14 @@ Travel Ops API の既定 `v1.0.3` image が未公開の場合は、maintainer �
 `Resource already exists` / `RoleAssignmentExists` が解消しない場合は、resource や
 `terraform.tfstate` を手動削除せず、出力全体を管理者へ渡してください。
 
+### Storage の `AuthorizationFailure` が表示される
+
+2026-08-31 より前の checkout は規程ファイルを Storage にも複製していたため、
+組織の Azure Policy が Storage の public access を無効化すると Codespaces からの
+データ投入に失敗しました。現在の本編は Storage を使わず、規程本文を Azure AI Search
+へ直接投入します。`main` を更新して同じ `setup.sh` を再実行してください。旧 Storage
+resource は Terraform の plan に削除対象として表示され、承認後に安全に削除されます。
+
 ### `.workshop/context.json` に期待した output キーが無い
 
 `jq '.terraform_outputs | keys' .workshop/context.json` で確認し、無ければ

@@ -387,13 +387,6 @@ def test_main_reports_pass_when_outputs_present_and_search_skipped(
                     f"/providers/.../roleDefinitions/{validate_environment.FOUNDRY_USER_ROLE_ID}"
                 ),
             },
-            {
-                "principalId": "principal-1",
-                "roleDefinitionId": (
-                    f"/providers/.../roleDefinitions/"
-                    f"{validate_environment.STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID}"
-                ),
-            },
         ],
     )
     monkeypatch.setattr(validate_environment, "_signed_in_principal_id", lambda: "principal-1")
@@ -483,18 +476,11 @@ def test_main_fails_when_arm_resource_is_missing(
                     f"/providers/.../roleDefinitions/{validate_environment.FOUNDRY_USER_ROLE_ID}"
                 ),
             },
-            {
-                "principalId": "principal-1",
-                "roleDefinitionId": (
-                    f"/providers/.../roleDefinitions/"
-                    f"{validate_environment.STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID}"
-                ),
-            },
         ],
     )
     monkeypatch.setattr(validate_environment, "_signed_in_principal_id", lambda: "principal-1")
     # Only the container app resource is reported missing; everything else
-    # (RBAC, the other three ARM existence checks) still passes, so this
+    # (RBAC, the other two ARM existence checks) still passes, so this
     # isolates that a single missing resource is enough to fail the overall
     # report rather than being masked by the other passing checks.
     monkeypatch.setattr(
@@ -537,13 +523,6 @@ def test_main_fails_when_travel_api_health_is_non_200(
                 "principalId": "principal-1",
                 "roleDefinitionId": (
                     f"/providers/.../roleDefinitions/{validate_environment.FOUNDRY_USER_ROLE_ID}"
-                ),
-            },
-            {
-                "principalId": "principal-1",
-                "roleDefinitionId": (
-                    f"/providers/.../roleDefinitions/"
-                    f"{validate_environment.STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID}"
                 ),
             },
         ],

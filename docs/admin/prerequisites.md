@@ -41,11 +41,10 @@ By default this is **strictly read-only**. It never creates or deletes a resourc
 group, never changes subscription quota or Azure Policy, and never writes a role
 assignment. It reports, per region (`eastus2` and `swedencentral`):
 
-1. **Resource provider registration state** for the six providers this workshop
+1. **Resource provider registration state** for the five providers this workshop
    depends on:
    - `Microsoft.CognitiveServices` (Foundry/Azure AI Services accounts)
    - `Microsoft.Search` (Azure AI Search)
-   - `Microsoft.Storage` (the RAG/document storage account)
    - `Microsoft.Insights` (Application Insights)
    - `Microsoft.OperationalInsights` (Log Analytics)
    - `Microsoft.App` (Container Apps, for the Travel Ops API)

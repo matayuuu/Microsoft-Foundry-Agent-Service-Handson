@@ -278,8 +278,8 @@ def fetch_resource_by_id(resource_id: str) -> Any:
     """Resource-type-agnostic ARM existence lookup via
     ``az resource show --ids <resource_id>``, reusing the same
     ``az_cli_json`` adapter used by ``fetch_role_assignments``. Works for the
-    AI Services account, Storage account, Search service, and Container App
-    alike, so no per-resource-type ``az`` subcommands are needed."""
+    AI Services account, Search service, and Container App alike, so no
+    per-resource-type ``az`` subcommands are needed."""
     return az_cli_json(["resource", "show", "--ids", resource_id])
 
 
@@ -319,8 +319,6 @@ REQUIRED_TERRAFORM_OUTPUTS = (
     "embedding_model_deployment_name",
     "search_service_name",
     "search_service_endpoint",
-    "storage_account_name",
-    "rag_container_name",
     "travel_api_fqdn",
     "travel_api_container_app_name",
 )
@@ -343,7 +341,6 @@ EXPECTED_INDEX_FIELDS = (
 
 # Role-definition GUID suffixes must match infra/locals.tf local.role_ids.
 FOUNDRY_USER_ROLE_ID = "53ca6127-db72-4b80-b1b0-d745d6d5456d"
-STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID = "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -397,7 +394,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     ]
 
     ai_services_account_name = outputs.get("ai_services_account_name", {}).get("value")
-    storage_account_name = outputs.get("storage_account_name", {}).get("value")
     search_service_endpoint = outputs.get("search_service_endpoint", {}).get("value")
     search_service_name = outputs.get("search_service_name", {}).get("value")
     travel_api_container_app_name = outputs.get("travel_api_container_app_name", {}).get("value")
@@ -425,32 +421,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 run=lambda: validate_resource_exists(
                     fetch_resource_by_id(ai_services_resource_id),
                     "arm-ai-services-account-exists",
-                ),
-            )
-        )
-
-    if storage_account_name:
-        storage_resource_id = (
-            f"/subscriptions/{args.subscription}/resourceGroups/{args.resource_group}"
-            f"/providers/Microsoft.Storage/storageAccounts/{storage_account_name}"
-        )
-        specs.append(
-            CheckSpec(
-                name="rbac-storage-blob-data-contributor-present",
-                run=lambda: validate_role_assignment_present(
-                    fetch_role_assignments(storage_resource_id),
-                    principal_id=_signed_in_principal_id(),
-                    role_definition_id_suffix=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID,
-                    label="rbac-storage-blob-data-contributor-present",
-                ),
-            )
-        )
-        specs.append(
-            CheckSpec(
-                name="arm-storage-account-exists",
-                run=lambda: validate_resource_exists(
-                    fetch_resource_by_id(storage_resource_id),
-                    "arm-storage-account-exists",
                 ),
             )
         )

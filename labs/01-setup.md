@@ -68,7 +68,8 @@ subscription 単位の問題を指している場合は
 1. `preflight.sh` を再実行し、`overall_status` が `fail` なら中断します。
 2. `infra/` に対して `terraform init` / `plan` / `apply`（`--auto-approve` を渡さない限り、
    apply 前に確認プロンプトが出ます）。
-3. `scripts/bootstrap_data.py` で `data/manifest.json` の内容を Azure AI Search に投入します。
+3. `scripts/bootstrap_data.py` で `data/manifest.json` の規程本文を Azure AI Search に
+   直接投入します。Storage account や Blob upload は使用しません。
 4. `scripts/validate_environment.py` で構築結果を検証します。
 5. 非機密の `.workshop/context.json` と `.workshop/.env` を書き込み、Portal リンクを表示します。
 
@@ -115,9 +116,8 @@ jq '.terraform_outputs | keys' .workshop/context.json
 | `foundry_project_name` / `foundry_project_id` / `foundry_project_endpoint` | Foundry project。`foundry_project_endpoint` は Lab 4/5 の SDK スクリプトがそのまま使う完全な URL です |
 | `primary_model_deployment_name` / `optimizer_model_deployment_name` / `embedding_model_deployment_name` | Lab 2〜6 で使う model deployment 名 |
 | `search_service_name` / `search_service_endpoint` | Lab 3 で使う Azure AI Search |
-| `storage_account_name` / `rag_container_name` | RAG ソースドキュメントの格納先 |
 | `log_analytics_workspace_name` / `application_insights_name` / `application_insights_id` | Lab 8 の観測性 |
-| `search_connection_name` / `storage_connection_name` / `application_insights_connection_name` | Foundry project に張られた connection 名 |
+| `search_connection_name` / `application_insights_connection_name` | Foundry project に張られた connection 名 |
 | `travel_api_fqdn` | Lab 4 の Travel Ops API |
 | `foundry_portal_url` | Foundry portal のトップ URL |
 
