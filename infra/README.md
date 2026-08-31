@@ -21,18 +21,17 @@ the repository root `AGENTS.md` for full ownership boundaries.
   Link, or customer-managed keys. Every data-plane credential is either a
   system-assigned managed identity or the participant's own `az login`
   session; local/shared-key auth is disabled wherever the resource supports
-  it (Storage `shared_access_key_enabled = false`, Search
-  `local_authentication_enabled = false`, Foundry account
+  it (Search `local_authentication_enabled = false`, Foundry account
   `disableLocalAuth = true`).
 - **Basic Agent Setup only.** No Cosmos DB, no Agent capability host, no
   ACR, no Key Vault. Matches
   `foundry-samples`' Basic Agent Setup template, not the Standard/BYO-Cosmos
   setup.
 - **AzureRM vs AzAPI split.**
-  - `azurerm` (~> 5.0): resource group data source, Storage account +
-    container, Azure AI Search service, Log Analytics workspace, Application
-    Insights, Container Apps environment/app, and all role assignments --
-    resources with stable, well-supported azurerm coverage.
+  - `azurerm` (~> 5.0): resource group data source, Azure AI Search service,
+    Log Analytics workspace, Application Insights, Container Apps
+    environment/app, and all role assignments -- resources with stable,
+    well-supported azurerm coverage.
   - `azapi` (~> 2.0): the Foundry `AIServices` account, its `projects`
     sub-resource, `deployments` (model deployments), and `projects/connections`
     -- the new Foundry resource model, which azurerm does not yet reliably
@@ -65,14 +64,13 @@ the repository root `AGENTS.md` for full ownership boundaries.
 | `variables.tf` | All overridable inputs, with validation blocks |
 | `locals.tf` | Deterministic naming, role-definition GUID map |
 | `data.tf` | Existing resource group + current client config |
-| `storage.tf` | Storage account (Standard_LRS) + RAG blob container |
 | `search.tf` | Azure AI Search (Basic, keyless, system-assigned identity) |
 | `monitoring.tf` | Log Analytics workspace + Application Insights |
 | `container_apps.tf` | Container Apps environment + Travel Ops API app |
 | `foundry_account.tf` | Foundry `AIServices` account (AzAPI) |
 | `foundry_project.tf` | Foundry project (AzAPI, Basic Agent Setup) |
 | `foundry_deployments.tf` | Three model deployments (AzAPI) |
-| `foundry_connections.tf` | Project connections to Search + Storage (AzAPI, AAD auth) |
+| `foundry_connections.tf` | Project connections to Search and Application Insights |
 | `rbac.tf` | All role assignments (participant + managed identities) |
 | `outputs.tf` | Non-secret outputs consumed by `scripts/setup.sh` |
 | `backend.remote.tf.example` | Inert example of an organizer-managed remote state backend |

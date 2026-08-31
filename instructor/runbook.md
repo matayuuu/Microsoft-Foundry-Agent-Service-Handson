@@ -9,9 +9,9 @@
 - [docs/admin/prerequisites.md](../docs/admin/prerequisites.md) を subscription 管理者に
   共有し、次を確認してもらいます。
   1. `./scripts/admin-preflight.sh --subscription "<subscription-id>"`（既定は読み取り専用）
-     を実行し、6 つの resource provider（`Microsoft.CognitiveServices`、
-     `Microsoft.Search`、`Microsoft.Storage`、`Microsoft.Insights`、
-     `Microsoft.OperationalInsights`、`Microsoft.App`）がすべての対象 region
+     を実行し、5 つの resource provider（`Microsoft.CognitiveServices`、
+     `Microsoft.Search`、`Microsoft.Insights`、`Microsoft.OperationalInsights`、
+     `Microsoft.App`）がすべての対象 region
      （`eastus2`、`swedencentral`）で `Registered` であること。
   2. 想定参加者・チーム数に対して `gpt-4.1`（40K TPM/team）、`gpt-5` 系（20K TPM/team）、
      `text-embedding-3-small`（40K TPM/team）の model quota/capacity が両 region の

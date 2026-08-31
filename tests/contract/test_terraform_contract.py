@@ -52,7 +52,6 @@ def test_infra_directory_has_expected_files() -> None:
         "variables.tf",
         "locals.tf",
         "data.tf",
-        "storage.tf",
         "search.tf",
         "monitoring.tf",
         "container_apps.tf",
@@ -66,6 +65,7 @@ def test_infra_directory_has_expected_files() -> None:
     actual = {p.name for p in INFRA_DIR.glob("*.tf")}
 
     assert expected <= actual
+    assert "storage.tf" not in actual
 
 
 def test_provider_versions_are_pinned_as_documented() -> None:
@@ -164,12 +164,16 @@ def test_search_service_disables_local_authentication() -> None:
     assert re.search(r'semantic_search_sku\s*=\s*"free"', text)
 
 
-def test_storage_account_disables_shared_key_auth() -> None:
-    text = _read("storage.tf")
+def test_core_infrastructure_has_no_storage_dependency() -> None:
+    text = _all_tf_text_excluding_comments().lower()
 
-    assert re.search(r"shared_access_key_enabled\s*=\s*false", text)
-    assert 'resource "azurerm_storage_container"' not in text
-    assert 'resource "azapi_resource" "rag_container"' in text
+    for marker in (
+        "azurerm_storage_account",
+        "microsoft.storage/storageaccounts",
+        "azurestorageaccount",
+        "storage_blob_data_contributor",
+    ):
+        assert marker not in text
 
 
 def test_container_app_uses_variable_image_reference_not_a_literal() -> None:
@@ -260,7 +264,6 @@ EXPECTED_ROLE_IDS = {
     "search_index_data_contributor": "8ebe5a00-799e-43f5-93ac-243d3dce84a7",
     "search_index_data_reader": "1407120a-92aa-4202-b7e9-c0e197c71c8f",
     "search_service_contributor": "7ca78c08-252a-4471-8644-bb5ff32d4ba0",
-    "storage_blob_data_contributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
     "log_analytics_reader": "73c42c96-874c-492b-b04d-ab87d138a893",
     "privileged_monitoring_data_reader": "dbc9c667-e97f-4491-aee6-90b9cf960190",
     "monitoring_metrics_publisher": "3913510d-42f4-4e42-8a64-420c390055eb",
@@ -286,7 +289,6 @@ def test_rbac_grants_participant_and_managed_identities() -> None:
         "foundry_project_manager",
         "search_service_contributor",
         "search_index_data_contributor",
-        "storage_blob_data_contributor",
         "log_analytics_reader",
         "privileged_monitoring_data_reader",
         "monitoring_metrics_publisher",

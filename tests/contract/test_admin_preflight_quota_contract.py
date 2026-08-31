@@ -94,7 +94,6 @@ case "${sub1} ${sub2}" in
       echo "{\"resourceTypes\": [" \
            "{\"resourceType\": \"accounts\", ${loc1}}, " \
            "{\"resourceType\": \"searchServices\", ${loc1}}, " \
-           "{\"resourceType\": \"storageAccounts\", ${loc1}}, " \
            "{\"resourceType\": \"components\", ${loc1}}, " \
            "{\"resourceType\": \"workspaces\", ${loc1}}, " \
            "{\"resourceType\": \"containerApps\", ${loc1}}]}"

@@ -19,7 +19,6 @@ flowchart LR
     codespace -->|az login| azure[Azure control and data planes]
     codespace -->|Terraform| foundry[Foundry account and project]
     codespace -->|Terraform| search[Azure AI Search]
-    codespace -->|Terraform| storage[Storage]
     codespace -->|Terraform| monitor[Application Insights]
     codespace -->|Terraform| api[Travel Ops API]
     codespace -->|Python bootstrap| search
@@ -39,7 +38,7 @@ flowchart LR
 |---|---|---|
 | Existing resource group | Workshop administrator | Never created or deleted by this repository |
 | Foundry account/project and model deployments | Terraform | `setup.sh` / `destroy.sh` |
-| Search, Storage, Application Insights, Container Apps | Terraform | `setup.sh` / `destroy.sh` |
+| Search, Application Insights, Container Apps | Terraform | `setup.sh` / `destroy.sh` |
 | Search index documents | Bootstrap adapter | Idempotent upsert after Terraform |
 | Prompt Agent and Foundry IQ knowledge base | Participant in portal | Deleted with the parent project |
 | Toolbox versions and evaluation runs | Python SDK wrapper | Created in labs; deleted explicitly when supported or with parent project |
@@ -57,7 +56,6 @@ Core infrastructure in the participant resource group:
 - a supported `gpt-5` family deployment for Agent Optimizer
 - `text-embedding-3-small` deployment for the seeded vector index
 - Azure AI Search Basic, one replica and one partition
-- Storage Standard_LRS for synthetic source documents
 - Log Analytics and workspace-based Application Insights
 - Container Apps consumption environment and scale-to-zero Travel Ops API
 
@@ -87,7 +85,7 @@ group Owner cannot register resource providers.
 
 Data-plane operations remain in typed Python adapters:
 
-- upload synthetic documents
+- load synthetic source documents directly into Azure AI Search
 - generate embeddings
 - create/update the semantic vector index
 - merge-or-upload indexed chunks

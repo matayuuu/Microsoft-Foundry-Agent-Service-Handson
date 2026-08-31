@@ -40,7 +40,7 @@ attempt them on your behalf:
 - Creating or managing a service principal, client secret, or API key. You
   authenticate once with `az login`; Terraform and the Python scripts reuse that same
   Entra ID session (`DefaultAzureCredential`) for every Azure call, and runtime access
-  to Search/Storage/Foundry is keyless (Entra ID/RBAC only).
+  to Search/Foundry is keyless (Entra ID/RBAC only).
 
 If a script ever prompts you for one of the above, or fails with an error suggesting
 you need it, stop and contact your workshop administrator rather than trying to grant
@@ -105,19 +105,19 @@ artifacts even though scripts never write API keys or client secrets into them.
 The data bootstrap and environment validation steps each retry automatically (a
 bounded number of attempts with a short delay between them) if they hit a transient
 failure — this absorbs the brief propagation delay that role assignments Terraform
-just created (Storage Blob Data Contributor, Search index-data roles, Foundry User)
-and the Travel Ops API's own cold start can need right after `terraform apply`. Every
-attempt's error is still printed, so a genuine (non-transient) failure is never
-hidden, only retried a bounded number of times before `setup.sh` reports it and stops.
+just created (Search index-data roles and Foundry User) and the Travel Ops API's own
+cold start can need right after `terraform apply`. Every attempt's error is still
+printed, so a genuine (non-transient) failure is never hidden, only retried a bounded
+number of times before `setup.sh` reports it and stops.
 
 ### Environment validation
 
 The final step (`validate_environment.py`) confirms your deployed environment, not
 just that Terraform apply succeeded. In addition to the RBAC and Azure AI Search
-checks, it also confirms that the AI Services account, Storage account, Search
-service, and Travel Ops API container app all still exist as ARM resources, and that
-the Travel Ops API responds `200` on its own `/health` endpoint — so `setup.sh` never
-reports success while the Travel Ops API container app is unreachable.
+checks, it also confirms that the AI Services account, Search service, and Travel Ops
+API container app all still exist as ARM resources, and that the Travel Ops API
+responds `200` on its own `/health` endpoint — so `setup.sh` never reports success
+while the Travel Ops API container app is unreachable.
 
 `--source-base` controls the public URL prefix that Foundry IQ citations link back to
 for each policy document. You do not normally need to pass it: `setup.sh` derives it

@@ -36,12 +36,6 @@ resource "azurerm_role_assignment" "participant_search_index_data_contributor" {
   principal_id       = local.participant_object_id
 }
 
-resource "azurerm_role_assignment" "participant_storage_blob_data_contributor" {
-  scope              = azurerm_storage_account.workshop.id
-  role_definition_id = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.storage_blob_data_contributor}"
-  principal_id       = local.participant_object_id
-}
-
 resource "azurerm_role_assignment" "participant_log_analytics_reader" {
   scope              = azurerm_log_analytics_workspace.workshop.id
   role_definition_id = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.log_analytics_reader}"
@@ -58,8 +52,8 @@ resource "azurerm_role_assignment" "participant_privileged_monitoring_data_reade
 # Foundry project system-assigned managed identity grants
 #
 # The project's own identity needs to read/query the Foundry account it
-# belongs to, and to read/write the Search index and Storage blobs that back
-# Foundry IQ / the Knowledge Base tool at agent runtime.
+# belongs to and read/write the Search index that backs Foundry IQ / the
+# Knowledge Base tool at agent runtime.
 # ---------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "project_mi_foundry_user" {
@@ -81,14 +75,6 @@ resource "azurerm_role_assignment" "project_mi_search_index_data_contributor" {
 resource "azurerm_role_assignment" "project_mi_search_service_contributor" {
   scope                            = azurerm_search_service.workshop.id
   role_definition_id               = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.search_service_contributor}"
-  principal_id                     = azapi_resource.project.output.identity.principalId
-  principal_type                   = "ServicePrincipal"
-  skip_service_principal_aad_check = true
-}
-
-resource "azurerm_role_assignment" "project_mi_storage_blob_data_contributor" {
-  scope                            = azurerm_storage_account.workshop.id
-  role_definition_id               = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.storage_blob_data_contributor}"
   principal_id                     = azapi_resource.project.output.identity.principalId
   principal_type                   = "ServicePrincipal"
   skip_service_principal_aad_check = true

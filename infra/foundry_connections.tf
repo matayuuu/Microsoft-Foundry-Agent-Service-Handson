@@ -1,7 +1,5 @@
-# Project connections wiring the Foundry project to Azure AI Search (Foundry
-# IQ / Knowledge Base) and the Storage account (RAG blob content), both using
-# Microsoft Entra ID (authType = "AAD") -- no keys are stored in either
-# connection.
+# Project connection wiring the Foundry project to Azure AI Search (Foundry IQ
+# / Knowledge Base) with Microsoft Entra ID (authType = "AAD").
 resource "azapi_resource" "search_connection" {
   type      = "Microsoft.CognitiveServices/accounts/projects/connections@2026-05-01"
   name      = "contoso-travel-search"
@@ -22,28 +20,6 @@ resource "azapi_resource" "search_connection" {
   }
 
   depends_on = [azurerm_search_service.workshop]
-}
-
-resource "azapi_resource" "storage_connection" {
-  type      = "Microsoft.CognitiveServices/accounts/projects/connections@2026-05-01"
-  name      = "contoso-travel-storage"
-  parent_id = azapi_resource.project.id
-
-  body = {
-    properties = {
-      category      = "AzureStorageAccount"
-      target        = azurerm_storage_account.workshop.primary_blob_endpoint
-      authType      = "AAD"
-      isSharedToAll = true
-      metadata = {
-        ApiType    = "Azure"
-        ResourceId = azurerm_storage_account.workshop.id
-        Location   = var.location
-      }
-    }
-  }
-
-  depends_on = [azurerm_storage_account.workshop]
 }
 
 # Keyless trace ingestion and evaluation access. ProjectManagedIdentity is the
