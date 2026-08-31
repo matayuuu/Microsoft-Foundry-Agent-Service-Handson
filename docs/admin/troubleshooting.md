@@ -54,10 +54,10 @@ do not force-import or delete that resource; investigate the name collision firs
 The script's policy scan is **best-effort**: it lists policy assignments whose
 effect (`deny`, `disable`, etc.) and resource-type scope look like they could block
 `Microsoft.CognitiveServices/accounts`, `Microsoft.Search/searchServices`,
-`Microsoft.Storage/storageAccounts`, `Microsoft.App/*`, or their sub-resources, but it
-cannot exhaustively evaluate every policy's condition logic (initiative-nested
-policies, tag-based conditions, and `deployIfNotExists` effects in particular are hard
-to statically resolve). If the report flags a candidate policy:
+`Microsoft.App/*`, or their sub-resources, but it cannot exhaustively evaluate every
+policy's condition logic (initiative-nested policies, tag-based conditions, and
+`deployIfNotExists` effects in particular are hard to statically resolve). If the
+report flags a candidate policy:
 
 1. Open it in the portal (Policy > Definitions) and read its `if` condition against
    the exact resource types above.
@@ -69,15 +69,12 @@ to statically resolve). If the report flags a candidate policy:
    policy-denial error message is authoritative; the preflight scan is a fast,
    non-exhaustive early warning only.
 
-A management-group `modify` policy can also allow Storage creation to report success
-while rewriting `publicNetworkAccess` to `Disabled`. The later data bootstrap then
-fails with Storage `AuthorizationFailure` even when `Storage Blob Data Contributor`
-is present. Confirm this case in the resource Activity Log by looking for
-`Microsoft.Authorization/policies/modify/action` on the Storage account. The core
-workshop intentionally uses public endpoints and does not provision private
-networking, so use a compatible subscription or have an administrator approve a
-resource-group-scoped exemption for that specific policy definition reference.
-Participants must not create governance exemptions themselves.
+Workshop versions before 2026-08-31 provisioned a Storage account for a redundant copy
+of the source documents. A management-group `modify` policy that disabled its public
+access caused bootstrap to fail from Codespaces. The current core path no longer
+provisions or accesses Storage; it indexes the repository's synthetic policy files
+directly into Azure AI Search. Update the checkout and rerun `setup.sh` to remove the
+legacy Storage resources through Terraform.
 
 ## A participant's `preflight.sh` fails even though `admin-preflight.sh` passed
 

@@ -5,7 +5,7 @@
 # `az login` access and Owner on an EXISTING resource group. Orchestrates:
 #   1. scripts/preflight.sh (read-only; resolves region + real model versions)
 #   2. terraform init/plan/apply against infra/ (bounded retries)
-#   3. scripts/bootstrap_data.py (seeds Azure AI Search from data/manifest.json;
+#   3. scripts/bootstrap_data.py (seeds Azure AI Search directly from data/manifest.json;
 #      bounded retries to absorb fresh RBAC/data-plane propagation)
 #   4. scripts/validate_environment.py (confirms the deployed environment,
 #      including ARM resource existence and a Travel Ops API /health check;
@@ -15,7 +15,7 @@
 #
 # Safe to re-run: setup recovers deterministic workshop resources that Azure
 # created without a local Terraform state entry, terraform apply reconciles the
-# resulting state, and bootstrap_data.py merge-or-uploads documents by id.
+# resulting state, and bootstrap_data.py merge-or-uploads Search documents by id.
 #
 # --travel-api-image-ref is OPTIONAL. When omitted, this script resolves the
 # immutable @sha256 digest for a public default GHCR tag itself (anonymous
@@ -468,8 +468,6 @@ elif [[ ! -f "${MANIFEST_PATH}" ]]; then
 else
   echo "==> [3/5] Running bootstrap_data.py..." >&2
   SEARCH_ENDPOINT="$(jq -r '.search_service_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
-  STORAGE_ACCOUNT_NAME="$(jq -r '.storage_account_name.value' <<<"${TF_OUTPUTS_JSON}")"
-  RAG_CONTAINER_NAME="$(jq -r '.rag_container_name.value' <<<"${TF_OUTPUTS_JSON}")"
   OPENAI_ENDPOINT="$(jq -r '.openai_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
   EMBEDDING_DEPLOYMENT_NAME="$(jq -r '.embedding_model_deployment_name.value' <<<"${TF_OUTPUTS_JSON}")"
 
@@ -480,18 +478,13 @@ else
   # values that could drift from the manifest.
   #
   # Wrapped in a bounded retry: role assignments Terraform just created
-  # (Storage Blob Data Contributor, Search index-data roles, Foundry User on
-  # the project) can take up to a couple of minutes to actually propagate
-  # through Entra/RBAC, and bootstrap_data.py's own blob/index writes are
-  # idempotent (merge-or-upload by id) -- so retrying the whole invocation on
-  # a transient auth/data-plane failure is safe. Every attempt's own error is
-  # still printed by retry() itself, so a genuine (non-transient) failure is
-  # never hidden, only retried a bounded number of times before giving up.
+  # (Search index-data roles and Foundry User on the project) can take up to a
+  # couple of minutes to propagate through Entra/RBAC. Search writes are
+  # idempotent (merge-or-upload by id), so retrying the whole invocation on a
+  # transient auth/data-plane failure is safe.
   retry 5 20 "${PYTHON_BIN}" "${SCRIPT_DIR}/bootstrap_data.py" \
     --manifest "${MANIFEST_PATH}" \
     --search-endpoint "${SEARCH_ENDPOINT}" \
-    --storage-account-name "${STORAGE_ACCOUNT_NAME}" \
-    --storage-container "${RAG_CONTAINER_NAME}" \
     --openai-endpoint "${OPENAI_ENDPOINT}" \
     --embedding-deployment "${EMBEDDING_DEPLOYMENT_NAME}" \
     --source-base "${SOURCE_BASE}" \

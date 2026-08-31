@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """scripts/bootstrap_data.py
 
-Seeds the Contoso travel-policy RAG content into Azure AI Search (and its
-backing blob container) for the Foundry Agent Service hands-on workshop.
+Seeds the Contoso travel-policy RAG content directly into Azure AI Search for
+the Foundry Agent Service hands-on workshop.
 
 Design: pure functions (manifest parsing/validation, markdown-heading
 chunking, citation/index-document shaping, checksum verification, result
 validation) are fully unit testable without any Azure credentials, network
 access, or even the ``tiktoken`` package -- the token-aware chunker takes an
 injectable ``Tokenizer`` (``encode``/``decode``) so tests can supply a
-deterministic fake. All Azure I/O -- blob upload, embedding generation
-(via the Foundry project's OpenAI-compatible client), index create/update,
-document upload/merge/delete -- lives in thin adapter functions and is only
-exercised by ``main()``.
+deterministic fake. All Azure I/O -- embedding generation (via the Foundry
+project's OpenAI-compatible client), index create/update, and document
+upload/merge/delete -- lives in thin adapter functions and is only exercised
+by ``main()``.
 
 Consumes ``data/manifest.json`` and ``data/schemas/manifest.schema.json``
 (both owned by the data workstream) plus the policy markdown files the
@@ -58,12 +58,12 @@ script itself still fails loudly if invoked directly against a missing
 manifest, since at that point the caller explicitly asked to bootstrap
 data.
 
-Everything here is keyless: Azure Search/Storage access uses
-``azure.identity.DefaultAzureCredential`` (the participant's own ``az
-login`` session, or the caller's ambient identity); embeddings use the
-resource's Azure OpenAI v1 endpoint with an Entra ID bearer-token provider.
-The Foundry project endpoint does not route embedding requests. No API keys
-are read or generated anywhere in this script.
+Everything here is keyless: Azure Search access uses
+``azure.identity.DefaultAzureCredential`` (the participant's own ``az login``
+session, or the caller's ambient identity); embeddings use the resource's
+Azure OpenAI v1 endpoint with an Entra ID bearer-token provider. The Foundry
+project endpoint does not route embedding requests. No API keys are read or
+generated anywhere in this script.
 """
 
 from __future__ import annotations
@@ -448,14 +448,6 @@ def build_citation(
     return " | ".join(parts)
 
 
-def blob_name_for(document: ManifestDocument) -> str:
-    """Deterministic blob path for a manifest document: stable across reruns
-    (idempotent uploads) and namespaced by category."""
-    suffix = Path(document.path).suffix or ".txt"
-    safe_id = "".join(ch if ch.isalnum() or ch in "-_." else "-" for ch in document.id)
-    return f"{document.category}/{safe_id}{suffix}"
-
-
 def chunk_search_document_id(document_id: str, chunk_index: int) -> str:
     """Azure AI Search document keys must match ``^[a-zA-Z0-9_\\-=]+$``.
     Each chunk's key is derived from ``manifest_id`` + its
@@ -471,16 +463,14 @@ def build_search_document(
     document: ManifestDocument,
     chunk: MarkdownChunk,
     embedding: Sequence[float],
-    blob_url: str,
     citation: str,
     resolved_source_url: str,
 ) -> dict[str, Any]:
     """Builds the plain-dict search document uploaded/merged into the
     ``contoso-travel-policy`` index for one chunk. Pure: no I/O, only
-    shaping already-fetched/-computed values (an already-built
-    ``MarkdownChunk``, an already-computed embedding vector, an
-    already-uploaded blob URL, an already-built citation string, and the
-    already-resolved public ``source_url``)."""
+    shaping already-fetched/-computed values. ``blob_url`` remains as a
+    compatibility alias for indexes created by earlier workshop versions; it
+    now points to the same public document as ``source_url``."""
     return {
         "id": chunk_search_document_id(document.id, chunk.chunk_index),
         "manifest_id": document.id,
@@ -492,7 +482,7 @@ def build_search_document(
         "source_url": resolved_source_url,
         "effective_date": document.effective_date,
         "applies_to": ",".join(document.applies_to),
-        "blob_url": blob_url,
+        "blob_url": resolved_source_url,
         "chunk_index": chunk.chunk_index,
         "heading": chunk.heading,
         "token_count": chunk.token_count,
@@ -679,23 +669,6 @@ def read_source_bytes(rag_dir: Path, document: ManifestDocument) -> bytes:
         ) from exc
 
 
-def upload_blob(
-    blob_service_client: Any,
-    container_name: str,
-    blob_name: str,
-    content: str,
-) -> str:
-    """Uploads ``content`` to the given blob, overwriting any existing blob
-    with the same name (idempotent re-runs), and returns its URL."""
-    container_client = blob_service_client.get_container_client(container_name)
-    blob_client = container_client.upload_blob(
-        name=blob_name,
-        data=content.encode("utf-8"),
-        overwrite=True,
-    )
-    return str(blob_client.url)
-
-
 def get_embedding(openai_client: Any, deployment: str, text: str) -> list[float]:
     """Requests an embedding vector for ``text`` from the given Azure OpenAI
     deployment via the already-authenticated ``openai_client``."""
@@ -818,8 +791,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--search-endpoint", required=True, help="https://<search-service>.search.windows.net"
     )
-    parser.add_argument("--storage-account-name", required=True)
-    parser.add_argument("--storage-container", required=True)
     parser.add_argument(
         "--openai-endpoint",
         required=True,
@@ -866,8 +837,6 @@ def build_documents(
     read_bytes_fn: Callable[[ManifestDocument], bytes],
     embedding_fn: Any,
     embedding_deployment: str,
-    blob_upload_fn: Any,
-    storage_container: str,
     list_existing_ids_fn: Callable[[str], Sequence[str]],
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Wires the pure chunking/shaping functions to the (already-selected)
@@ -878,10 +847,10 @@ def build_documents(
     documents, of chunk ids previously indexed (per ``list_existing_ids_fn``)
     that this run's chunking no longer produced, and should be deleted by
     the caller after a successful upload. ``read_bytes_fn``, ``embedding_fn``,
-    ``blob_upload_fn``, and ``list_existing_ids_fn`` are injected so tests
-    can pass fakes. Callers must run verify_source_checksums() against
+    and ``list_existing_ids_fn`` are injected so tests can pass fakes.
+    Callers must run verify_source_checksums() against
     ``documents`` before calling this, so any checksum mismatch is reported
-    up front rather than surfacing mid-upload."""
+    up front rather than surfacing during indexing."""
     placeholder = manifest.get("source_url_base_placeholder", DEFAULT_SOURCE_URL_PLACEHOLDER)
     required_citation_fields = manifest["citation"]["required_fields"]
 
@@ -890,7 +859,6 @@ def build_documents(
     for manifest_document in documents:
         content_bytes = read_bytes_fn(manifest_document)
         content = strip_front_matter(content_bytes.decode("utf-8"))
-        blob_url = blob_upload_fn(storage_container, blob_name_for(manifest_document), content)
         resolved_source_url = resolve_source_url(
             manifest_document.source_url, placeholder, source_base
         )
@@ -901,7 +869,7 @@ def build_documents(
         for chunk in chunks:
             embedding = embedding_fn(embedding_deployment, chunk.text)
             search_document = build_search_document(
-                manifest_document, chunk, embedding, blob_url, citation, resolved_source_url
+                manifest_document, chunk, embedding, citation, resolved_source_url
             )
             built.append(search_document)
             current_chunk_ids.append(search_document["id"])
@@ -996,22 +964,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         for doc in documents:
             content = strip_front_matter(_read_bytes_fn(doc).decode("utf-8"))
             chunks = chunk_markdown_document(content, tokenizer, max_tokens, overlap_tokens)
-            print(
-                f"  - {doc.id} -> {blob_name_for(doc)} (category={doc.category}, "
-                f"chunks={len(chunks)})"
-            )
+            print(f"  - {doc.id} -> {doc.path} (category={doc.category}, chunks={len(chunks)})")
         return 0
 
     credential = build_credential()
 
     from azure.search.documents import SearchClient
     from azure.search.documents.indexes import SearchIndexClient
-    from azure.storage.blob import BlobServiceClient
 
-    blob_service_client = BlobServiceClient(
-        account_url=f"https://{args.storage_account_name}.blob.core.windows.net",
-        credential=credential,
-    )
     index_client = SearchIndexClient(endpoint=args.search_endpoint, credential=credential)
     search_client = SearchClient(
         endpoint=args.search_endpoint,
@@ -1023,9 +983,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     def _embedding_fn(deployment: str, text: str) -> list[float]:
         return get_embedding(openai_client, deployment, text)
-
-    def _blob_upload_fn(container: str, blob_name: str, content: str) -> str:
-        return upload_blob(blob_service_client, container, blob_name, content)
 
     def _list_existing_ids_fn(manifest_id: str) -> Sequence[str]:
         return list_existing_chunk_ids(search_client, manifest_id)
@@ -1048,8 +1005,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         read_bytes_fn=_read_bytes_fn,
         embedding_fn=_embedding_fn,
         embedding_deployment=args.embedding_deployment,
-        blob_upload_fn=_blob_upload_fn,
-        storage_container=args.storage_container,
         list_existing_ids_fn=_list_existing_ids_fn,
     )
 

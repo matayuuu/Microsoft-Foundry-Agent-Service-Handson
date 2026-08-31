@@ -7,7 +7,6 @@ locals {
   workshop_resource_group_id = "/subscriptions/${var.subscription_id}/resourceGroups/${var.resource_group_name}"
   ai_services_id             = "${local.workshop_resource_group_id}/providers/Microsoft.CognitiveServices/accounts/${local.ai_services_account_name}"
   project_id                 = "${local.ai_services_id}/projects/${var.project_name}"
-  storage_account_id         = "${local.workshop_resource_group_id}/providers/Microsoft.Storage/storageAccounts/${local.storage_account_name}"
 
   state_recovery_targets = [
     {
@@ -44,20 +43,6 @@ locals {
       api_version       = "2026-05-01"
       owner_id          = local.ai_services_id
       owner_api_version = "2026-05-01"
-    },
-    {
-      address           = "azurerm_storage_account.workshop"
-      id                = local.storage_account_id
-      api_version       = "2023-05-01"
-      owner_id          = local.storage_account_id
-      owner_api_version = "2023-05-01"
-    },
-    {
-      address           = "azapi_resource.rag_container"
-      id                = "${local.storage_account_id}/blobServices/default/containers/${local.rag_container_name}"
-      api_version       = "2023-05-01"
-      owner_id          = local.storage_account_id
-      owner_api_version = "2023-05-01"
     },
     {
       address           = "azurerm_search_service.workshop"
@@ -97,13 +82,6 @@ locals {
     {
       address           = "azapi_resource.search_connection"
       id                = "${local.project_id}/connections/contoso-travel-search"
-      api_version       = "2026-05-01"
-      owner_id          = local.project_id
-      owner_api_version = "2026-05-01"
-    },
-    {
-      address           = "azapi_resource.storage_connection"
-      id                = "${local.project_id}/connections/contoso-travel-storage"
       api_version       = "2026-05-01"
       owner_id          = local.project_id
       owner_api_version = "2026-05-01"

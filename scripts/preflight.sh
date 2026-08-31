@@ -111,7 +111,6 @@ SUPPORTED_LOCATIONS=("eastus2" "swedencentral")
 REQUIRED_PROVIDERS=(
   "Microsoft.CognitiveServices"
   "Microsoft.Search"
-  "Microsoft.Storage"
   "Microsoft.Insights"
   "Microsoft.OperationalInsights"
   "Microsoft.App"

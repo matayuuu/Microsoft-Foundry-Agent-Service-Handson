@@ -57,14 +57,6 @@ output "search_service_endpoint" {
   value = "https://${azurerm_search_service.workshop.name}.search.windows.net"
 }
 
-output "storage_account_name" {
-  value = azurerm_storage_account.workshop.name
-}
-
-output "rag_container_name" {
-  value = azapi_resource.rag_container.name
-}
-
 output "log_analytics_workspace_name" {
   value = azurerm_log_analytics_workspace.workshop.name
 }
@@ -79,10 +71,6 @@ output "application_insights_id" {
 
 output "search_connection_name" {
   value = azapi_resource.search_connection.name
-}
-
-output "storage_connection_name" {
-  value = azapi_resource.storage_connection.name
 }
 
 output "application_insights_connection_name" {

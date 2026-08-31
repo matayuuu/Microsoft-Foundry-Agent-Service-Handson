@@ -445,35 +445,6 @@ def test_build_citation_raises_on_unsupported_field() -> None:
         bootstrap_data.build_citation(document, ["not_a_real_field"], "https://x")
 
 
-# ---------------------------------------------------------------------------
-# naming helpers
-# ---------------------------------------------------------------------------
-
-
-def test_blob_name_for_is_deterministic_and_namespaced_by_category() -> None:
-    manifest = _valid_manifest(
-        {"id": "policy-flights-001", "category": "flights", "path": "policies/flights.md"}
-    )
-    document = bootstrap_data.iter_documents(manifest)[0]
-
-    name_1 = bootstrap_data.blob_name_for(document)
-    name_2 = bootstrap_data.blob_name_for(document)
-
-    assert name_1 == name_2
-    assert name_1 == "flights/policy-flights-001.md"
-
-
-def test_blob_name_for_sanitizes_unsafe_characters() -> None:
-    manifest = _valid_manifest({"id": "weird id/with:chars", "category": "flights"})
-    document = bootstrap_data.iter_documents(manifest)[0]
-
-    name = bootstrap_data.blob_name_for(document)
-
-    assert name.startswith("flights/")
-    assert "/" not in name.removeprefix("flights/")
-    assert ":" not in name
-
-
 def test_search_document_id_is_deterministic_and_valid_key() -> None:
     manifest = _valid_manifest()
     document = bootstrap_data.iter_documents(manifest)[0]
@@ -592,7 +563,6 @@ def test_build_search_document_shape() -> None:
         document,
         chunk,
         embedding=[0.1, 0.2, 0.3],
-        blob_url="https://x/blob",
         citation="id=policy-flights-001 | title=Flight booking policy",
         resolved_source_url="https://resolved.example/flights.md",
     )
@@ -606,7 +576,7 @@ def test_build_search_document_shape() -> None:
     assert result["source_url"] == "https://resolved.example/flights.md"
     assert result["effective_date"] == "2026-04-01"
     assert result["applies_to"] == "all_employees"
-    assert result["blob_url"] == "https://x/blob"
+    assert result["blob_url"] == "https://resolved.example/flights.md"
     assert result["chunk_index"] == 0
     assert result["heading"] == "Flights"
     assert result["token_count"] == 2
@@ -738,7 +708,7 @@ def test_to_search_index_builds_sdk_model_with_expected_shape() -> None:
 
 
 # ---------------------------------------------------------------------------
-# build_documents wiring (fakes for read/embedding/blob adapters)
+# build_documents wiring (fakes for read/embedding adapters)
 # ---------------------------------------------------------------------------
 
 
@@ -765,7 +735,6 @@ def test_build_documents_wires_pure_functions_with_injected_adapters(tmp_path: P
     documents = bootstrap_data.iter_documents(manifest)
 
     embedding_calls: list[tuple[str, str]] = []
-    blob_calls: list[tuple[str, str, str]] = []
 
     def fake_read_bytes_fn(document: bootstrap_data.ManifestDocument) -> bytes:
         return bootstrap_data.read_source_bytes(rag_dir, document)
@@ -773,10 +742,6 @@ def test_build_documents_wires_pure_functions_with_injected_adapters(tmp_path: P
     def fake_embedding_fn(deployment: str, text: str) -> list[float]:
         embedding_calls.append((deployment, text))
         return [0.1, 0.2]
-
-    def fake_blob_upload_fn(container: str, blob_name: str, content: str) -> str:
-        blob_calls.append((container, blob_name, content))
-        return f"https://fake/{container}/{blob_name}"
 
     def fake_list_existing_ids_fn(manifest_id: str) -> list[str]:
         # Simulates a previous run that indexed one chunk id no longer
@@ -795,19 +760,14 @@ def test_build_documents_wires_pure_functions_with_injected_adapters(tmp_path: P
         read_bytes_fn=fake_read_bytes_fn,
         embedding_fn=fake_embedding_fn,
         embedding_deployment="embedding",
-        blob_upload_fn=fake_blob_upload_fn,
-        storage_container="travel-policy-rag",
         list_existing_ids_fn=fake_list_existing_ids_fn,
     )
 
     assert len(search_documents) == 1
     assert len(embedding_calls) == 1
-    assert len(blob_calls) == 1
     assert search_documents[0]["content"] == "Flight content"
     assert search_documents[0]["chunk_index"] == 0
-    assert search_documents[0]["blob_url"] == (
-        "https://fake/travel-policy-rag/flights/policy-flights-001.md"
-    )
+    assert search_documents[0]["blob_url"] == ("https://resolved.example/data/policies/flights.md")
     assert "https://resolved.example" in search_documents[0]["citation"]
     assert "{{WORKSHOP_SOURCE_BASE}}" not in search_documents[0]["citation"]
     assert search_documents[0]["source_url"] == "https://resolved.example/data/policies/flights.md"
@@ -989,10 +949,6 @@ def _base_cli_args(manifest_path: Path, schema_path: Path) -> list[str]:
         str(schema_path),
         "--search-endpoint",
         "https://example.search.windows.net",
-        "--storage-account-name",
-        "stexample",
-        "--storage-container",
-        "travel-policy-rag",
         "--openai-endpoint",
         "https://example.openai.azure.com/openai/v1/",
         "--embedding-deployment",

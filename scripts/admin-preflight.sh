@@ -138,7 +138,6 @@ fi
 REQUIRED_PROVIDERS=(
   "Microsoft.CognitiveServices"
   "Microsoft.Search"
-  "Microsoft.Storage"
   "Microsoft.Insights"
   "Microsoft.OperationalInsights"
   "Microsoft.App"
@@ -150,7 +149,6 @@ REQUIRED_PROVIDERS=(
 declare -A REQUIRED_RESOURCE_TYPES=(
   ["Microsoft.CognitiveServices"]="accounts"
   ["Microsoft.Search"]="searchServices"
-  ["Microsoft.Storage"]="storageAccounts"
   ["Microsoft.Insights"]="components"
   ["Microsoft.OperationalInsights"]="workspaces"
   ["Microsoft.App"]="containerApps"
