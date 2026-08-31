@@ -21,12 +21,17 @@ resource group 名・subscription ID が管理者から渡されたものと一�
 
 `setup.sh` はすべてのステップが idempotent です。エラーメッセージを読んで、
 指摘された問題を直してから、**同じコマンドでそのまま再実行**してください。
+Azure 上では作成済みなのにローカル Terraform state に記録されなかった workshop
+resource や RBAC assignment がある場合も、所有タグと完全一致する assignment を検証して
+state に再取り込みしてから plan を作り直します。
 Travel Ops API の既定 `v1.0.3` image が未公開の場合は、maintainer が
 `publish-travel-api.yml` で GHCR package を Public にしてから再実行します。
 管理者から immutable digest を受け取った場合だけ、
 `--travel-api-image-ref ghcr.io/.../...@sha256:<64桁の16進数>` で上書きできます。
 `terraform apply` は同じ状態に
 収束し、データ投入は id ベースの merge-or-upload なので再実行しても安全です。
+`Resource already exists` / `RoleAssignmentExists` が解消しない場合は、resource や
+`terraform.tfstate` を手動削除せず、出力全体を管理者へ渡してください。
 
 ### `.workshop/context.json` に期待した output キーが無い
 

@@ -107,6 +107,11 @@ terraform() {
   return 0
 }
 
+prepare_terraform_plan() {
+  terraform -chdir="${INFRA_DIR}" plan -input=false \
+    -out="${WORKSHOP_DIR}/tfplan" "${TF_VAR_ARGS[@]}"
+}
+
 TF_VAR_ARGS=(-var "example=value")
 if retry 3 0 apply_terraform_plan; then
   echo "TERRAFORM_RETRY_RESULT=success"
@@ -257,3 +262,10 @@ def test_terraform_retry_refreshes_plan_after_partial_apply(
         "plan",
         "apply",
     ]
+
+
+def test_setup_uses_state_recovering_plan_preparation() -> None:
+    setup_text = SETUP_SH.read_text(encoding="utf-8")
+
+    assert '"${SCRIPT_DIR}/prepare_terraform_plan.py"' in setup_text
+    assert setup_text.count("prepare_terraform_plan") >= 3

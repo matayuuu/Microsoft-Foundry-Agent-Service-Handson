@@ -44,7 +44,10 @@ metadata cannot predict. Re-run `scripts/setup.sh` with the supported alternate 
 ```
 
 Use `eastus2` instead when the failed attempt targeted `swedencentral`. Setup is
-idempotent and refreshes its Terraform plan after any partial apply.
+idempotent, safely imports deterministic workshop-tagged resources and exact RBAC
+assignments that exist without a local state entry, and refreshes its Terraform plan
+after any partial apply. If recovery refuses an import because ownership tags differ,
+do not force-import or delete that resource; investigate the name collision first.
 
 ## `admin-preflight.sh` reports an Azure Policy that may deny required resource types
 
