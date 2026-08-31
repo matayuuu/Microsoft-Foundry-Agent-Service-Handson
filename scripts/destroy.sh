@@ -29,8 +29,9 @@
 #                       [--primary-model-version <version>]
 #                       [--embedding-model-version <version>] [--auto-approve]
 #
-# When --subscription/--resource-group/--travel-api-image-ref are omitted,
-# they are read from .workshop/context.json (written by scripts/setup.sh).
+# When inputs are omitted, they are read from .workshop/context.json. If setup
+# did not reach its final validation step, destroy falls back to the resolved
+# inputs saved in .workshop/terraform-inputs.json before Terraform started.
 set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
@@ -39,6 +40,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 INFRA_DIR="${REPO_ROOT}/infra"
 WORKSHOP_DIR="${REPO_ROOT}/.workshop"
 CONTEXT_FILE="${WORKSHOP_DIR}/context.json"
+RECOVERY_CONTEXT_FILE="${WORKSHOP_DIR}/terraform-inputs.json"
 PYTHON_BIN="${WORKSHOP_PYTHON:-${REPO_ROOT}/.venv/bin/python}"
 if [[ ! -x "${PYTHON_BIN}" ]]; then
   PYTHON_BIN="$(command -v python3 || true)"
@@ -57,11 +59,11 @@ Usage: destroy.sh [options]
 
 Options:
   --subscription <id>          Azure subscription ID. Defaults to the value
-                                recorded in .workshop/context.json.
+                                recorded by setup.sh.
   --resource-group <name>      Resource group name. Defaults to the value
-                                recorded in .workshop/context.json.
+                                recorded by setup.sh.
   --travel-api-image-ref <ref> Same image ref used at setup time. Defaults to
-                                the value recorded in .workshop/context.json.
+                                the value recorded by setup.sh.
                                 May also be supplied via TRAVEL_API_IMAGE_REF.
   --location <region>          Same Azure region used at setup time.
   --source-base <url>          Same public citation base URL used at setup time.
@@ -71,9 +73,9 @@ Options:
                                 Same primary model version used at setup time.
   --embedding-model-version <version>
                                 Same embedding model version used at setup time.
-                                These values default to .workshop/context.json;
-                                pass them explicitly to recover from a setup
-                                failure that occurred before context was written.
+                                These values default to .workshop/context.json
+                                or its pre-Terraform recovery file. Pass them
+                                explicitly only if neither file is available.
   --auto-approve                Skip the terraform destroy confirmation prompt.
   -h, --help                    Show this help and exit.
 
@@ -124,38 +126,52 @@ for tool in terraform jq az; do
 done
 
 # ---------------------------------------------------------------------------
-# Resolve required inputs from CLI args, falling back to .workshop/context.json
+# Resolve required inputs from CLI args, then complete context, then the
+# pre-Terraform recovery file written before setup can create any resources.
 # ---------------------------------------------------------------------------
+
+read_context_defaults() {
+  local source_file="$1"
+  [[ -z "${SUBSCRIPTION_ID}" ]] && SUBSCRIPTION_ID="$(jq -r '.subscription_id // empty' "${source_file}")"
+  [[ -z "${RESOURCE_GROUP_NAME}" ]] && RESOURCE_GROUP_NAME="$(jq -r '.resource_group_name // empty' "${source_file}")"
+  [[ -z "${TRAVEL_API_IMAGE_REF}" ]] && TRAVEL_API_IMAGE_REF="$(jq -r '.terraform_inputs.travel_api_image_ref // empty' "${source_file}")"
+  [[ -z "${LOCATION}" ]] && LOCATION="$(jq -r '.location // empty' "${source_file}")"
+  [[ -z "${SOURCE_BASE}" ]] && SOURCE_BASE="$(jq -r '.source_base // empty' "${source_file}")"
+  [[ -z "${OPTIMIZER_MODEL_VERSION}" ]] && OPTIMIZER_MODEL_VERSION="$(jq -r '.terraform_inputs.optimizer_model_version // empty' "${source_file}")"
+  [[ -z "${PRIMARY_MODEL_VERSION}" ]] && PRIMARY_MODEL_VERSION="$(jq -r '.terraform_inputs.primary_model_version // empty' "${source_file}")"
+  [[ -z "${EMBEDDING_MODEL_VERSION}" ]] && EMBEDDING_MODEL_VERSION="$(jq -r '.terraform_inputs.embedding_model_version // empty' "${source_file}")"
+  return 0
+}
 
 if [[ -f "${CONTEXT_FILE}" ]]; then
   echo "==> Reading defaults from ${CONTEXT_FILE}..." >&2
-  [[ -z "${SUBSCRIPTION_ID}" ]] && SUBSCRIPTION_ID="$(jq -r '.subscription_id // empty' "${CONTEXT_FILE}")"
-  [[ -z "${RESOURCE_GROUP_NAME}" ]] && RESOURCE_GROUP_NAME="$(jq -r '.resource_group_name // empty' "${CONTEXT_FILE}")"
-  [[ -z "${TRAVEL_API_IMAGE_REF}" ]] && TRAVEL_API_IMAGE_REF="$(jq -r '.terraform_inputs.travel_api_image_ref // empty' "${CONTEXT_FILE}")"
-  [[ -z "${LOCATION}" ]] && LOCATION="$(jq -r '.location // empty' "${CONTEXT_FILE}")"
-  [[ -z "${SOURCE_BASE}" ]] && SOURCE_BASE="$(jq -r '.source_base // empty' "${CONTEXT_FILE}")"
-  [[ -z "${OPTIMIZER_MODEL_VERSION}" ]] && OPTIMIZER_MODEL_VERSION="$(jq -r '.terraform_inputs.optimizer_model_version // empty' "${CONTEXT_FILE}")"
-  [[ -z "${PRIMARY_MODEL_VERSION}" ]] && PRIMARY_MODEL_VERSION="$(jq -r '.terraform_inputs.primary_model_version // empty' "${CONTEXT_FILE}")"
-  [[ -z "${EMBEDDING_MODEL_VERSION}" ]] && EMBEDDING_MODEL_VERSION="$(jq -r '.terraform_inputs.embedding_model_version // empty' "${CONTEXT_FILE}")"
-else
-  echo "==> No ${CONTEXT_FILE} found; relying solely on CLI arguments." >&2
+  read_context_defaults "${CONTEXT_FILE}"
+fi
+if [[ -f "${RECOVERY_CONTEXT_FILE}" ]]; then
+  if [[ ! -f "${CONTEXT_FILE}" ]]; then
+    echo "==> No complete ${CONTEXT_FILE} found; reading cleanup inputs from ${RECOVERY_CONTEXT_FILE}..." >&2
+  fi
+  read_context_defaults "${RECOVERY_CONTEXT_FILE}"
+fi
+if [[ ! -f "${CONTEXT_FILE}" && ! -f "${RECOVERY_CONTEXT_FILE}" ]]; then
+  echo "==> No ${CONTEXT_FILE} or ${RECOVERY_CONTEXT_FILE} found; relying solely on CLI arguments." >&2
 fi
 
 if [[ -z "${SUBSCRIPTION_ID}" || -z "${RESOURCE_GROUP_NAME}" || -z "${TRAVEL_API_IMAGE_REF}" ]]; then
-  echo "${SCRIPT_NAME}: could not resolve --subscription/--resource-group/--travel-api-image-ref from arguments or ${CONTEXT_FILE}." >&2
+  echo "${SCRIPT_NAME}: could not resolve --subscription/--resource-group/--travel-api-image-ref from arguments or setup context files." >&2
   usage >&2
   exit 1
 fi
 if [[ -z "${LOCATION}" ]]; then
-  echo "${SCRIPT_NAME}: could not resolve the deployment location. Pass --location, restore ${CONTEXT_FILE}, or re-run scripts/setup.sh." >&2
+  echo "${SCRIPT_NAME}: could not resolve the deployment location. Pass --location, restore a setup context file, or re-run scripts/setup.sh." >&2
   exit 1
 fi
 if [[ -z "${SOURCE_BASE}" ]]; then
-  echo "${SCRIPT_NAME}: could not resolve source_base. Pass --source-base or restore ${CONTEXT_FILE}." >&2
+  echo "${SCRIPT_NAME}: could not resolve source_base. Pass --source-base or restore a setup context file." >&2
   exit 1
 fi
 if [[ -z "${OPTIMIZER_MODEL_VERSION}" ]]; then
-  echo "${SCRIPT_NAME}: could not resolve optimizer_model_version. Pass --optimizer-model-version or restore ${CONTEXT_FILE}; it has no Terraform default and must match what was applied." >&2
+  echo "${SCRIPT_NAME}: could not resolve optimizer_model_version. Pass --optimizer-model-version or restore a setup context file; it has no Terraform default and must match what was applied." >&2
   exit 1
 fi
 
@@ -295,7 +311,7 @@ fi
 # ---------------------------------------------------------------------------
 
 echo "==> [4/4] Removing local .workshop/ state and Terraform state files..." >&2
-rm -f "${WORKSHOP_DIR}/context.json" "${WORKSHOP_DIR}/.env" "${WORKSHOP_DIR}/tfplan" "${WORKSHOP_DIR}/preflight-report.json"
+rm -f "${WORKSHOP_DIR}/context.json" "${RECOVERY_CONTEXT_FILE}" "${WORKSHOP_DIR}/.env" "${WORKSHOP_DIR}/tfplan" "${WORKSHOP_DIR}/preflight-report.json"
 rm -f "${INFRA_DIR}/terraform.tfstate" "${INFRA_DIR}/terraform.tfstate.backup"
 
 echo "Destroy complete. Resource group '${RESOURCE_GROUP_NAME}' was preserved (never deleted by this workshop's automation)." >&2

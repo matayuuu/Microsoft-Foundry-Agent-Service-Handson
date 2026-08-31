@@ -269,3 +269,18 @@ def test_setup_uses_state_recovering_plan_preparation() -> None:
 
     assert '"${SCRIPT_DIR}/prepare_terraform_plan.py"' in setup_text
     assert setup_text.count("prepare_terraform_plan") >= 3
+
+
+def test_setup_persists_cleanup_inputs_before_terraform_can_create_resources() -> None:
+    setup_text = SETUP_SH.read_text(encoding="utf-8")
+
+    write_index = setup_text.index(
+        'write_json_atomically "${RECOVERY_CONTEXT_FILE}" "${RESOLVED_INPUTS_JSON}"'
+    )
+    terraform_init_index = setup_text.index(
+        'retry 3 10 terraform -chdir="${INFRA_DIR}" init -input=false -upgrade=false'
+    )
+
+    assert 'RECOVERY_CONTEXT_FILE="${WORKSHOP_DIR}/terraform-inputs.json"' in setup_text
+    assert 'setup_status: "inputs-resolved"' in setup_text
+    assert write_index < terraform_init_index

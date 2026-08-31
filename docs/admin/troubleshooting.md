@@ -114,8 +114,13 @@ existing state. If it still leaves resources, inspect the exact resource and err
 can desynchronize local state from the real resource group and complicate a later
 retry.
 
-If setup failed before `.workshop/context.json` was written, pass the original inputs
-explicitly so Terraform can destroy the partial state:
+If setup failed before `.workshop/context.json` was written, run
+`./scripts/destroy.sh` normally. Setup persists the resolved, non-secret Terraform
+inputs to `.workshop/terraform-inputs.json` before Terraform can create resources, and
+destroy uses that file automatically.
+
+Only if both context files are unavailable, pass the original inputs explicitly so
+Terraform can destroy the partial state:
 
 ```bash
 ./scripts/destroy.sh \

@@ -27,8 +27,10 @@ They assert the behavior this hardening pass requires:
 * If the `az resource list` call itself fails, the script fails the same
   fail-safe way -- exits non-zero, touches no local state -- rather than
   assuming an unqueried resource group is clean.
-* A partial setup can be destroyed without context.json when all required
-  Terraform inputs are supplied explicitly on the command line.
+* A partial setup can be destroyed without context.json by using the resolved
+  Terraform inputs setup.sh persisted before Terraform started.
+* Explicit CLI inputs remain available as a last-resort recovery path when
+  neither setup context file exists.
 * The resource group itself is never referenced in any `az resource
   group delete`/similar call by this script (defense in depth: the fake `az`
   function fails loudly on any unexpected subcommand, so an accidental RG
@@ -159,6 +161,11 @@ def fixture_repo(tmp_path: Path) -> Path:
         },
     }
     (workshop_dir / "context.json").write_text(json.dumps(context), encoding="utf-8")
+    recovery_context = {**context, "setup_status": "inputs-resolved"}
+    recovery_context.pop("terraform_outputs", None)
+    (workshop_dir / "terraform-inputs.json").write_text(
+        json.dumps(recovery_context), encoding="utf-8"
+    )
     (workshop_dir / ".env").write_text("FOO=bar\n", encoding="utf-8")
 
     return repo_root
@@ -183,6 +190,7 @@ def test_clean_teardown_removes_all_local_state_and_exits_zero(fixture_repo: Pat
     workshop_dir = fixture_repo / ".workshop"
     infra_dir = fixture_repo / "infra"
     assert not (workshop_dir / "context.json").exists()
+    assert not (workshop_dir / "terraform-inputs.json").exists()
     assert not (workshop_dir / ".env").exists()
     assert not (infra_dir / "terraform.tfstate").exists()
     assert not (infra_dir / "terraform.tfstate.backup").exists()
@@ -198,6 +206,7 @@ def test_remaining_resources_fail_and_preserve_all_local_state(fixture_repo: Pat
     workshop_dir = fixture_repo / ".workshop"
     infra_dir = fixture_repo / "infra"
     assert (workshop_dir / "context.json").exists()
+    assert (workshop_dir / "terraform-inputs.json").exists()
     assert (infra_dir / "terraform.tfstate").exists()
     assert (infra_dir / "terraform.tfstate.backup").exists()
 
@@ -212,13 +221,27 @@ def test_resource_list_call_failure_fails_safe_and_preserves_all_local_state(
     workshop_dir = fixture_repo / ".workshop"
     infra_dir = fixture_repo / "infra"
     assert (workshop_dir / "context.json").exists()
+    assert (workshop_dir / "terraform-inputs.json").exists()
     assert (infra_dir / "terraform.tfstate").exists()
     assert (infra_dir / "terraform.tfstate.backup").exists()
 
 
-def test_cli_overrides_recover_partial_setup_without_context(fixture_repo: Path) -> None:
+def test_recovery_inputs_destroy_partial_setup_without_complete_context(
+    fixture_repo: Path,
+) -> None:
     workshop_dir = fixture_repo / ".workshop"
     (workshop_dir / "context.json").unlink()
+    result = _run_destroy(fixture_repo, "empty")
+
+    assert result.returncode == 0, result.stderr
+    assert "reading cleanup inputs from" in result.stderr
+    assert not (fixture_repo / "infra" / "terraform.tfstate").exists()
+
+
+def test_cli_overrides_recover_partial_setup_without_context_files(fixture_repo: Path) -> None:
+    workshop_dir = fixture_repo / ".workshop"
+    (workshop_dir / "context.json").unlink()
+    (workshop_dir / "terraform-inputs.json").unlink()
     env = dict(os.environ)
     env["FAKE_AZ_RESOURCE_LIST_MODE"] = "empty"
     image_ref = "ghcr.io/example/travel-ops-api@sha256:" + "0" * 64
