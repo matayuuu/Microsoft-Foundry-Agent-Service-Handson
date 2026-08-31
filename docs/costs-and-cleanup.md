@@ -39,7 +39,9 @@ Run:
 
 The script must:
 
-1. Read `.workshop/context.json` and confirm the selected subscription and RG.
+1. Read `.workshop/context.json`, or the pre-Terraform
+   `.workshop/terraform-inputs.json` recovery file when setup stopped early, and
+   confirm the selected subscription and RG.
 2. Delete the workshop Hosted Agent and its versions through the Foundry SDK.
 3. Delete SDK-managed Toolbox objects when the API supports deterministic deletion.
 4. Run `terraform destroy` against the existing state.
@@ -49,9 +51,10 @@ The script must:
 
 If cleanup fails, do not delete Terraform state. Follow
 [administrator troubleshooting](admin/troubleshooting.md) with the exact resource and
-operation reported by the script. If setup failed before `.workshop/context.json` was
-written, `destroy.sh` accepts explicit location and model-version arguments for
-recovering the partial Terraform state.
+operation reported by the script. `setup.sh` writes
+`.workshop/terraform-inputs.json` before Terraform can create resources, so
+`destroy.sh` can normally recover a partial setup without arguments. Explicit inputs
+remain available if both setup context files are unavailable.
 
 ## State handling
 
