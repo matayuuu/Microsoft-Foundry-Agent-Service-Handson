@@ -13,8 +13,9 @@
 #   5. writes non-secret .workshop/context.json and .workshop/.env
 #   6. prints portal links
 #
-# Safe to re-run: every step is idempotent (terraform apply reconciles to the
-# same state, bootstrap_data.py merge-or-uploads documents by id).
+# Safe to re-run: setup recovers deterministic workshop resources that Azure
+# created without a local Terraform state entry, terraform apply reconciles the
+# resulting state, and bootstrap_data.py merge-or-uploads documents by id.
 #
 # --travel-api-image-ref is OPTIONAL. When omitted, this script resolves the
 # immutable @sha256 digest for a public default GHCR tag itself (anonymous
@@ -325,6 +326,15 @@ retry() {
 }
 
 TERRAFORM_APPLY_ATTEMPT=0
+prepare_terraform_plan() {
+  "${PYTHON_BIN}" "${SCRIPT_DIR}/prepare_terraform_plan.py" \
+    --terraform-dir "${INFRA_DIR}" \
+    --plan-file "${WORKSHOP_DIR}/tfplan" \
+    --subscription "${SUBSCRIPTION_ID}" \
+    --resource-group "${RESOURCE_GROUP_NAME}" \
+    -- "${TF_VAR_ARGS[@]}"
+}
+
 apply_terraform_plan() {
   TERRAFORM_APPLY_ATTEMPT=$((TERRAFORM_APPLY_ATTEMPT + 1))
 
@@ -333,8 +343,7 @@ apply_terraform_plan() {
   # plan for the first attempt.
   if [[ ${TERRAFORM_APPLY_ATTEMPT} -gt 1 ]]; then
     echo "    Refreshing Terraform plan before apply attempt ${TERRAFORM_APPLY_ATTEMPT}..." >&2
-    if ! terraform -chdir="${INFRA_DIR}" plan -input=false \
-      -out="${WORKSHOP_DIR}/tfplan" "${TF_VAR_ARGS[@]}"; then
+    if ! prepare_terraform_plan; then
       return 1
     fi
   fi
@@ -388,6 +397,15 @@ fi
 echo "    Resolved region: ${RESOLVED_LOCATION}" >&2
 echo "    Resolved optimizer model version: ${OPTIMIZER_MODEL_VERSION}" >&2
 
+PYTHON_BIN="${WORKSHOP_PYTHON:-${REPO_ROOT}/.venv/bin/python}"
+if [[ ! -x "${PYTHON_BIN}" ]]; then
+  PYTHON_BIN="$(command -v python3 || true)"
+fi
+if [[ -z "${PYTHON_BIN}" || ! -x "${PYTHON_BIN}" ]]; then
+  echo "${SCRIPT_NAME}: workshop Python environment not found. Rebuild the Codespace or run 'make install'." >&2
+  exit 1
+fi
+
 # ---------------------------------------------------------------------------
 # Step 2: terraform init/plan/apply
 # ---------------------------------------------------------------------------
@@ -411,7 +429,7 @@ fi
 
 retry 3 10 terraform -chdir="${INFRA_DIR}" init -input=false -upgrade=false
 
-terraform -chdir="${INFRA_DIR}" plan -input=false -out="${WORKSHOP_DIR}/tfplan" "${TF_VAR_ARGS[@]}"
+prepare_terraform_plan
 
 if [[ "${AUTO_APPROVE}" != "true" ]]; then
   read -r -p "Apply the plan above to resource group '${RESOURCE_GROUP_NAME}'? [y/N] " CONFIRM
@@ -439,15 +457,6 @@ trap 'rm -f "${TF_OUTPUTS_FILE}"' EXIT
 # ---------------------------------------------------------------------------
 # Step 3: bootstrap_data.py
 # ---------------------------------------------------------------------------
-
-PYTHON_BIN="${WORKSHOP_PYTHON:-${REPO_ROOT}/.venv/bin/python}"
-if [[ ! -x "${PYTHON_BIN}" ]]; then
-  PYTHON_BIN="$(command -v python3 || true)"
-fi
-if [[ -z "${PYTHON_BIN}" || ! -x "${PYTHON_BIN}" ]]; then
-  echo "${SCRIPT_NAME}: workshop Python environment not found. Rebuild the Codespace or run 'make install'." >&2
-  exit 1
-fi
 
 MANIFEST_PATH="${REPO_ROOT}/data/manifest.json"
 if [[ "${SKIP_BOOTSTRAP}" == "true" ]]; then
