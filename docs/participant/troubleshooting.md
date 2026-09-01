@@ -1,134 +1,175 @@
-# Participant troubleshooting
+# 参加者向けトラブルシューティング
 
-このページは**参加者**向けです。subscription 単位の操作が必要な問題は
-[管理者向けトラブルシューティング](../admin/troubleshooting.md)に切り分けています。
-迷ったときは、まず [Lab 0](../../labs/00-overview.md) の Portal/Toolkit/SDK 境界と
-GA/Preview 状態の表で、今使っている機能が preview かどうかを確認してください。
+該当する症状だけを確認してください。Subscription scope の対応が必要な場合は
+[管理者向けトラブルシューティング](../admin/troubleshooting.md)へ進みます。
 
-## `preflight.sh` / `setup.sh`（Lab 1）
+## Preflight / setup
 
-### `preflight.sh` が Owner ロール不足で失敗する
+### Owner role がない
 
-resource group 名・subscription ID が管理者から渡されたものと一致しているか、
-`az account show` の `user.name` が管理者に Owner を付与してもらった Entra
-アカウントと一致しているかを確認してください。一致していてもロール伝播に数分
-かかることがあるため、数分待って再実行してください。それでも失敗する場合は
-[管理者向けトラブルシューティング](../admin/troubleshooting.md)へ相談してください
-— resource provider 登録や quota は subscription 単位の操作で、参加者自身では
-解決できません。
+Subscription と resource group 名、`az account show` の user を確認します。
+Role 付与直後は反映に数分かかることがあります。解消しない場合は管理者へ連絡します。
 
-### `setup.sh` が途中で失敗した
+### Resource provider / quota で fail する
 
-`setup.sh` はすべてのステップが idempotent です。エラーメッセージを読んで、
-指摘された問題を直してから、**同じコマンドでそのまま再実行**してください。
-Azure 上では作成済みなのにローカル Terraform state に記録されなかった workshop
-resource や RBAC assignment がある場合も、所有タグと完全一致する assignment を検証して
-state に再取り込みしてから plan を作り直します。
-Travel Ops API の既定 `v1.0.3` image が未公開の場合は、maintainer が
-`publish-travel-api.yml` で GHCR package を Public にしてから再実行します。
-管理者から immutable digest を受け取った場合だけ、
-`--travel-api-image-ref ghcr.io/.../...@sha256:<64桁の16進数>` で上書きできます。
-`terraform apply` は同じ状態に
-収束し、データ投入は id ベースの merge-or-upload なので再実行しても安全です。
-`Resource already exists` / `RoleAssignmentExists` が解消しない場合は、resource や
-`terraform.tfstate` を手動削除せず、出力全体を管理者へ渡してください。
+参加者は変更できません。`preflight.sh` の出力を管理者へ渡してください。
 
-### Storage の `AuthorizationFailure` が表示される
+### Search の `InsufficientResourcesAvailable`
 
-2026-08-31 より前の checkout は規程ファイルを Storage にも複製していたため、
-組織の Azure Policy が Storage の public access を無効化すると Codespaces からの
-データ投入に失敗しました。現在の本編は Storage を使わず、規程本文を Azure AI Search
-へ直接投入します。`main` を更新して同じ `setup.sh` を再実行してください。旧 Storage
-resource は Terraform の plan に削除対象として表示され、承認後に安全に削除されます。
+指定 region で新しい Azure AI Search service を作成できません。別 region で setup を
+再実行します。
 
-### `.workshop/context.json` に期待した output キーが無い
+```bash
+./scripts/setup.sh \
+  --subscription "<subscription-id>" \
+  --resource-group "<resource-group>" \
+  --location swedencentral
+```
 
-`jq '.terraform_outputs | keys' .workshop/context.json` で確認し、無ければ
-`./scripts/setup.sh` を再実行して再生成してください（infra に変更があった
-可能性があります）。
+### Setup が途中で失敗した
 
-## Portal（Lab 2〜4、Lab 6）
+同じ command を再実行します。Terraform state、Azure resource、`.workshop/` を手動で
+削除しないでください。Setup は作成済み resource を確認して続行します。
 
-### 見ている画面が手順と違う気がする
+### `.workshop/context.json` がない
 
-このハンズオンは Microsoft Foundry **new**（プロジェクトベースの新しい体験）
-を対象にしています。古い「Azure AI Studio」「Foundry classic」（hub ベース）の
-画面を開いていないか確認してください。project を開く際は、必ず
-`.workshop/context.json` の `foundry_project_name` と一致する project を
-選んでいるか確認してください。
+Setup が最後まで完了していません。`./scripts/setup.sh ...` を再実行します。
 
-### 手順に書かれた Portal の操作が見つからない
+## Portal
 
-Portal の UI は継続的に更新されます。[feature-support-matrix.md](../feature-support-matrix.md)
-に書かれている「Portal 対応」の記載が実際と異なる場合（新しく対応した、
-または対応が外れた）は、いったん Toolkit/SDK での代替手順（各 Lab に記載）を
-試し、後で報告してください。
+### 教材と画面が違う
 
-### Foundry IQ の agentic retrieval が preview 表示のまま動かない
+- `https://ai.azure.com` を開いている
+- Foundry **new** を使っている
+- `.workshop/context.json` と同じ account / project を開いている
+- Portal の表示言語が English である
 
-preview 機能のため、region や model の組み合わせによって挙動が制限されることが
-あります。`primary_model_deployment_name`（`gpt-4.1`）を query planner に
-指定しているか、reasoning effort が `low` になっているかを確認してください。
-それでも解決しない場合は Lab 3 の「index を直接アタッチする」手順（Foundry IQ を
-使わない単純検索）に一時的に切り替えて、他の Lab を先に進めてください。
+を確認します。
 
-### Agent Optimizer ウィザードで候補が生成されない・エラーになる
+### Foundry IQ を選んでも knowledge base がない
 
-preview 機能です。`optimizer_model_deployment_name` の値が実際に project に
-デプロイされている `gpt-5` 系 model と一致しているか確認してください。
-それでも解決しない場合は、Lab 6 の「live 実行ができない場合」の節に従って、
-講師が用意する説明・資料を参照しながら手順の流れを理解する形で進めてください。
+Agent 画面から先に追加しようとしています。
+**Build > Knowledge > Create knowledge base** で knowledge base を作成してから、
+Agent の **Knowledge > Add > Foundry IQ** に戻ります。
 
-## `create_toolbox.py` / `run_evaluation.py`（Lab 4・Lab 5）
+### Foundry IQ の model を選べない
 
-これら 2 つのスクリプトは、失敗の原因を `WorkshopContextError` として
-分かりやすいメッセージで標準エラーに出力し、終了コード 2（環境・入力の問題）
-または 1（Azure 呼び出し自体の失敗）を返します。トレースバックではなく
-メッセージ本文を読んでください。
+Portal の model picker が対応する deployment を選びます。このハンズオンでは
+`.workshop/context.json` の `optimizer_model_deployment_name` を使います。
 
-### `context file not found` / `.workshop/context.json is not valid JSON`
+## Citation link
 
-Lab 1 の `setup.sh` をまだ実行していないか、実行したディレクトリと違う場所で
-スクリプトを実行しています。リポジトリのルートで実行するか、
-`--context <path>` で明示的にパスを指定してください。
+### Citation が Search service のトップを開く
 
-### `terraform output '...' not found in .workshop/context.json`
+Index に標準の retrievable `url` field が入っていない状態です。最新の repository で
+setup を再実行し、data bootstrap を更新します。
 
-infra に変更があった環境で `.workshop/context.json` が古いままの可能性があります。
-`./scripts/setup.sh` を再実行してください。
+```bash
+./scripts/setup.sh \
+  --subscription "<subscription-id>" \
+  --resource-group "<resource-group>"
+```
 
-### `could not fetch OpenAPI spec from https://.../openapi.json`（`create_toolbox.py`）
+直らない場合は、Azure AI Search の `contoso-travel-policy` index で `url` field が
+retrievable かを管理者へ確認してもらいます。
 
-Travel Ops API（`travel_api_fqdn`）がまだ起動しきっていない可能性があります
-（Container Apps はスケールツーゼロのため、初回アクセス時にコールドスタートが
-発生します）。数十秒待ってから再実行するか、先に
-`curl https://<travel_api_fqdn>/health` で疎通を確認してください。
+## Toolbox Notebook
 
-### `evaluation run did not reach a terminal state within ...s`（`run_evaluation.py`）
+### `Python (Foundry Workshop)` kernel がない
 
-評価の実行に既定のタイムアウトより時間がかかっています。Foundry portal の
-Evaluations 画面で run の状態を直接確認するか、`--timeout` を大きくして
-再実行してください。
+Codespace を rebuild します。急ぐ場合は terminal で次を実行します。
 
-### Foundry User ロールに関するエラー
+```bash
+.venv/bin/python -m ipykernel install \
+  --user \
+  --name foundry-workshop \
+  --display-name "Python (Foundry Workshop)"
+```
 
-`create_toolbox.py` / `run_evaluation.py` が呼び出す API はどちらも、参加者と
-project の managed identity の両方に **Foundry User** ロールが必要ですが、
-これは `infra/rbac.tf` によって `setup.sh` の時点ですでに付与されています。
-権限エラーが出る場合は、ロール伝播待ちの可能性があるため数分待って再実行するか、
-[preflight.sh](../../labs/01-setup.md) を再実行してロール状態を確認してください。
+### `context file not found`
 
-## Cleanup（Lab 8）
+Lab 1 の setup を完了し、repository 内の
+`notebooks/04-create-toolbox.ipynb` を開いてください。
 
-`./scripts/destroy.sh` の失敗時は [costs-and-cleanup.md](../costs-and-cleanup.md#cleanup-order)
-の手順と、[管理者向けトラブルシューティング](../admin/troubleshooting.md)の
-該当節を参照してください。**`.workshop/` の状態ファイルを手動で消さないで
-ください** — 失敗した場合は残しておくことで、同じコマンドを安全に再実行できます。
+### OpenAPI の取得が timeout する
 
-## See also
+Container App の cold start 中です。Health check 後に該当 cell を再実行します。
 
-- [Participant prerequisites](prerequisites.md)
-- [Architecture](../architecture.md)
-- [Feature support matrix](../feature-support-matrix.md)
-- [Costs and cleanup](../costs-and-cleanup.md)
-- [Administrator troubleshooting](../admin/troubleshooting.md)
+```bash
+curl -s "https://$(jq -r '.terraform_outputs.travel_api_fqdn.value' \
+  .workshop/context.json)/health"
+```
+
+### Toolbox の作成が 403 になる
+
+Role 反映に数分かかることがあります。少し待って cell を再実行します。解消しない場合は
+Lab 1 の preflight 出力とともに管理者へ連絡します。
+
+## Evaluation / Optimizer
+
+### Synthetic data を生成できない
+
+Portal preview で `Unable to create data source configuration from item schema` が表示される場合が
+あります。Lab 5 は **Existing dataset** の `contoso-travel-eval-live-subset` を使ってください。
+一覧に無い場合は Lab 1 の setup を同じ引数で再実行します。
+
+### Evaluation が終わらない
+
+**Evaluations** 一覧で status を確認し、数分後に refresh します。同じ run を重複して
+submit しないでください。
+
+### Optimizer が candidate を生成しない
+
+`.workshop/context.json` の `optimizer_model_deployment_name` の値を選んでいるか確認します。
+Criteria は built-in evaluator ではなく **Contoso Travel Rubric** を選択します。
+Agent Optimizer は preview のため、service error の場合は run を増やさず講師へ連絡します。
+
+## Hosted Agent
+
+### `Python (Foundry Hosted Agent)` kernel がない
+
+Codespace を rebuild します。急ぐ場合は terminal で次を実行します。
+
+```bash
+src/hosted-agent/.venv/bin/python -m ipykernel install \
+  --user \
+  --name foundry-hosted-agent \
+  --display-name "Python (Foundry Hosted Agent)"
+```
+
+### Notebook の model call が 404 になる
+
+`.workshop/context.json` が現在の環境のものか確認し、Notebook を restart して上から
+再実行します。
+
+### Hosted Agent deploy が timeout / failed になる
+
+**Build > Agents** で `contoso-travel-hosted-planner` の status と build error を確認します。
+Source を変更せずに deploy command を何度も実行しないでください。
+
+## Trace
+
+### Trace が表示されない
+
+Agent を 1 回実行し、数分待って対象 agent の **Traces** を開き直します。
+Application Insights connection は setup で作成済みです。
+
+Hosted Agent の **Log stream** に `Monitoring Metrics Publisher` または `Forbidden` が表示される
+場合は、deploy 直後の role 反映を数分待ってから 1 回だけ再実行します。解消しない場合は
+deploy command の出力を講師へ渡してください。
+
+## Cleanup
+
+### `destroy.sh` が失敗した
+
+表示された原因を修正して、同じ command を再実行します。
+
+```bash
+./scripts/destroy.sh
+```
+
+Terraform state と `.workshop/` は cleanup 完了の確認に必要です。手動で削除しないでください。
+
+## 戻る
+
+[Lab 0 — 全体像と進め方](../../labs/00-overview.md)

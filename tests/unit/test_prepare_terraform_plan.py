@@ -169,6 +169,18 @@ def test_fresh_resource_group_plans_without_recovery(tmp_path: Path) -> None:
     )
 
 
+def test_foundry_connection_not_found_response_is_treated_as_absent() -> None:
+    result = _result(
+        returncode=1,
+        stderr=(
+            "Connection demo cannot be found "
+            '({"error":{"innerError":{"code":"NotFoundError"}},"statusCode":404})'
+        ),
+    )
+
+    assert prepare_terraform_plan._is_not_found(result)
+
+
 def test_recovers_existing_project_search_and_role_assignment(tmp_path: Path) -> None:
     project_address = "azapi_resource.project"
     search_address = "azurerm_search_service.workshop"

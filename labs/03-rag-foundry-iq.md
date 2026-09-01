@@ -2,83 +2,140 @@
 
 ## ゴール
 
-構築済みの Azure AI Search index `contoso-travel-policy`
-（`data/manifest.json` の規程文書 10 件がすでに投入済みです）を使って、まず
-Prompt Agent に**直接** Azure AI Search をアタッチする方法を体験し、次に
-**Foundry IQ** の knowledge source / knowledge base を同じ index の上に作成して、
-単純検索と agentic retrieval の違いを比較します。
+同じ規程 index を 2 つの方法で agent に接続し、検索過程と引用を比較します。
+
+1. **Azure AI Search tool**: index を直接検索
+2. **Foundry IQ knowledge base**: 質問を分解して agentic retrieval
 
 > [!WARNING]
-> **Preview**: Foundry IQ の agentic retrieval（knowledge base 経由のマルチホップ検索）
-> は、Microsoft Foundry portal / Azure portal のどちらの画面から使った場合でも、
-> 現時点では preview 機能です（[feature-support-matrix.md](../docs/feature-support-matrix.md)
-> 参照）。挙動やコスト計算方法は今後変わる可能性があります。
+> Microsoft Foundry Portal から作成する Foundry IQ の agentic retrieval は preview です。
+> 実行ごとに Search と query-planning model の料金が発生します。
 
-## 1. index を直接アタッチする（改善前: 単純検索）
+## 使用する値
 
-Prompt Agent `contoso-travel-assistant` の編集画面で、knowledge source として
-Azure AI Search を追加します。
+```bash
+jq -r '
+  .terraform_outputs
+  | {
+      search_service: .search_service_name.value,
+      search_connection: "contoso-travel-search",
+      search_index: "contoso-travel-policy",
+      knowledge_model: .optimizer_model_deployment_name.value
+    }
+' .workshop/context.json
+```
 
-- **connection**: `.workshop/context.json` の `search_connection_name` 出力
-- **index**: `contoso-travel-policy`
+## 1. Azure AI Search tool を接続する
 
-保存すると新しい version が作られます。Playground で、単一の規程文書だけで
-答えられる質問（`data/eval/live_subset.jsonl` の `category: "direct_policy_fact"`、
-例えば日帰り出張の日当額）を試してください。今度は具体的な数字を、出典（citation）
-付きで返せるはずです。
+1. **Build > Agents** から `contoso-travel-assistant` を開きます。
+2. **Tools > Add > Add tools** を選択します。
+3. **Azure AI search** を選び、**Add tool** を選択します。
+4. Search service の選択画面が表示された場合は
+   `search_service_name` の値（例: `srch-fdyws-...`）を選択します。
+5. **Select a search index** で `contoso-travel-policy` を選択します。
 
-次に、複数の規程文書にまたがる質問（`category: "multi_hop"`、例えば「国際線
-ビジネスクラス利用の飛行時間条件と、必要な承認者」）を試してください。単純な
-Azure AI Search 検索は 1 回のクエリで最も関連度の高い断片を返すため、
-2 つの条件のうち片方しか拾えない、あるいは根拠文書を統合できないことがあります
-— これが `v1_failure_mode` に書かれている挙動です。
+   ![Azure AI Search の index 選択](../docs/images/lab03-ai-search-picker.png)
 
-## 2. Foundry IQ の knowledge source / knowledge base を作る
+   `contoso-travel-search` は project connection 名です。Agent の tool picker で
+   service 名を求められた場合は、connection 名ではなく `search_service_name` を使います。
 
-同じ既存 index の上に、Foundry IQ の knowledge source を新規作成します。
+6. **Save** を選択します。
 
-- **knowledge source の種類**: Azure AI Search（既存 index を参照）
-- **参照する index**: `contoso-travel-policy`（新しい index やコネクションを
-  作る必要はありません — すでにある index をそのまま参照します）
+## 2. Direct search と citation を確認する
 
-knowledge source を作成したら、それを束ねる knowledge base を作成します。
+**Playground** で次の質問を送ります。
 
-- **query planner model**: `.workshop/context.json` の
-  `primary_model_deployment_name`（`gpt-4.1`）
-- **reasoning effort**: **low**（コストと待ち時間を抑えるため。
-  [costs-and-cleanup.md](../docs/costs-and-cleanup.md) の推奨値）
+```text
+東京から大阪へ日帰り出張する場合、食事の日当はいくらですか?
+```
 
-作成した knowledge base を、`contoso-travel-assistant` の新しい version に
-knowledge source として接続します（Step 1 で直接アタッチした Azure AI Search
-index の代わりに、knowledge base を使う version です）。
+回答が `1,500円` で、引用が表示されることを確認します。引用を開くと、
+この repository の `data/policies/04-per-diem-meals.md` が表示されます。
+Search service のトップ URL が開く場合は
+[citation のトラブルシューティング](../docs/participant/troubleshooting.md#citation-link)
+を確認してください。
 
-## 3. Direct 検索 と Agentic 検索 の比較
+続けて比較用の質問を送ります。
 
-同じ multi-hop の質問を、今度は knowledge base 経由（agentic retrieval）の
-version で試してください。Playground の応答に付随する **activity log**
-（またはそれに相当する検索過程の表示）を開き、次を確認します。
+```text
+国際線でビジネスクラスを利用するには、片道飛行時間が何時間以上である必要があり、
+誰の事前承認が必要ですか?
+```
 
-- 何回クエリが発行されたか（1 回の単純検索ではなく、複数回の計画的な検索に
-  分解されているはず)。
-- 各ステップでどの根拠文書がヒットしたか。
-- 最終回答の **citation** が、`data/eval/live_subset.jsonl` の
-  `expected_citations`（例: `policy-flights-001`, `policy-approval-process-001`)
-  に対応する複数の文書を含んでいるか。
+この時点の回答と引用数を確認しておきます。直接検索でも正答する場合があります。
+次の手順では、回答だけでなく query decomposition を比較します。
 
-Step 1（直接 index アタッチ）の応答と比較し、citation の完全性・正確性の違いを
-observe してください。
+## 3. Foundry IQ knowledge base を作成する
 
-## 4. 注意事項
+> [!IMPORTANT]
+> Agent の **Knowledge > Add** から先に **Foundry IQ** を選んでも、knowledge base が
+> まだ無いため何も表示されません。最初に **Build > Knowledge** で作成します。
 
-- 本ラボで扱う index・knowledge source・knowledge base はすべて既存の
-  `contoso-travel-policy` index を参照するだけです。新しい index を作成したり、
-  Azure AI Search の構成を変更したりする必要はありません（Terraform が既に
-  構築済みです）。
-- Agentic retrieval は Azure AI Search の retrieval トークンと、query planner
-  model のトークンの両方を消費します。reasoning effort を `low` に保ってください。
-- Portal でできる操作は上記の通りです。この Lab で Toolbox や外部ツールの話は
-  出てきません（Lab 4 の範囲です）。
+1. 左 navigation の **Build > Knowledge** を開きます。
+2. **Connection** に `contoso-travel-search` を選択します。
+3. **Create a knowledge base** を選択します。
+4. **Basic configuration** を次のように設定します。
 
-## 次のステップ
+   | 項目 | 値 |
+   |---|---|
+   | Name | `contoso-travel-knowledge-lab` |
+   | Chat completions model | `optimizer_model_deployment_name` の値 |
+   | Retrieval reasoning effort | **Low** |
+   | Output mode | **Extractive data** |
 
-[Lab 4 — Tools・Toolbox](04-tools-toolbox.md) に進んでください。
+   ![Foundry IQ knowledge base の基本設定](../docs/images/lab03-knowledge-base.png)
+
+5. **Knowledge sources (Foundry IQ) > Add sources > Azure AI Search Index** を選択します。
+6. ダイアログを次のように設定し、**Create** を選択します。
+
+   | 項目 | 値 |
+   |---|---|
+   | Knowledge source name | `contoso-travel-policy-source-lab` |
+   | Search index | `contoso-travel-policy` |
+
+   ![Azure AI Search Index を knowledge source にする](../docs/images/lab03-knowledge-source.png)
+
+7. **Save knowledge base** を選択します。
+8. 一覧で `contoso-travel-knowledge-lab` の Status が **Active** になるまで待ちます。
+
+`primary` の `gpt-4.1` は Prompt Agent では利用できますが、2026-09-01 時点の
+Portal の knowledge-base model picker では対象外です。この Lab では Portal が
+サポートする `optimizer` の `gpt-5` deployment を使います。
+**Extractive data** を選ぶことで、knowledge base は取得した原文を返し、最終回答は
+Prompt Agent が作成します。
+
+## 4. Knowledge base を agent に接続する
+
+1. **Build > Agents > contoso-travel-assistant** に戻ります。
+2. 比較条件を揃えるため、**Tools** の **Azure AI Search** で
+   **Actions > Remove** を選び、**Save** します。
+3. `contoso-travel-knowledge-lab` の詳細画面へ戻ります。
+4. **Use in an agent > contoso-travel-assistant** を選択します。
+5. Agent 画面の **Knowledge** に knowledge base が表示されたら、**Save** を選択します。
+
+## 5. Agentic retrieval を確認する
+
+Playground で同じ質問を送ります。
+
+```text
+国際線でビジネスクラスを利用するには、片道飛行時間が何時間以上である必要があり、
+誰の事前承認が必要ですか?
+```
+
+## 完了チェック
+
+- 回答に「片道 10 時間以上」が含まれる
+- 「マネージャー」と「部門 VP」の両方が含まれる
+- フライト規程と承認プロセス規程の citation がある
+- Activity の `knowledge_base_retrieve` で複数の query / source が表示される
+
+操作ラベルは 2026-09-01 時点の Foundry (new) を基準にしています。
+背景仕様は
+[What is Foundry IQ?](https://learn.microsoft.com/azure/foundry/agents/concepts/what-is-foundry-iq)
+と
+[Connect Agents to Foundry IQ](https://learn.microsoft.com/azure/foundry/agents/how-to/foundry-iq-connect)
+を参照してください。
+
+## 次の Lab
+
+[Lab 4 — Travel Ops API の Toolbox](04-tools-toolbox.md)

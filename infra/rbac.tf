@@ -108,7 +108,7 @@ resource "azurerm_role_assignment" "project_mi_privileged_monitoring_data_reader
 # Search service system-assigned managed identity grant
 #
 # Minimum role for the Azure AI Search Knowledge Base / built-in vectorizer
-# to invoke the embedding and gpt-4.1 model deployments on the Foundry
+# to invoke the embedding and gpt-5 model deployments on the Foundry
 # AIServices account without a stored API key.
 # ---------------------------------------------------------------------------
 

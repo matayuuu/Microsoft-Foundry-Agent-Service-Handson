@@ -18,6 +18,7 @@ from workflow import (
     SIMULATION_NOTICE,
     WORKFLOW_NAME,
     build_workflow,
+    ensure_simulation_notice,
     run_workflow,
 )
 
@@ -64,3 +65,29 @@ def test_workflow_as_agent_returns_only_the_final_review(
 def test_final_reviewer_is_instructed_to_include_simulation_notice() -> None:
     assert SIMULATION_NOTICE in REVIEWER_AGENT_INSTRUCTIONS
     assert SIMULATION_NOTICE in REVIEWER_RESPONSE
+
+
+def test_simulation_notice_postprocessor_is_idempotent() -> None:
+    assert ensure_simulation_notice(REVIEWER_RESPONSE) == REVIEWER_RESPONSE
+
+
+def test_workflow_appends_notice_when_reviewer_omits_it() -> None:
+    class OmittingNoticeClient(ScriptedChatClient):
+        @staticmethod
+        def _response_for(instructions: str) -> str:
+            if instructions == REVIEWER_AGENT_INSTRUCTIONS:
+                return "規程確認\n概算\n次のアクション"
+            return ScriptedChatClient._response_for(instructions)
+
+    workflow_agent = build_workflow(chat_client=OmittingNoticeClient()).as_agent(name=WORKFLOW_NAME)
+
+    response = asyncio.run(workflow_agent.run(SAMPLE_REQUEST))
+
+    assert response.text.endswith(SIMULATION_NOTICE)
+
+
+def test_final_reviewer_must_not_invent_airfare() -> None:
+    assert "航空券価格" in REVIEWER_AGENT_INSTRUCTIONS
+    assert "要見積もり" in REVIEWER_AGENT_INSTRUCTIONS
+    assert "金額を創作しない" in REVIEWER_AGENT_INSTRUCTIONS
+    assert "航空券は要見積もり" in REVIEWER_RESPONSE

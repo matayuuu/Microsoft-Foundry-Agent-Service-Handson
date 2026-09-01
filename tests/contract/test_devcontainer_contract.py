@@ -17,3 +17,4 @@ def test_devcontainer_removes_obsolete_yarn_source_before_features_install() -> 
     assert "ghcr.io/devcontainers/features/azure-cli:1" in config["features"]
     assert "ghcr.io/devcontainers/features/sshd:1" in config["features"]
     assert "ghcr.io/devcontainers/features/terraform:1" in config["features"]
+    assert "ms-toolsai.jupyter" in config["customizations"]["vscode"]["extensions"]

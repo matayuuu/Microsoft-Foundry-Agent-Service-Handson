@@ -573,6 +573,7 @@ def test_build_search_document_shape() -> None:
     assert result["citation"] == "id=policy-flights-001 | title=Flight booking policy"
     assert result["category"] == "flights"
     assert result["source_path"] == "policies/flights.md"
+    assert result["url"] == "https://resolved.example/flights.md"
     assert result["source_url"] == "https://resolved.example/flights.md"
     assert result["effective_date"] == "2026-04-01"
     assert result["applies_to"] == "all_employees"
@@ -589,12 +590,14 @@ def test_validate_search_documents_accepts_valid_documents() -> None:
         {
             "id": "a",
             "citation": "c1",
+            "url": "https://x/1",
             "source_url": "https://x/1",
             "content_vector": [0.0, 0.0],
         },
         {
             "id": "b",
             "citation": "c2",
+            "url": "https://x/2",
             "source_url": "https://x/2",
             "content_vector": [0.0, 0.0],
         },
@@ -638,11 +641,35 @@ def test_validate_search_documents_rejects_missing_citation() -> None:
 
 
 def test_validate_search_documents_rejects_missing_source_url() -> None:
-    docs = [{"id": "a", "citation": "c", "source_url": "", "content_vector": [0.0, 0.0]}]
+    docs = [
+        {
+            "id": "a",
+            "citation": "c",
+            "url": "https://x/1",
+            "source_url": "",
+            "content_vector": [0.0, 0.0],
+        }
+    ]
 
     errors = bootstrap_data.validate_search_documents(docs, expected_dimensions=2)
 
     assert any("source_url" in e for e in errors)
+
+
+def test_validate_search_documents_rejects_missing_citation_url() -> None:
+    docs = [
+        {
+            "id": "a",
+            "citation": "c",
+            "url": "",
+            "source_url": "https://x/1",
+            "content_vector": [0.0, 0.0],
+        }
+    ]
+
+    errors = bootstrap_data.validate_search_documents(docs, expected_dimensions=2)
+
+    assert any("'url'" in e for e in errors)
 
 
 def test_validate_search_documents_rejects_wrong_vector_dimensions() -> None:
@@ -650,6 +677,7 @@ def test_validate_search_documents_rejects_wrong_vector_dimensions() -> None:
         {
             "id": "a",
             "citation": "c",
+            "url": "https://x/1",
             "source_url": "https://x/1",
             "content_vector": [0.0, 0.0, 0.0],
         }
@@ -675,6 +703,8 @@ def test_build_index_fields_includes_expected_fields_and_dimensions() -> None:
     assert "effective_date" in by_name
     assert "applies_to" in by_name
     assert "source_url" in by_name
+    assert "url" in by_name
+    assert by_name["url"]["searchable"] is True
     assert by_name["chunk_index"]["sortable"] is True
     assert "heading" in by_name
     assert "token_count" in by_name
@@ -694,6 +724,7 @@ def test_to_search_index_builds_sdk_model_with_expected_shape() -> None:
         "citation",
         "category",
         "source_path",
+        "url",
         "source_url",
         "effective_date",
         "applies_to",
@@ -703,6 +734,9 @@ def test_to_search_index_builds_sdk_model_with_expected_shape() -> None:
         "token_count",
         "content_vector",
     }
+    url_field = next(field for field in index.fields if field.name == "url")
+    assert url_field.searchable is True
+    assert url_field.retrievable is True
     assert index.vector_search is not None
     assert index.semantic_search is not None
 
@@ -768,6 +802,7 @@ def test_build_documents_wires_pure_functions_with_injected_adapters(tmp_path: P
     assert search_documents[0]["content"] == "Flight content"
     assert search_documents[0]["chunk_index"] == 0
     assert search_documents[0]["blob_url"] == ("https://resolved.example/data/policies/flights.md")
+    assert search_documents[0]["url"] == "https://resolved.example/data/policies/flights.md"
     assert "https://resolved.example" in search_documents[0]["citation"]
     assert "{{WORKSHOP_SOURCE_BASE}}" not in search_documents[0]["citation"]
     assert search_documents[0]["source_url"] == "https://resolved.example/data/policies/flights.md"

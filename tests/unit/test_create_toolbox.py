@@ -14,7 +14,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import httpx
 import pytest
@@ -98,6 +98,37 @@ def test_version_matches_desired_tools_true_for_identical_spec() -> None:
     )
 
     assert create_toolbox.version_matches_desired_tools([tool_a], [tool_b])
+
+
+def test_version_matches_desired_tools_ignores_lossless_number_coercion() -> None:
+    existing_spec = json.loads(json.dumps(SAMPLE_SPEC))
+    existing_spec["components"] = {
+        "schemas": {
+            "Request": {
+                "type": "object",
+                "properties": {
+                    "traveler_count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20,
+                    }
+                },
+            }
+        }
+    }
+    desired_spec = json.loads(json.dumps(existing_spec))
+    desired_spec["components"]["schemas"]["Request"]["properties"]["traveler_count"].update(
+        {"minimum": 1.0, "maximum": 20.0}
+    )
+    auth = create_toolbox.OpenApiAnonymousAuthDetails()
+    existing = create_toolbox.build_openapi_tool(
+        tool_name="travel_ops_api", spec=existing_spec, auth=auth
+    )
+    desired = create_toolbox.build_openapi_tool(
+        tool_name="travel_ops_api", spec=desired_spec, auth=auth
+    )
+
+    assert create_toolbox.version_matches_desired_tools([existing], [desired])
 
 
 def test_version_matches_desired_tools_false_when_spec_changes() -> None:
@@ -326,6 +357,7 @@ def test_fetch_openapi_spec_rejects_non_openapi_document(monkeypatch: pytest.Mon
 class _FakeToolbox:
     def __init__(self, default_version: str) -> None:
         self.default_version = default_version
+        self.version = default_version
 
 
 class _FakeToolboxVersion:
@@ -337,6 +369,8 @@ class _FakeToolboxesOperations:
     def __init__(self, toolbox: _FakeToolbox | None, tools: list) -> None:
         self._toolbox = toolbox
         self._tools = tools
+        self.created: list[tuple[str, list, str]] = []
+        self.updated: list[tuple[str, str]] = []
 
     def get(self, name: str) -> _FakeToolbox:
         if self._toolbox is None:
@@ -345,6 +379,13 @@ class _FakeToolboxesOperations:
 
     def get_version(self, name: str, version: str) -> _FakeToolboxVersion:
         return _FakeToolboxVersion(self._tools)
+
+    def create_version(self, name: str, *, tools: list, description: str) -> _FakeToolbox:
+        self.created.append((name, tools, description))
+        return _FakeToolbox(default_version="2")
+
+    def update(self, name: str, *, default_version: str) -> None:
+        self.updated.append((name, default_version))
 
 
 class _FakeClient:
@@ -371,3 +412,180 @@ def test_get_existing_default_tools_returns_version_and_tools() -> None:
     version, tools = result
     assert version == "3"
     assert tools == [tool]
+
+
+def test_ensure_toolbox_creates_first_version_without_extra_publish() -> None:
+    desired = create_toolbox.build_openapi_tool(
+        tool_name="travel_ops_api",
+        spec=SAMPLE_SPEC,
+        auth=create_toolbox.OpenApiAnonymousAuthDetails(),
+    )
+    client = _FakeClient(toolbox=None, tools=[])
+
+    result = create_toolbox.ensure_toolbox(
+        client,
+        endpoint="https://project.example",
+        toolbox_name="contoso-travel-toolbox",
+        desired_tool=desired,
+    )
+
+    assert result["action"] == "created"
+    assert result["default_version"] == "2"
+    assert len(client.toolboxes.created) == 1
+    assert client.toolboxes.updated == []
+
+
+def test_ensure_toolbox_reuses_unchanged_default_version() -> None:
+    desired = create_toolbox.build_openapi_tool(
+        tool_name="travel_ops_api",
+        spec=SAMPLE_SPEC,
+        auth=create_toolbox.OpenApiAnonymousAuthDetails(),
+    )
+    client = _FakeClient(toolbox=_FakeToolbox(default_version="3"), tools=[desired])
+
+    result = create_toolbox.ensure_toolbox(
+        client,
+        endpoint="https://project.example",
+        toolbox_name="contoso-travel-toolbox",
+        desired_tool=desired,
+    )
+
+    assert result["action"] == "unchanged"
+    assert result["default_version"] == "3"
+    assert client.toolboxes.created == []
+
+
+def test_build_toolbox_connection_payload_uses_project_managed_identity() -> None:
+    payload = create_toolbox.build_toolbox_connection_payload(
+        connection_name="contoso-travel-toolbox-mcp",
+        toolbox_endpoint="https://project.example/toolboxes/demo/mcp?api-version=v1",
+    )
+
+    assert payload["properties"] == {
+        "authType": "ProjectManagedIdentity",
+        "category": "RemoteTool",
+        "target": "https://project.example/toolboxes/demo/mcp?api-version=v1",
+        "isSharedToAll": True,
+        "audience": "https://ai.azure.com/",
+        "metadata": {
+            "ApiType": "Azure",
+            "type": "custom_MCP",
+        },
+    }
+
+
+def test_ensure_toolbox_connection_puts_expected_arm_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    class _Credential:
+        def get_token(self, scope: str) -> SimpleNamespace:
+            calls["scope"] = scope
+            return SimpleNamespace(token="token")
+
+    class _Response:
+        def raise_for_status(self) -> None:
+            calls["raised"] = True
+
+        def json(self) -> dict[str, str]:
+            return {"name": "contoso-travel-toolbox-mcp"}
+
+    def fake_put(url: str, **kwargs: object) -> _Response:
+        calls["url"] = url
+        calls.update(kwargs)
+        return _Response()
+
+    monkeypatch.setattr(create_toolbox.httpx, "put", fake_put)
+
+    result = create_toolbox.ensure_toolbox_connection(
+        credential=_Credential(),
+        project_resource_id="/subscriptions/sub/resourceGroups/rg/providers/project",
+        connection_name="contoso-travel-toolbox-mcp",
+        toolbox_endpoint="https://project.example/toolboxes/demo/mcp?api-version=v1",
+    )
+
+    assert result == {"name": "contoso-travel-toolbox-mcp"}
+    assert calls["scope"] == "https://management.azure.com/.default"
+    assert calls["raised"] is True
+    assert calls["json"] == create_toolbox.build_toolbox_connection_payload(
+        connection_name="contoso-travel-toolbox-mcp",
+        toolbox_endpoint="https://project.example/toolboxes/demo/mcp?api-version=v1",
+    )
+
+
+class _FakeAgentOperations:
+    def __init__(self, definition: object, version: str = "13") -> None:
+        self.latest = SimpleNamespace(definition=definition, version=version)
+        self.created_definition = None
+
+    def get(self, agent_name: str) -> SimpleNamespace:
+        return SimpleNamespace(versions=SimpleNamespace(latest=self.latest))
+
+    def create_version(self, *, agent_name: str, definition: object) -> SimpleNamespace:
+        self.created_definition = definition
+        return SimpleNamespace(version="14")
+
+
+class _FakeAgentClient:
+    def __init__(self, definition: object) -> None:
+        self.agents = _FakeAgentOperations(definition)
+
+
+def test_attach_toolbox_to_agent_preserves_existing_knowledge_tool() -> None:
+    knowledge_tool = create_toolbox.MCPTool(
+        server_label="knowledge",
+        server_url="https://search.example/knowledge/mcp",
+        project_connection_id="knowledge-connection",
+        require_approval="never",
+    )
+    definition = create_toolbox.PromptAgentDefinition(
+        model="primary",
+        instructions="Use knowledge and tools.",
+        tools=[knowledge_tool],
+    )
+    client = _FakeAgentClient(definition)
+
+    result = create_toolbox.attach_toolbox_to_agent(
+        client,
+        agent_name="contoso-travel-assistant",
+        connection_name="contoso-travel-toolbox-mcp",
+        toolbox_endpoint="https://project.example/toolboxes/demo/mcp?api-version=v1",
+    )
+
+    assert result["action"] == "attached"
+    assert result["agent_version"] == "14"
+    created_tools = client.agents.created_definition.tools
+    assert [tool.server_label for tool in created_tools] == ["knowledge", "travel_ops"]
+    assert definition.tools == [knowledge_tool]
+
+
+def test_attach_toolbox_to_agent_reuses_existing_attachment() -> None:
+    toolbox_endpoint = "https://project.example/toolboxes/demo/mcp?api-version=v1"
+    definition = create_toolbox.PromptAgentDefinition(
+        model="primary",
+        instructions="Use tools.",
+        tools=[
+            create_toolbox.MCPTool(
+                server_label="travel_ops",
+                server_url=toolbox_endpoint,
+                project_connection_id="contoso-travel-toolbox-mcp",
+                require_approval="never",
+            )
+        ],
+    )
+    client = _FakeAgentClient(definition)
+
+    result = create_toolbox.attach_toolbox_to_agent(
+        client,
+        agent_name="contoso-travel-assistant",
+        connection_name="contoso-travel-toolbox-mcp",
+        toolbox_endpoint=toolbox_endpoint,
+    )
+
+    assert result == {
+        "action": "unchanged",
+        "agent_name": "contoso-travel-assistant",
+        "agent_version": "13",
+    }
+    assert client.agents.created_definition is None

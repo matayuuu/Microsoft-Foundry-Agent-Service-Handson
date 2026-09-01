@@ -32,7 +32,11 @@ the installed 2.5.x SDK -- retrieved 2026-08-21):
    ``protocol_versions=[responses@1.0.0]`` (port 8088, per
    ``src/hosted-agent/main.py``). Every call creates a new, immutable agent
    version -- this script never mutates an existing version.
-6. Polls ``get_version`` with a bounded timeout (never an unbounded loop)
+6. Grants the Hosted Agent runtime identity **Monitoring Metrics Publisher**
+   on the workshop Application Insights resource. The assignment stays inside
+   the supplied resource group and enables Agent Framework child spans to be
+   exported without an instrumentation key.
+7. Polls ``get_version`` with a bounded timeout (never an unbounded loop)
    until the version reaches ``active`` or ``failed``, then prints both a
    human-readable summary and (with ``--output json``) a machine-readable
    result -- including the SDK's ``version.error`` details when the service
@@ -67,10 +71,13 @@ import io
 import json
 import sys
 import time
+import uuid
 import zipfile
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
+
+import httpx
 
 # Make the sibling `lib` package importable regardless of current working
 # directory (scripts/ is intentionally not an installed Python package).
@@ -132,6 +139,10 @@ DEFAULT_VERSION_DESCRIPTION = (
 )
 DEFAULT_POLL_INTERVAL_SECONDS = 5.0
 DEFAULT_TIMEOUT_SECONDS = 600.0
+APPLICATION_INSIGHTS_ID_OUTPUT = "application_insights_id"
+MONITORING_METRICS_PUBLISHER_ROLE_ID = "3913510d-42f4-4e42-8a64-420c390055eb"
+ARM_TOKEN_SCOPE = "https://management.azure.com/.default"
+ROLE_ASSIGNMENTS_API_VERSION = "2022-04-01"
 
 TERMINAL_STATUSES = frozenset({"active", "failed"})
 
@@ -295,6 +306,101 @@ def sha256_hex(data: bytes) -> str:
     """SHA-256 hex digest, passed as ``code_zip_sha256`` so the service can
     verify upload integrity."""
     return hashlib.sha256(data).hexdigest()
+
+
+def instance_principal_id(version: Any) -> str | None:
+    """Return the Hosted Agent runtime identity principal, when allocated."""
+    identity = getattr(version, "instance_identity", None)
+    if identity is None and isinstance(version, Mapping):
+        identity = version.get("instance_identity")
+    if identity is None:
+        return None
+
+    principal_id = getattr(identity, "principal_id", None)
+    if principal_id is None and isinstance(identity, Mapping):
+        principal_id = identity.get("principal_id")
+    return principal_id if isinstance(principal_id, str) and principal_id else None
+
+
+def build_monitoring_role_assignment(
+    *, application_insights_id: str, principal_id: str
+) -> tuple[str, dict[str, Any]]:
+    """Build the deterministic ARM request for keyless trace ingestion."""
+    resource_id = application_insights_id.rstrip("/")
+    segments = resource_id.strip("/").split("/")
+    if len(segments) < 2 or segments[0].casefold() != "subscriptions":
+        raise WorkshopContextError(
+            f"invalid Application Insights resource ID: {application_insights_id!r}"
+        )
+    subscription_id = segments[1]
+    role_definition_id = (
+        f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/"
+        f"roleDefinitions/{MONITORING_METRICS_PUBLISHER_ROLE_ID}"
+    )
+    assignment_name = uuid.uuid5(
+        uuid.NAMESPACE_URL,
+        f"{resource_id.casefold()}|{principal_id.casefold()}|"
+        f"{MONITORING_METRICS_PUBLISHER_ROLE_ID}",
+    )
+    url = (
+        f"https://management.azure.com{resource_id}/providers/"
+        f"Microsoft.Authorization/roleAssignments/{assignment_name}"
+        f"?api-version={ROLE_ASSIGNMENTS_API_VERSION}"
+    )
+    body = {
+        "properties": {
+            "principalId": principal_id,
+            "principalType": "ServicePrincipal",
+            "roleDefinitionId": role_definition_id,
+        }
+    }
+    return url, body
+
+
+def grant_monitoring_metrics_publisher(
+    *,
+    credential: Any,
+    application_insights_id: str,
+    principal_id: str,
+    request: Callable[..., Any] = httpx.put,
+) -> None:
+    """Idempotently grant the runtime identity permission to export traces."""
+    url, body = build_monitoring_role_assignment(
+        application_insights_id=application_insights_id,
+        principal_id=principal_id,
+    )
+    access_token = credential.get_token(ARM_TOKEN_SCOPE)
+    try:
+        response = request(
+            url,
+            headers={
+                "Authorization": f"Bearer {access_token.token}",
+                "Content-Type": "application/json",
+            },
+            json=body,
+            timeout=30.0,
+        )
+    except httpx.HTTPError as exc:
+        raise WorkshopContextError(
+            "could not reach Azure Resource Manager while granting Monitoring Metrics Publisher"
+        ) from exc
+    if response.status_code in {200, 201}:
+        return
+
+    try:
+        error = response.json().get("error", {})
+    except ValueError:
+        error = {}
+    code = error.get("code") if isinstance(error, Mapping) else None
+    if response.status_code == 409 and code == "RoleAssignmentExists":
+        return
+
+    message = error.get("message") if isinstance(error, Mapping) else None
+    detail = f"{code}: {message}" if code or message else "no error detail"
+    raise WorkshopContextError(
+        "could not grant Monitoring Metrics Publisher to the Hosted Agent "
+        f"runtime identity (HTTP {response.status_code}, {detail})"
+    )
 
 
 def build_definition(
@@ -539,11 +645,34 @@ def main(argv: list[str] | None = None) -> int:
                 code_zip_sha256=sha256_hex(zip_bytes),
                 description=args.description or DEFAULT_VERSION_DESCRIPTION,
             )
+            telemetry_principal_id = instance_principal_id(created)
+            if telemetry_principal_id is not None:
+                grant_monitoring_metrics_publisher(
+                    credential=credential,
+                    application_insights_id=terraform_output(
+                        context, APPLICATION_INSIGHTS_ID_OUTPUT
+                    ),
+                    principal_id=telemetry_principal_id,
+                )
             version = poll_version(
                 retrieve=lambda: client.agents.get_version(args.agent_name, created.version),
                 interval_seconds=args.poll_interval,
                 timeout_seconds=args.timeout,
             )
+            if telemetry_principal_id is None:
+                telemetry_principal_id = instance_principal_id(version)
+                if telemetry_principal_id is None:
+                    raise WorkshopContextError(
+                        "Hosted Agent version became terminal without an instance identity; "
+                        "cannot configure Application Insights trace ingestion."
+                    )
+                grant_monitoring_metrics_publisher(
+                    credential=credential,
+                    application_insights_id=terraform_output(
+                        context, APPLICATION_INSIGHTS_ID_OUTPUT
+                    ),
+                    principal_id=telemetry_principal_id,
+                )
     except HttpResponseError as exc:
         print(
             f"deploy_hosted_agent.py: Foundry API error creating agent version: {exc}",

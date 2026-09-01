@@ -2,14 +2,13 @@
 """scripts/create_toolbox.py
 
 Creates (or updates) the ``contoso-travel-toolbox`` Microsoft Foundry toolbox
-used in labs/04-tools-toolbox.md: a v2 toolbox exposing the deployed Travel
-Ops API as an OpenAPI tool, on top of the v1 toolbox participants create by
-hand in the Toolkit UI.
+used in labs/04-tools-toolbox.md and notebooks/04-create-toolbox.ipynb. The
+toolbox exposes the deployed Travel Ops API as an OpenAPI tool.
 
 Why a script and not Terraform: per docs/architecture.md, toolbox versions are
-a Foundry data-plane object owned by SDK wrappers, not Terraform -- creating a
-version is an explicit, participant-triggered action with its own lifecycle
-(new versions on every re-run), not declarative infrastructure.
+a Foundry data-plane object owned by SDK wrappers, not Terraform. The adapter
+reuses an unchanged default version and creates a version only when the desired
+tool definition changes.
 
 Design, mirroring scripts/validate_environment.py: the OpenAPI tool payload
 and the "does a new version need to be created" decision are pure functions
@@ -40,12 +39,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import httpx
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import (
+    MCPTool,
     OpenApiAnonymousAuthDetails,
     OpenApiAuthDetails,
     OpenApiFunctionDefinition,
     OpenApiManagedAuthDetails,
     OpenApiManagedSecurityScheme,
     OpenApiToolboxTool,
+    PromptAgentDefinition,
     ToolboxTool,
 )
 from azure.core.exceptions import ResourceNotFoundError
@@ -61,6 +62,11 @@ from lib.workshop_context import (
 
 DEFAULT_TOOL_NAME = "travel_ops_api"
 DEFAULT_OPENAPI_PATH = "/openapi.json"
+DEFAULT_TOOLBOX_CONNECTION_NAME = "contoso-travel-toolbox-mcp"
+DEFAULT_TOOLBOX_SERVER_LABEL = "travel_ops"
+ARM_ENDPOINT = "https://management.azure.com"
+PROJECT_CONNECTION_API_VERSION = "2025-10-01-preview"
+CONNECTION_TIMEOUT_SECONDS = 60.0
 OPENAPI_FETCH_TIMEOUT_SECONDS = 15.0
 OPENAPI_FETCH_MAX_ATTEMPTS = 5
 OPENAPI_FETCH_RETRY_DELAY_SECONDS = 3.0
@@ -122,6 +128,17 @@ def build_auth_details(auth_type: str, *, audience: str | None) -> OpenApiAuthDe
     )
 
 
+def _canonicalize_openapi_value(value: Any) -> Any:
+    """Normalize lossless server-side JSON number coercions for comparison."""
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, dict):
+        return {key: _canonicalize_openapi_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_canonicalize_openapi_value(item) for item in value]
+    return value
+
+
 def _openapi_tool_fingerprint(tool: ToolboxTool) -> tuple[Any, ...] | None:
     """A comparable, order-independent fingerprint of an OpenAPI toolbox tool.
 
@@ -140,7 +157,11 @@ def _openapi_tool_fingerprint(tool: ToolboxTool) -> tuple[Any, ...] | None:
     )
     return (
         openapi.name,
-        json.dumps(openapi.spec, sort_keys=True),
+        json.dumps(
+            _canonicalize_openapi_value(openapi.spec),
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
         auth_fingerprint,
     )
 
@@ -275,6 +296,150 @@ def get_existing_default_tools(
     return toolbox.default_version, list(version.tools)
 
 
+def ensure_toolbox(
+    client: AIProjectClient,
+    *,
+    endpoint: str,
+    toolbox_name: str,
+    desired_tool: OpenApiToolboxTool,
+    description: str | None = None,
+    publish: bool = True,
+) -> dict[str, Any]:
+    """Create or update the toolbox and return a participant-friendly result."""
+    existing = get_existing_default_tools(client, toolbox_name)
+    existing_tools = existing[1] if existing is not None else []
+    tools_for_version, changed = upsert_openapi_tool(existing_tools, desired_tool)
+
+    if existing is not None and not changed:
+        default_version, _ = existing
+        return {
+            "toolbox_name": toolbox_name,
+            "action": "unchanged",
+            "default_version": default_version,
+            "endpoints": mcp_endpoints(endpoint, toolbox_name, default_version),
+        }
+
+    new_version = client.toolboxes.create_version(
+        toolbox_name,
+        tools=tools_for_version,
+        description=description or "Contoso Travel Ops OpenAPI toolbox.",
+    )
+    action = "created"
+    if existing is not None and publish:
+        client.toolboxes.update(toolbox_name, default_version=new_version.version)
+        action = "created_and_published"
+    elif existing is not None:
+        action = "created_unpublished"
+
+    return {
+        "toolbox_name": toolbox_name,
+        "action": action,
+        "default_version": (
+            new_version.version if action != "created_unpublished" else existing[0]
+        ),
+        "new_version": new_version.version,
+        "endpoints": mcp_endpoints(endpoint, toolbox_name, new_version.version),
+    }
+
+
+def build_toolbox_connection_payload(
+    *,
+    connection_name: str,
+    toolbox_endpoint: str,
+) -> dict[str, Any]:
+    """Build the keyless RemoteTool connection used by Prompt Agents."""
+    return {
+        "name": connection_name,
+        "type": "Microsoft.MachineLearningServices/workspaces/connections",
+        "properties": {
+            "authType": "ProjectManagedIdentity",
+            "category": "RemoteTool",
+            "target": toolbox_endpoint,
+            "isSharedToAll": True,
+            "audience": "https://ai.azure.com/",
+            "metadata": {
+                "ApiType": "Azure",
+                "type": "custom_MCP",
+            },
+        },
+    }
+
+
+def ensure_toolbox_connection(
+    *,
+    credential: Any,
+    project_resource_id: str,
+    connection_name: str,
+    toolbox_endpoint: str,
+) -> dict[str, Any]:
+    """Create or update the project-managed Toolbox MCP connection."""
+    token = credential.get_token(f"{ARM_ENDPOINT}/.default").token
+    response = httpx.put(
+        (
+            f"{ARM_ENDPOINT}{project_resource_id}/connections/{connection_name}"
+            f"?api-version={PROJECT_CONNECTION_API_VERSION}"
+        ),
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        json=build_toolbox_connection_payload(
+            connection_name=connection_name,
+            toolbox_endpoint=toolbox_endpoint,
+        ),
+        timeout=CONNECTION_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def attach_toolbox_to_agent(
+    client: AIProjectClient,
+    *,
+    agent_name: str,
+    connection_name: str,
+    toolbox_endpoint: str,
+    server_label: str = DEFAULT_TOOLBOX_SERVER_LABEL,
+) -> dict[str, str]:
+    """Attach the Toolbox MCP endpoint while preserving existing agent tools."""
+    agent = client.agents.get(agent_name)
+    latest = agent.versions.latest
+    definition = copy.deepcopy(latest.definition)
+    if not isinstance(definition, PromptAgentDefinition):
+        raise WorkshopContextError(
+            f"agent '{agent_name}' is not a Prompt Agent and cannot be updated by this notebook"
+        )
+
+    existing_tools = list(definition.tools or [])
+    if any(
+        isinstance(tool, MCPTool) and tool.server_url == toolbox_endpoint for tool in existing_tools
+    ):
+        return {
+            "action": "unchanged",
+            "agent_name": agent_name,
+            "agent_version": latest.version,
+        }
+
+    definition.tools = [
+        *existing_tools,
+        MCPTool(
+            server_label=server_label,
+            server_url=toolbox_endpoint,
+            project_connection_id=connection_name,
+            require_approval="never",
+        ),
+    ]
+    created = client.agents.create_version(
+        agent_name=agent_name,
+        definition=definition,
+    )
+    return {
+        "action": "attached",
+        "agent_name": agent_name,
+        "agent_version": created.version,
+    }
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -352,40 +517,14 @@ def main(argv: list[str] | None = None) -> int:
 
     credential = build_credential(args.credential)
     with AIProjectClient(endpoint=endpoint, credential=credential) as client:
-        existing = get_existing_default_tools(client, args.toolbox_name)
-        existing_tools = existing[1] if existing is not None else []
-        tools_for_version, changed = upsert_openapi_tool(existing_tools, desired_tool)
-
-        if existing is not None and not changed:
-            default_version, _ = existing
-            result = {
-                "toolbox_name": args.toolbox_name,
-                "action": "unchanged",
-                "default_version": default_version,
-                "endpoints": mcp_endpoints(endpoint, args.toolbox_name, default_version),
-            }
-        else:
-            new_version = client.toolboxes.create_version(
-                args.toolbox_name,
-                tools=tools_for_version,
-                description=args.description
-                or "Contoso Travel Ops OpenAPI toolbox (v2, SDK-managed).",
-            )
-            action = "created"
-            if existing is not None and not args.no_publish:
-                client.toolboxes.update(args.toolbox_name, default_version=new_version.version)
-                action = "created_and_published"
-            elif existing is not None:
-                action = "created_unpublished"
-            result = {
-                "toolbox_name": args.toolbox_name,
-                "action": action,
-                "default_version": new_version.version
-                if action != "created_unpublished"
-                else existing[0],
-                "new_version": new_version.version,
-                "endpoints": mcp_endpoints(endpoint, args.toolbox_name, new_version.version),
-            }
+        result = ensure_toolbox(
+            client,
+            endpoint=endpoint,
+            toolbox_name=args.toolbox_name,
+            desired_tool=desired_tool,
+            description=args.description,
+            publish=not args.no_publish,
+        )
 
     if args.output == "json":
         print(json.dumps(result, ensure_ascii=False, indent=2))

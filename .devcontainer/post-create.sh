@@ -11,10 +11,22 @@ sudo rm -rf /var/lib/apt/lists/*
 python -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -e ".[dev]" -e "./src/travel-api[dev]"
+.venv/bin/python -m ipykernel install \
+  --user \
+  --name foundry-workshop \
+  --display-name "Python (Foundry Workshop)"
 
 python3.13 -m venv src/hosted-agent/.venv
 src/hosted-agent/.venv/bin/python -m pip install --upgrade pip
-src/hosted-agent/.venv/bin/python -m pip install -r src/hosted-agent/requirements.txt pytest ruff
+src/hosted-agent/.venv/bin/python -m pip install \
+  -r src/hosted-agent/requirements.txt \
+  pytest \
+  ruff \
+  ipykernel
+src/hosted-agent/.venv/bin/python -m ipykernel install \
+  --user \
+  --name foundry-hosted-agent \
+  --display-name "Python (Foundry Hosted Agent)"
 
 printf '\nCodespace ready.\n'
 printf 'Next: az login --use-device-code\n'

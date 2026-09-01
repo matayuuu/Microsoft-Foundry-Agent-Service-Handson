@@ -25,6 +25,7 @@ dependencies = [
 dev = [
   "agent-framework-core==1.15.0",
   "agent-framework-orchestrations==1.1.1",
+  "ipykernel>=7.0.0",
   "pytest>=8.4.0",
   "pytest-cov>=7.0.0",
   "ruff>=0.14.0",

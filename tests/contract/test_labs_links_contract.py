@@ -1,7 +1,7 @@
-"""Contract test: every local markdown link in the participant labs resolves.
+"""Contract test: every local markdown link in the participant path resolves.
 
-This workstream owns ``labs/00-overview.md`` .. ``labs/08-observability-cleanup.md``,
-``docs/participant/troubleshooting.md``, and (indirectly, via cross-links) reads
+This workstream owns the root README files, ``labs/00-overview.md`` through
+``labs/08-observability-cleanup.md``, and participant support docs. It also reads
 several sibling docs it does not own (``README.md``, ``docs/architecture.md``,
 ``docs/feature-support-matrix.md``, ``docs/costs-and-cleanup.md``,
 ``docs/participant/prerequisites.md``, ``docs/admin/troubleshooting.md``).
@@ -18,14 +18,12 @@ for Japanese/CJK headings, so it cannot (and does not try to) verify that the
 fragment itself corresponds to a real heading. A pure same-file fragment link
 (target starts with ``#``) is treated as always valid.
 
-``labs/07-*.md`` is explicitly out of this workstream's ownership and may not
-exist in a given checkout (a different workstream authors it) -- links to it
-are intentionally never emitted by the files this test scans, and this test
-does not require it to exist.
+Every core lab is required.
 """
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -35,6 +33,8 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LABS_DIR = REPO_ROOT / "labs"
 OWNED_FILES = [
+    REPO_ROOT / "README.md",
+    REPO_ROOT / "README.en.md",
     LABS_DIR / "00-overview.md",
     LABS_DIR / "01-setup.md",
     LABS_DIR / "02-prompt-agent.md",
@@ -42,7 +42,9 @@ OWNED_FILES = [
     LABS_DIR / "04-tools-toolbox.md",
     LABS_DIR / "05-evaluation.md",
     LABS_DIR / "06-optimization.md",
+    LABS_DIR / "07-hosted-multi-agent.md",
     LABS_DIR / "08-observability-cleanup.md",
+    REPO_ROOT / "docs" / "participant" / "prerequisites.md",
     REPO_ROOT / "docs" / "participant" / "troubleshooting.md",
 ]
 
@@ -132,6 +134,51 @@ def test_every_owned_file_links_onward_or_is_the_final_lab() -> None:
             for t in targets
         )
         assert has_lab_link, f"{source_file.name} has no onward markdown link"
+
+
+def test_readme_agenda_links_every_lab_and_uses_duration_columns() -> None:
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "| Lab | 内容 | 所要時間\uff08目安\uff09 |" in readme
+    assert "00:00-" not in readme
+    for lab_number, filename in enumerate(
+        [
+            "00-overview.md",
+            "01-setup.md",
+            "02-prompt-agent.md",
+            "03-rag-foundry-iq.md",
+            "04-tools-toolbox.md",
+            "05-evaluation.md",
+            "06-optimization.md",
+            "07-hosted-multi-agent.md",
+            "08-observability-cleanup.md",
+        ]
+    ):
+        assert f"[Lab {lab_number}](labs/{filename})" in readme
+
+
+def test_readme_architecture_assets_exist() -> None:
+    assert (REPO_ROOT / "docs" / "images" / "workshop-architecture.svg").is_file()
+    source = REPO_ROOT / "docs" / "diagrams" / "workshop-architecture.excalidraw"
+    assert source.is_file()
+
+    diagram = json.loads(source.read_text(encoding="utf-8"))
+    assert diagram["type"] == "excalidraw"
+    for element in diagram["elements"]:
+        if element["type"] == "text":
+            assert element["width"] > 0
+            assert element["height"] > 0
+
+
+def test_portal_labs_use_setup_prepared_evaluation_assets() -> None:
+    setup = (REPO_ROOT / "scripts" / "setup.sh").read_text(encoding="utf-8")
+    evaluation = (LABS_DIR / "05-evaluation.md").read_text(encoding="utf-8")
+    optimization = (LABS_DIR / "06-optimization.md").read_text(encoding="utf-8")
+
+    assert "--prepare-only" in setup
+    assert "contoso-travel-eval-live-subset" in evaluation
+    assert "contoso-travel-eval-live-subset" in optimization
+    assert "Contoso Travel Rubric" in optimization
 
 
 # ---------------------------------------------------------------------------

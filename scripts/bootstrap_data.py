@@ -36,7 +36,7 @@ script:
     ``overlap_tokens`` tokens, so neighboring chunks keep shared context,
   * builds each chunk's search document with a stable id
     (``sha256(f"{manifest_id}::{chunk_index}")``, so reruns update rather
-    than duplicate rows) and a retrievable ``source_url`` field plus
+    than duplicate rows) and retrievable ``url`` / ``source_url`` fields plus
     ``chunk_index``/``heading``/``token_count`` metadata, and
   * reconciles the index after every run: any chunk id previously indexed
     for a ``manifest_id`` that the current run did not (re)produce (e.g. the
@@ -468,9 +468,9 @@ def build_search_document(
 ) -> dict[str, Any]:
     """Builds the plain-dict search document uploaded/merged into the
     ``contoso-travel-policy`` index for one chunk. Pure: no I/O, only
-    shaping already-fetched/-computed values. ``blob_url`` remains as a
-    compatibility alias for indexes created by earlier workshop versions; it
-    now points to the same public document as ``source_url``."""
+    shaping already-fetched/-computed values. The Foundry Azure AI Search tool
+    reads the conventional ``url`` field for clickable citation annotations.
+    ``source_url`` and ``blob_url`` remain compatibility aliases."""
     return {
         "id": chunk_search_document_id(document.id, chunk.chunk_index),
         "manifest_id": document.id,
@@ -479,6 +479,7 @@ def build_search_document(
         "citation": citation,
         "category": document.category,
         "source_path": document.path,
+        "url": resolved_source_url,
         "source_url": resolved_source_url,
         "effective_date": document.effective_date,
         "applies_to": ",".join(document.applies_to),
@@ -520,6 +521,10 @@ def validate_search_documents(
         if not isinstance(source_url, str) or source_url.strip() == "":
             errors.append(f"documents[{i}] (id={doc_id}) is missing a non-empty 'source_url' field")
 
+        url = doc.get("url")
+        if not isinstance(url, str) or url.strip() == "":
+            errors.append(f"documents[{i}] (id={doc_id}) is missing a non-empty 'url' field")
+
         vector = doc.get("content_vector")
         if not isinstance(vector, list) or len(vector) != expected_dimensions:
             actual = len(vector) if isinstance(vector, list) else "n/a"
@@ -546,6 +551,7 @@ def build_index_fields(embedding_dimensions: int) -> list[dict[str, Any]]:
         {"name": "citation", "type": "Edm.String", "filterable": True, "retrievable": True},
         {"name": "category", "type": "Edm.String", "filterable": True, "facetable": True},
         {"name": "source_path", "type": "Edm.String", "retrievable": True},
+        {"name": "url", "type": "Edm.String", "searchable": True, "retrievable": True},
         {"name": "source_url", "type": "Edm.String", "filterable": True, "retrievable": True},
         {"name": "effective_date", "type": "Edm.String", "filterable": True, "retrievable": True},
         {"name": "applies_to", "type": "Edm.String", "filterable": True, "retrievable": True},

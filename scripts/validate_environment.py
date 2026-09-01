@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -233,10 +234,12 @@ def az_cli_json(args: Sequence[str]) -> Any:
     """Runs an `az ... -o json` command and returns the parsed JSON, or
     raises BootstrapError-style RuntimeError with the captured stderr on
     failure. Never swallows a failure silently."""
+    executable = shutil.which("az") or "az"
     completed = subprocess.run(
-        ["az", *args, "-o", "json"],
+        [executable, *args, "-o", "json"],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
     )
     if completed.returncode != 0:
@@ -331,6 +334,7 @@ EXPECTED_INDEX_FIELDS = (
     "citation",
     "category",
     "source_path",
+    "url",
     "source_url",
     "blob_url",
     "chunk_index",

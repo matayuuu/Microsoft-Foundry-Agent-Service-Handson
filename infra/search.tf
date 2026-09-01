@@ -1,7 +1,7 @@
 # Azure AI Search: Basic tier, 1 replica x 1 partition (workshop scale only).
 # Local (API key) authentication is disabled -- the workshop is keyless
 # end-to-end. A system-assigned identity is enabled so the Knowledge Base /
-# built-in vectorizer can invoke the embedding + gpt-4.1 models on the
+# built-in vectorizer can invoke the embedding + gpt-5 models on the
 # Foundry AIServices account without any stored secret (see rbac.tf for the
 # minimal "Cognitive Services OpenAI User" role granted to this identity).
 resource "azurerm_search_service" "workshop" {
