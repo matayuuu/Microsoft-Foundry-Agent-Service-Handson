@@ -158,7 +158,21 @@ def test_readme_agenda_links_every_lab_and_uses_duration_columns() -> None:
 
 
 def test_readme_architecture_assets_exist() -> None:
-    assert (REPO_ROOT / "docs" / "images" / "workshop-architecture.svg").is_file()
+    rendered = REPO_ROOT / "docs" / "images" / "workshop-architecture.svg"
+    assert rendered.is_file()
+    svg = rendered.read_text(encoding="utf-8")
+    for required in (
+        "Existing Resource Group",
+        "Microsoft Foundry account",
+        "Foundry project",
+        "Azure AI Search",
+        "Azure Container Apps",
+        "Application Insights",
+        "Log Analytics",
+        "Official Azure service icons",
+    ):
+        assert required in svg
+
     source = REPO_ROOT / "docs" / "diagrams" / "workshop-architecture.excalidraw"
     assert source.is_file()
 
@@ -168,6 +182,11 @@ def test_readme_architecture_assets_exist() -> None:
         if element["type"] == "text":
             assert element["width"] > 0
             assert element["height"] > 0
+            assert element["strokeColor"] == "#000000"
+        if element["type"] == "rectangle" and element["id"].endswith(
+            ("container", "subscription", "resource-group", "foundry-account", "foundry-project")
+        ):
+            assert element["backgroundColor"] == "transparent"
 
 
 def test_portal_labs_use_setup_prepared_evaluation_assets() -> None:
