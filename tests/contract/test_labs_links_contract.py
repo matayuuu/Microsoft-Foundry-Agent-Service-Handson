@@ -162,16 +162,16 @@ def test_readme_architecture_assets_exist() -> None:
     assert rendered.is_file()
     svg = rendered.read_text(encoding="utf-8")
     for required in (
-        "Existing Resource Group",
+        "Existing Azure Resource Group",
         "Microsoft Foundry account",
         "Foundry project",
         "Azure AI Search",
-        "Azure Container Apps",
-        "Application Insights",
-        "Log Analytics",
+        "Azure Container Apps environment",
         "Official Azure service icons",
     ):
         assert required in svg
+    for omitted in ("AZURE SUBSCRIPTION", "OBSERVABILITY", ">Evaluation<"):
+        assert omitted not in svg
 
     source = REPO_ROOT / "docs" / "diagrams" / "workshop-architecture.excalidraw"
     assert source.is_file()
@@ -184,9 +184,11 @@ def test_readme_architecture_assets_exist() -> None:
             assert element["height"] > 0
             assert element["strokeColor"] == "#000000"
         if element["type"] == "rectangle" and element["id"].endswith(
-            ("container", "subscription", "resource-group", "foundry-account", "foundry-project")
+            ("container", "resource-group", "foundry-account", "foundry-project")
         ):
             assert element["backgroundColor"] == "transparent"
+    element_ids = {element["id"] for element in diagram["elements"]}
+    assert element_ids.isdisjoint({"subscription", "evaluation", "monitoring"})
 
 
 def test_portal_labs_use_setup_prepared_evaluation_assets() -> None:

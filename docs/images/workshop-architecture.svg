@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="920" viewBox="0 0 1600 920" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="870" viewBox="0 0 1600 870" role="img" aria-labelledby="title desc">
   <title id="title">Microsoft Foundry Agent Service workshop architecture</title>
-  <desc id="desc">Azure architecture diagram for a portal-first workshop. A participant and GitHub Codespaces access an existing Azure resource group. The resource group contains a Microsoft Foundry account and project, Azure AI Search, Azure Container Apps, Application Insights, and Log Analytics. Prompt and hosted agents use model deployments, Foundry IQ, a toolbox, and synthetic data through public endpoints secured with Microsoft Entra ID and Azure RBAC.</desc>
+  <desc id="desc">Azure architecture diagram for a portal-first workshop. A participant and GitHub Codespaces access an existing Azure resource group. The resource group contains a Microsoft Foundry account and project, Azure AI Search, and an Azure Container Apps environment. Prompt and hosted agents use model deployments, Foundry IQ, a toolbox, and synthetic data through public endpoints secured with Microsoft Entra ID and Azure RBAC.</desc>
 
   <defs>
     <marker id="arrow-runtime" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
@@ -11,9 +11,6 @@
     </marker>
     <marker id="arrow-tool" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L10,5 L0,10 Z" fill="#F7630C"/>
-    </marker>
-    <marker id="arrow-telemetry" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#008272"/>
     </marker>
     <marker id="arrow-deploy" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L10,5 L0,10 Z" fill="#6B7280"/>
@@ -112,32 +109,16 @@
       <ellipse cx="9.69" cy="8.18" rx="2.15" ry="2.16" fill="#83b9f9"/>
     </symbol>
 
-    <linearGradient id="container-1" x1="7.697" y1="779.168" x2="14.082" y2="786.631" gradientTransform="translate(0 791.516) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#225086"/><stop offset="1" stop-color="#0055c5"/></linearGradient>
-    <linearGradient id="container-2" x1="6.364" y1="778.164" x2="6.364" y2="794.412" gradientTransform="translate(0 791.516) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6df"/><stop offset="1" stop-color="#0294e4"/></linearGradient>
-    <linearGradient id="container-3" x1="9.001" y1="775.956" x2="9.001" y2="794.845" gradientTransform="translate(0 791.516) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#44dbf9"/><stop offset="1" stop-color="#cbf8ff"/></linearGradient>
-    <linearGradient id="container-4" x1="13.5" y1="774.721" x2="13.5" y2="790.782" gradientTransform="translate(0 791.516) scale(1 -1)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#041642"/><stop offset="1" stop-color="#041642" stop-opacity=".25"/></linearGradient>
+    <linearGradient id="container-1" x1="11.729" y1="4.88" x2="11.729" y2="13.099" gradientUnits="userSpaceOnUse"><stop offset=".001" stop-color="#773adc"/><stop offset=".528" stop-color="#6635bb"/><stop offset="1" stop-color="#552f99"/></linearGradient>
+    <linearGradient id="container-2" x1="6.35" y1="13.914" x2="6.35" y2="4.198" gradientUnits="userSpaceOnUse"><stop offset=".001" stop-color="#773adc"/><stop offset=".307" stop-color="#793ddd"/><stop offset=".532" stop-color="#8046e1"/><stop offset=".731" stop-color="#8c56e7"/><stop offset=".915" stop-color="#9c6def"/><stop offset="1" stop-color="#a67af4"/></linearGradient>
     <symbol id="icon-container" viewBox="0 0 18 18">
-      <path d="m17.647,9.906L10.147,1.445c-.599-.676-1.694-.676-2.294,0L.353,9.906c-.579.654-.428,1.641.323,2.111l7.499,4.688c.5.313,1.148.313,1.648,0l7.499-4.688c.751-.469.902-1.457.323-2.111h0Z" fill="url(#container-1)"/>
-      <path d="m10.148,1.445c-.599-.676-1.694-.676-2.294,0L.354,9.906c-.579.654-.428,1.641.323,2.111,0,0,2.776,1.735,3.126,1.954.388.242,1.033.511,1.715.511.621,0,1.197-.18,1.676-.487l1.806-1.129-4.364-2.728,4.474-5.047c.55-.627,1.377-1.026,2.302-1.026.472,0,.917.107,1.314.292l-2.579-2.909v-.002Z" fill="url(#container-2)"/>
-      <polygon points="4.636 10.138 4.688 10.17 9.001 12.866 13.365 10.138 9.001 5.214 4.636 10.138" fill="url(#container-3)"/>
-      <path d="m9.001,16.939c.287,0,.574-.078.824-.234l7.499-4.688c.751-.469.902-1.457.323-2.111L10.148,1.445c-.3-.338-.723-.507-1.147-.507v16.001Z" fill="url(#container-4)" fill-opacity=".5" opacity=".5"/>
-    </symbol>
-
-    <radialGradient id="appi-1" cx="9" cy="7.35" r="6.42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#b77af4"/><stop offset=".21" stop-color="#b378f2"/><stop offset=".43" stop-color="#a672ed"/><stop offset=".65" stop-color="#9267e4"/><stop offset=".88" stop-color="#7559d8"/><stop offset="1" stop-color="#624fd0"/></radialGradient>
-    <linearGradient id="appi-2" x1="9.02" y1="3.91" x2="9.08" y2="11.49" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f2f2f2"/><stop offset=".23" stop-color="#f1f1f2" stop-opacity=".99"/><stop offset=".37" stop-color="#ededf1" stop-opacity=".95"/><stop offset=".48" stop-color="#e7e5f0" stop-opacity=".89"/><stop offset=".58" stop-color="#dedbee" stop-opacity=".81"/><stop offset=".67" stop-color="#d3ceeb" stop-opacity=".7"/><stop offset=".76" stop-color="#c4bee8" stop-opacity=".57"/><stop offset=".84" stop-color="#b4abe5" stop-opacity=".41"/><stop offset=".92" stop-color="#a095e1" stop-opacity=".22"/><stop offset=".99" stop-color="#8b7ddc" stop-opacity=".02"/><stop offset="1" stop-color="#897bdc" stop-opacity="0"/></linearGradient>
-    <symbol id="icon-appinsights" viewBox="0 0 18 18">
-      <path d="M10.23,17.39l.81-.87V14.2H7v2.32l.81.87A.32.32,0,0,0,8,17.5h2A.32.32,0,0,0,10.23,17.39Z" fill="#cecece"/>
-      <path d="M9,.5A5.89,5.89,0,0,0,3.09,7.07c.27,2.47,2.62,3.62,3.29,6.75a.49.49,0,0,0,.47.38h4.3a.49.49,0,0,0,.47-.38c.67-3.13,3-4.28,3.29-6.75A5.89,5.89,0,0,0,9,.5ZM7,14.2" fill="url(#appi-1)"/>
-      <path d="M11.46,3.79a1.4,1.4,0,0,0-1.35,1.44V6H8V5.23A1.41,1.41,0,0,0,6.59,3.79,1.4,1.4,0,0,0,5.24,5.23,1.41,1.41,0,0,0,6.59,6.68h.64v6a.36.36,0,0,0,.72,0v-6h2.16v6a.36.36,0,1,0,.72,0v-6h.63a1.4,1.4,0,0,0,1.35-1.45A1.4,1.4,0,0,0,11.46,3.79ZM7.23,6H6.55a.74.74,0,0,1-.68-.77.74.74,0,0,1,.68-.77.74.74,0,0,1,.68.77Zm4.28,0h-.68V5.19a.68.68,0,1,1,1.35,0A.73.73,0,0,1,11.51,6Z" fill="url(#appi-2)"/>
-      <polygon points="6.96 15.8 11.04 15.01 11.04 14.56 6.96 15.36 6.96 15.8" fill="#999"/><polygon points="11.04 16.11 11.04 15.67 6.96 16.48 6.96 16.52 7.27 16.86 11.04 16.11" fill="#999"/>
-    </symbol>
-
-    <linearGradient id="log-1" x1="5.23" y1="17.45" x2="5.23" y2="8.09" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1988d9"/><stop offset=".9" stop-color="#54aef0"/></linearGradient>
-    <linearGradient id="log-2" x1="11.5" y1="12.45" x2="11.5" y2=".55" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#198ab3"/><stop offset=".44" stop-color="#27b2d7"/><stop offset="1" stop-color="#32d4f5"/></linearGradient>
-    <symbol id="icon-loganalytics" viewBox="0 0 18 18">
-      <path d="M5.59,13.13H9.91v4.32H5.59ZM1.15,17.45H4.87V13.13H.55v3.72A.6.6,0,0,0,1.15,17.45Zm-.6-5H4.87V8.09H.55Z" fill="url(#log-1)"/>
-      <path d="M11.5.55a5.89,5.89,0,0,1,5.95,6,5.89,5.89,0,0,1-5.95,5.95H5.55V6.5A5.89,5.89,0,0,1,11.5.55Z" fill-rule="evenodd" fill="url(#log-2)"/>
-      <rect x="7.59" y="5.65" width="1.36" height="4.08" fill="#fff"/><rect x="10.31" y="7.01" width="1.36" height="2.72" fill="#fff"/><rect x="13.03" y="4.29" width="1.36" height="5.44" fill="#fff"/>
+      <path d="M8.617,8.644H.639V1.784A1.16,1.16,0,0,1,1.788.624H8.617ZM1.63,7.653h6V1.594H1.788a.158.158,0,0,0-.158.158h0Z" fill="#949494"/>
+      <path d="M17.5,8.644H9.523V.624h6.828A1.16,1.16,0,0,1,17.5,1.784Zm-6.987-.991h6V1.784a.157.157,0,0,0-.123-.187.2.2,0,0,0-.035,0H10.513Z" fill="#949494"/>
+      <path d="M8.617,17.485H1.788A1.149,1.149,0,0,1,.639,16.347V9.476H8.617ZM1.63,10.467v5.88a.158.158,0,0,0,.158.158H7.626V10.467Z" fill="#949494"/>
+      <path d="M16.351,17.485H9.523V9.476H17.5v6.871A1.149,1.149,0,0,1,16.351,17.485Zm-5.838-.991h5.838a.157.157,0,0,0,.158-.158V10.467h-6Z" fill="#949494"/>
+      <path d="M14.6,6.294a.294.294,0,0,0-.2-.278L9.044,4.205A.128.128,0,0,0,9,4.2H9a.132.132,0,0,0-.133.133v9.445A.133.133,0,0,0,9,13.911H9a.138.138,0,0,0,.049-.01l5.365-2.145a.292.292,0,0,0,.184-.272Z" fill="url(#container-1)"/>
+      <path d="M8.966,4.2l-5.293.966a.161.161,0,0,0-.13.158V12.63a.16.16,0,0,0,.126.157L8.962,13.91a.161.161,0,0,0,.191-.121.22.22,0,0,0,0-.036V4.358A.16.16,0,0,0,9,4.2.163.163,0,0,0,8.966,4.2Z" fill="url(#container-2)"/>
+      <path d="M6.52,5.656v6.8l1.842.3V5.335Zm-2.262.367v5.955l1.6.326V5.754Z" fill="#b796f9" opacity=".5"/>
     </symbol>
 
     <style>
@@ -155,8 +136,6 @@
       .runtime { fill: none; stroke: #0078D4; stroke-width: 2.25; marker-end: url(#arrow-runtime); }
       .retrieval { fill: none; stroke: #5C2D91; stroke-width: 2.25; marker-end: url(#arrow-retrieval); }
       .tool { fill: none; stroke: #F7630C; stroke-width: 2.25; marker-end: url(#arrow-tool); }
-      .telemetry { fill: none; stroke: #008272; stroke-width: 2; stroke-dasharray: 6 5; marker-end: url(#arrow-telemetry); }
-      .telemetry-branch { fill: none; stroke: #008272; stroke-width: 2; stroke-dasharray: 6 5; }
       .deploy { fill: none; stroke: #6B7280; stroke-width: 2; stroke-dasharray: 7 6; marker-end: url(#arrow-deploy); }
       .soft-line { fill: none; stroke: #B9A7E8; stroke-width: 1.5; }
     </style>
@@ -177,7 +156,7 @@
 
   <!-- External actors -->
   <g>
-    <rect x="40" y="124" width="250" height="682" rx="16" fill="#F8FAFC" stroke="#D8DEE8"/>
+    <rect x="40" y="124" width="250" height="652" rx="16" fill="#F8FAFC" stroke="#D8DEE8"/>
     <text x="64" y="157" class="boundary-label">PARTICIPANT WORKSPACE</text>
 
     <g filter="url(#card-shadow)">
@@ -188,7 +167,7 @@
       <text x="130" y="232" class="resource-title">Participant</text>
       <text x="130" y="254" class="service-subtitle">Foundry Portal</text>
       <rect x="82" y="282" width="166" height="25" rx="12.5" fill="#EEF6FF"/>
-      <text x="165" y="299" text-anchor="middle" class="chip" fill="#005A9E">Build · Evaluate · Optimize</text>
+      <text x="165" y="299" text-anchor="middle" class="chip" fill="#005A9E">Build · Test in Portal</text>
     </g>
 
     <g filter="url(#card-shadow)">
@@ -208,19 +187,16 @@
     </g>
   </g>
 
-  <!-- Azure subscription and existing resource group -->
-  <rect x="320" y="116" width="1240" height="720" rx="18" fill="#F7FBFF" stroke="#9CC7F0" stroke-width="1.5"/>
-  <text x="344" y="146" class="boundary-label">AZURE SUBSCRIPTION</text>
-
-  <rect x="342" y="164" width="1194" height="642" rx="14" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
-  <path d="M342 178a14 14 0 0 1 14-14h1166a14 14 0 0 1 14 14v42H342Z" fill="#EAF4FF"/>
-  <g transform="translate(367 177)">
+  <!-- Existing resource group -->
+  <rect x="320" y="116" width="1240" height="660" rx="18" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
+  <path d="M320 134a18 18 0 0 1 18-18h1204a18 18 0 0 1 18 18v86H320Z" fill="#EAF4FF"/>
+  <g transform="translate(345 142)">
     <rect width="30" height="30" rx="7" fill="#0078D4"/>
     <path d="M8 9h14v12H8zM11 6h8v3h-8z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
   </g>
-  <text x="410" y="190" class="resource-title">Existing Resource Group</text>
-  <text x="410" y="209" class="service-subtitle">participant-owned · setup does not create or delete the group</text>
-  <g transform="translate(1287 178)">
+  <text x="388" y="155" class="resource-title">Existing Azure Resource Group</text>
+  <text x="388" y="178" class="service-subtitle">participant-owned · setup does not create or delete the group</text>
+  <g transform="translate(1287 143)">
     <rect width="222" height="28" rx="14" fill="#FFFFFF" stroke="#B9D9F7"/>
     <circle cx="17" cy="14" r="5" fill="#107C10"/>
     <text x="31" y="18" class="chip">Public network + managed identity</text>
@@ -240,7 +216,7 @@
     <rect x="394" y="314" width="642" height="430" rx="12" fill="#FFFFFF" stroke="#B9A7E8" stroke-width="1.4"/>
     <use href="#icon-project" x="416" y="329" width="32" height="32"/>
     <text x="462" y="344" class="resource-title">Foundry project</text>
-    <text x="462" y="363" class="service-subtitle">Agent, knowledge, tools, evaluation, and optimization</text>
+    <text x="462" y="363" class="service-subtitle">Agents, knowledge, tools, and model deployments</text>
 
     <!-- Model deployments -->
     <rect x="418" y="382" width="594" height="84" rx="10" fill="#F8FAFC" stroke="#D8DEE8"/>
@@ -252,11 +228,11 @@
     <text x="476" y="424" class="service-subtitle">Shared inference plane</text>
     <g transform="translate(630 397)">
       <rect width="110" height="26" rx="13" fill="#E8F3FF"/><text x="55" y="17" text-anchor="middle" class="chip">primary · gpt-4.1</text>
-      <text x="55" y="43" text-anchor="middle" class="caption">agent + evaluation</text>
+      <text x="55" y="43" text-anchor="middle" class="caption">Prompt Agent</text>
     </g>
     <g transform="translate(750 397)">
       <rect width="110" height="26" rx="13" fill="#F0EDFC"/><text x="55" y="17" text-anchor="middle" class="chip">optimizer · gpt-5</text>
-      <text x="55" y="43" text-anchor="middle" class="caption">IQ + optimizer</text>
+      <text x="55" y="43" text-anchor="middle" class="caption">Foundry IQ</text>
     </g>
     <g transform="translate(870 397)">
       <rect width="122" height="26" rx="13" fill="#EAF9F7"/><text x="61" y="17" text-anchor="middle" class="chip">text-embedding-3</text>
@@ -283,21 +259,15 @@
 
     <!-- Project capabilities -->
     <g>
-      <rect x="418" y="642" width="180" height="76" rx="10" fill="#FAF9FF" stroke="#C9C1EC"/>
+      <rect x="418" y="642" width="278" height="76" rx="10" fill="#FAF9FF" stroke="#C9C1EC"/>
       <use href="#icon-iq" x="434" y="659" width="38" height="38"/>
-      <text x="484" y="668" class="service-title">Foundry IQ</text>
-      <text x="484" y="689" class="service-subtitle">Knowledge Base</text>
+      <text x="500" y="668" class="service-title">Foundry IQ</text>
+      <text x="500" y="689" class="service-subtitle">Knowledge Base</text>
 
-      <rect x="616" y="642" width="180" height="76" rx="10" fill="#F7FBFF" stroke="#B9D9F7"/>
-      <use href="#icon-toolbox" x="632" y="659" width="38" height="38"/>
-      <text x="682" y="668" class="service-title">Toolbox</text>
-      <text x="682" y="689" class="service-subtitle">MCP + OpenAPI</text>
-
-      <rect x="814" y="642" width="198" height="76" rx="10" fill="#F8FAFC" stroke="#D8DEE8"/>
-      <circle cx="849" cy="680" r="19" fill="#E8F3FF"/>
-      <path d="M840 685v-9m9 9v-15m9 15v-6" fill="none" stroke="#0078D4" stroke-width="2" stroke-linecap="round"/>
-      <text x="880" y="668" class="service-title">Evaluation</text>
-      <text x="880" y="689" class="service-subtitle">Agent Optimizer</text>
+      <rect x="726" y="642" width="286" height="76" rx="10" fill="#F7FBFF" stroke="#B9D9F7"/>
+      <use href="#icon-toolbox" x="748" y="659" width="38" height="38"/>
+      <text x="808" y="668" class="service-title">Toolbox</text>
+      <text x="808" y="689" class="service-subtitle">MCP + OpenAPI</text>
     </g>
   </g>
 
@@ -316,27 +286,15 @@
     <g filter="url(#card-shadow)">
       <rect x="1090" y="444" width="420" height="160" rx="12" fill="#FFFFFF" stroke="#B9D9F7"/>
       <use href="#icon-container" x="1116" y="466" width="48" height="48"/>
-      <text x="1182" y="481" class="resource-title">Azure Container Apps</text>
-      <text x="1182" y="504" class="service-subtitle">Consumption environment · scale to zero</text>
+      <text x="1182" y="481" class="resource-title">Azure Container Apps environment</text>
+      <text x="1182" y="504" class="service-subtitle">Consumption plan · scale to zero</text>
       <rect x="1116" y="532" width="368" height="48" rx="9" fill="#F1F8FF" stroke="#D6E9FB"/>
-      <text x="1134" y="551" class="service-title">Travel Ops API</text>
+      <text x="1134" y="551" class="service-title">Travel Ops API · Container App</text>
       <text x="1134" y="569" class="caption">deterministic mock · public OpenAPI 3.1 endpoint</text>
-    </g>
-
-    <g filter="url(#card-shadow)">
-      <rect x="1090" y="634" width="420" height="130" rx="12" fill="#FFFFFF" stroke="#A9DDD6"/>
-      <text x="1116" y="660" class="boundary-label">OBSERVABILITY</text>
-      <use href="#icon-appinsights" x="1118" y="680" width="42" height="42"/>
-      <text x="1172" y="694" class="service-title">Application Insights</text>
-      <text x="1172" y="715" class="service-subtitle">distributed traces</text>
-      <path d="M1288 703h40" class="telemetry"/>
-      <use href="#icon-loganalytics" x="1340" y="680" width="42" height="42"/>
-      <text x="1392" y="694" class="service-title">Log Analytics</text>
-      <text x="1392" y="715" class="service-subtitle">workspace</text>
     </g>
   </g>
 
-  <!-- Flows: build, runtime, retrieval, tools, telemetry -->
+  <!-- Flows: build, runtime, retrieval, and tools -->
   <path d="M266 506 H322 Q342 506 342 486 V270 Q342 255 370 255" class="deploy"/>
   <text x="300" y="493" class="flow-label" fill="#6B7280">setup.sh · Terraform · Python SDK</text>
 
@@ -345,23 +303,19 @@
   <path d="M557 475 V492" class="runtime"/>
   <path d="M869 475 V492" class="runtime"/>
 
-  <path d="M520 608 V642" class="retrieval"/>
-  <path d="M626 608 C650 622 681 624 706 642" class="tool"/>
+  <path d="M557 608 V642" class="retrieval"/>
+  <path d="M650 608 C710 626 806 628 869 642" class="tool"/>
 
-  <path d="M598 680 H606 V628 Q606 624 612 624 H1058 Q1072 624 1072 610 V337 Q1072 328 1090 328" class="retrieval"/>
+  <path d="M696 680 H706 V624 H1058 Q1072 624 1072 610 V337 Q1072 328 1090 328" class="retrieval"/>
 
-  <path d="M706 718 V732 H1046 Q1060 732 1060 716 V528 Q1060 520 1090 520" class="tool"/>
-
-  <path d="M680 608 V616 H1038 Q1050 616 1050 634 V687 Q1050 700 1090 700" class="telemetry"/>
-  <path d="M992 608 V616 H1038" class="telemetry-branch"/>
+  <path d="M869 718 V732 H1046 Q1060 732 1060 716 V528 Q1060 520 1090 520" class="tool"/>
 
   <!-- Legend -->
-  <g transform="translate(342 870)">
+  <g transform="translate(410 810)">
     <line x1="0" y1="0" x2="42" y2="0" class="runtime"/><text x="54" y="5" class="legend">runtime request</text>
     <line x1="194" y1="0" x2="236" y2="0" class="retrieval"/><text x="248" y="5" class="legend">knowledge retrieval</text>
     <line x1="421" y1="0" x2="463" y2="0" class="tool"/><text x="475" y="5" class="legend">tool call</text>
-    <line x1="574" y1="0" x2="616" y2="0" class="telemetry"/><text x="628" y="5" class="legend">telemetry</text>
-    <line x1="762" y1="0" x2="804" y2="0" class="deploy"/><text x="816" y="5" class="legend">provision / deploy / seed</text>
+    <line x1="574" y1="0" x2="616" y2="0" class="deploy"/><text x="628" y="5" class="legend">provision / deploy / seed</text>
   </g>
-  <text x="1552" y="902" text-anchor="end" class="caption">Official Azure service icons · Azure Architecture Center</text>
+  <text x="1552" y="852" text-anchor="end" class="caption">Official Azure service icons · Azure Architecture Center</text>
 </svg>
