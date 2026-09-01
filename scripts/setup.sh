@@ -6,13 +6,13 @@
 #   1. scripts/preflight.sh (read-only; resolves region + real model versions)
 #   2. writes resolved, non-secret Terraform inputs for cleanup recovery, then
 #      runs terraform init/plan/apply against infra/ (bounded retries)
-#   3. scripts/bootstrap_data.py (seeds Azure AI Search directly from data/manifest.json;
-#      bounded retries to absorb fresh RBAC/data-plane propagation)
+#   3. scripts/bootstrap_data.py seeds Azure AI Search, then
+#      scripts/run_evaluation.py --prepare-only registers the synthetic
+#      evaluation dataset and rubric used by the Portal labs
 #   4. scripts/validate_environment.py (confirms the deployed environment,
 #      including ARM resource existence and a Travel Ops API /health check;
 #      bounded retries for the same propagation reason as step 3)
-#   5. writes non-secret .workshop/context.json and .workshop/.env
-#   6. prints portal links
+#   5. writes non-secret .workshop/context.json/.env and prints portal links
 #
 # Safe to re-run: setup recovers deterministic workshop resources that Azure
 # created without a local Terraform state entry, terraform apply reconciles the
@@ -90,8 +90,8 @@ Options:
                         https://github.com/matayuuu/Microsoft-Foundry-Agent-
                         Service-Handson/blob/main fallback otherwise.
   --auto-approve        Skip the terraform plan confirmation prompt.
-  --skip-bootstrap      Skip scripts/bootstrap_data.py (useful for
-                        infra-only re-runs).
+  --skip-bootstrap      Skip Search and evaluation data preparation (useful
+                        for infra-only re-runs).
   --skip-validate       Skip scripts/validate_environment.py.
   -h, --help            Show this help and exit.
 EOF
@@ -373,7 +373,9 @@ apply_terraform_plan() {
 echo "==> [1/5] Running participant preflight..." >&2
 PREFLIGHT_REPORT="${WORKSHOP_DIR}/preflight-report.json"
 PREFLIGHT_EXIT=0
-"${SCRIPT_DIR}/preflight.sh" \
+# MSYS otherwise rewrites ARM scope IDs ("/subscriptions/...") as local paths
+# when setup is validated from Git Bash on Windows.
+MSYS_NO_PATHCONV=1 "${SCRIPT_DIR}/preflight.sh" \
   --subscription "${SUBSCRIPTION_ID}" \
   --resource-group "${RESOURCE_GROUP_NAME}" \
   --location "${PREFERRED_LOCATION}" \
@@ -533,6 +535,12 @@ else
     --embedding-deployment "${EMBEDDING_DEPLOYMENT_NAME}" \
     --source-base "${SOURCE_BASE}" \
     --index-name "contoso-travel-policy"
+
+  echo "==> [3/5] Preparing synthetic evaluation assets..." >&2
+  FOUNDRY_PROJECT_ENDPOINT="$(jq -r '.foundry_project_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
+  retry 5 20 "${PYTHON_BIN}" "${SCRIPT_DIR}/run_evaluation.py" \
+    --project-endpoint "${FOUNDRY_PROJECT_ENDPOINT}" \
+    --prepare-only
 fi
 
 # ---------------------------------------------------------------------------

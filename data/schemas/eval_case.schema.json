@@ -71,9 +71,9 @@
           "tool": {
             "type": "string",
             "enum": [
-              "get_per_diem",
-              "post_trip_estimate",
-              "post_preapproval"
+              "getPerDiem",
+              "createTripEstimate",
+              "createPreapproval"
             ]
           },
           "arguments": {

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
@@ -67,12 +68,14 @@ class StateRecoveryError(RuntimeError):
 
 
 def run_command(command: Sequence[str], input_text: str | None = None) -> CommandResult:
+    executable = shutil.which(command[0]) or command[0]
     try:
         completed = subprocess.run(
-            list(command),
+            [executable, *command[1:]],
             input=input_text,
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             check=False,
         )
     except OSError as exc:
@@ -214,9 +217,11 @@ def _is_not_found(result: CommandResult) -> bool:
         marker in detail
         for marker in (
             "resourcenotfound",
+            "notfounderror",
             "resource not found",
             "could not be found",
             "status code: 404",
+            '"statuscode":404',
             "(404)",
         )
     )

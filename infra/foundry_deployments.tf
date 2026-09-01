@@ -1,8 +1,8 @@
 # Model deployments on the Foundry AIServices account.
 #
 # Three variable-driven deployments (see variables.tf for the rationale):
-#   1. primary   -> gpt-4.1                  (Prompt Agent + eval + Foundry IQ query model)
-#   2. optimizer -> gpt-5 family              (Agent Optimizer)
+#   1. primary   -> gpt-4.1                  (Prompt Agent + evaluation)
+#   2. optimizer -> gpt-5 family             (Foundry IQ query planner + Agent Optimizer)
 #   3. embedding -> text-embedding-3-small    (Azure AI Search / Foundry IQ vectors)
 #
 # scripts/preflight.sh must confirm the chosen name/version/sku/capacity are

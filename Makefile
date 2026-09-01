@@ -7,7 +7,7 @@ install:
 install-hosted:
 	python3.13 -m venv src/hosted-agent/.venv
 	src/hosted-agent/.venv/bin/python -m pip install --upgrade pip
-	src/hosted-agent/.venv/bin/python -m pip install -r src/hosted-agent/requirements.txt pytest ruff
+	src/hosted-agent/.venv/bin/python -m pip install -r src/hosted-agent/requirements.txt pytest ruff ipykernel
 
 format:
 	python -m ruff format .

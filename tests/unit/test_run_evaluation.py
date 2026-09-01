@@ -486,3 +486,23 @@ def test_ensure_rubric_evaluator_creates_new_version_when_definition_changed() -
 
     assert result is desired
     assert client.beta.evaluators.create_calls == [desired]
+
+
+def test_parse_args_supports_prepare_only_with_explicit_project_endpoint() -> None:
+    args = run_evaluation.parse_args(
+        [
+            "--project-endpoint",
+            "https://example.services.ai.azure.com/api/projects/workshop",
+            "--prepare-only",
+        ]
+    )
+
+    assert args.prepare_only is True
+    assert args.project_endpoint == "https://example.services.ai.azure.com/api/projects/workshop"
+
+
+def test_parse_args_runs_evaluation_by_default() -> None:
+    args = run_evaluation.parse_args([])
+
+    assert args.prepare_only is False
+    assert args.project_endpoint is None

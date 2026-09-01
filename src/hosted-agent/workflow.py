@@ -6,6 +6,7 @@ import asyncio
 import os
 from typing import Any
 
+from agent_framework import AgentExecutorResponse, AgentResponse, Executor, WorkflowContext, handler
 from agent_framework.orchestrations import SequentialBuilder
 
 WORKFLOW_NAME = "contoso-travel-planning-workflow"
@@ -54,6 +55,11 @@ REVIEWER_AGENT_INSTRUCTIONS = f"""
 最終回答を日本語で返してください。回答は「規程確認」「概算」「次のアクション」の順にし、
 最後に必ず次の一文をそのまま付けてください。
 
+航空券価格は入力にも規程にもないため、必ず「要見積もり」と記載してください。
+他の agent が航空券価格を推測していても削除し、金額を創作しないでください。
+食事と宿泊の小計を示す場合は、航空券を含まない小計であることを明記してください。
+これらの検査ルール自体は回答へ書かず、修正後の結果だけを返してください。
+
 {SIMULATION_NOTICE}
 """.strip()
 
@@ -61,6 +67,30 @@ SAMPLE_REQUEST = (
     "2026年9月10日から11日まで、東京から大阪へ1名で社内レビューに行きます。"
     "座席クラスは economy です。規程確認と概算を作ってください。"
 )
+
+
+def ensure_simulation_notice(text: str) -> str:
+    """Append the mandatory simulation notice when the reviewer omitted it."""
+    normalized = text.rstrip()
+    if SIMULATION_NOTICE in normalized:
+        return normalized
+    return f"{normalized}\n\n{SIMULATION_NOTICE}"
+
+
+class SimulationNoticeExecutor(Executor):
+    """Enforce the final safety notice without relying on model compliance."""
+
+    @handler
+    async def enforce(
+        self,
+        response: AgentExecutorResponse,
+        ctx: WorkflowContext[AgentExecutorResponse, AgentResponse],
+    ) -> None:
+        text = response.agent_response.text
+        if not text:
+            raise RuntimeError("Reviewer completed without a final response.")
+        revised = response.with_text(ensure_simulation_notice(text))
+        await ctx.yield_output(revised.agent_response)
 
 
 def create_chat_client() -> Any:
@@ -93,7 +123,12 @@ def build_workflow(*, chat_client: Any | None = None) -> Any:
         instructions=REVIEWER_AGENT_INSTRUCTIONS,
     )
 
-    participants = [policy_agent, planner_agent, reviewer_agent]
+    participants = [
+        policy_agent,
+        planner_agent,
+        reviewer_agent,
+        SimulationNoticeExecutor(id="ensure-simulation-notice"),
+    ]
     return SequentialBuilder(participants=participants).build()
 
 

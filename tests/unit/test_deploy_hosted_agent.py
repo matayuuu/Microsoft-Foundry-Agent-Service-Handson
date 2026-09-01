@@ -16,7 +16,7 @@ import io
 import sys
 import zipfile
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 from azure.ai.projects.models import AgentVersionStatus
@@ -157,6 +157,80 @@ def test_sha256_hex_is_deterministic() -> None:
     assert a == b
     assert a != c
     assert len(a) == 64
+
+
+def test_instance_principal_id_supports_sdk_and_mapping_shapes() -> None:
+    sdk_version = SimpleNamespace(instance_identity=SimpleNamespace(principal_id="principal-sdk"))
+    mapping_version = {"instance_identity": {"principal_id": "principal-mapping"}}
+
+    assert deploy_hosted_agent.instance_principal_id(sdk_version) == "principal-sdk"
+    assert deploy_hosted_agent.instance_principal_id(mapping_version) == "principal-mapping"
+    assert deploy_hosted_agent.instance_principal_id({}) is None
+
+
+def test_build_monitoring_role_assignment_is_resource_scoped_and_deterministic() -> None:
+    resource_id = (
+        "/subscriptions/sub-1/resourceGroups/rg-1/providers/Microsoft.Insights/components/appi-1"
+    )
+
+    first = deploy_hosted_agent.build_monitoring_role_assignment(
+        application_insights_id=resource_id,
+        principal_id="principal-1",
+    )
+    second = deploy_hosted_agent.build_monitoring_role_assignment(
+        application_insights_id=resource_id,
+        principal_id="principal-1",
+    )
+
+    assert first == second
+    url, body = first
+    assert resource_id in url
+    assert (
+        "/subscriptions/sub-1/providers/Microsoft.Authorization/roleDefinitions/"
+        in (body["properties"]["roleDefinitionId"])
+    )
+    assert body["properties"]["principalId"] == "principal-1"
+    assert body["properties"]["principalType"] == "ServicePrincipal"
+
+
+def test_grant_monitoring_metrics_publisher_uses_bearer_token() -> None:
+    calls: list[dict] = []
+
+    def request(url: str, **kwargs: object) -> SimpleNamespace:
+        calls.append({"url": url, **kwargs})
+        return SimpleNamespace(status_code=201)
+
+    deploy_hosted_agent.grant_monitoring_metrics_publisher(
+        credential=SimpleNamespace(
+            get_token=lambda scope: SimpleNamespace(token=f"token-for:{scope}")
+        ),
+        application_insights_id=(
+            "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
+            "Microsoft.Insights/components/appi-1"
+        ),
+        principal_id="principal-1",
+        request=request,
+    )
+
+    assert len(calls) == 1
+    assert calls[0]["headers"]["Authorization"].startswith("Bearer token-for:")
+
+
+def test_grant_monitoring_metrics_publisher_accepts_existing_assignment() -> None:
+    response = SimpleNamespace(
+        status_code=409,
+        json=lambda: {"error": {"code": "RoleAssignmentExists", "message": "exists"}},
+    )
+
+    deploy_hosted_agent.grant_monitoring_metrics_publisher(
+        credential=SimpleNamespace(get_token=lambda _scope: SimpleNamespace(token="token")),
+        application_insights_id=(
+            "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
+            "Microsoft.Insights/components/appi-1"
+        ),
+        principal_id="principal-1",
+        request=lambda *_args, **_kwargs: response,
+    )
 
 
 # ---------------------------------------------------------------------------

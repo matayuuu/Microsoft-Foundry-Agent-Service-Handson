@@ -41,8 +41,11 @@ flowchart LR
 | Search, Application Insights, Container Apps | Terraform | `setup.sh` / `destroy.sh` |
 | Search index documents | Bootstrap adapter | Idempotent upsert after Terraform |
 | Prompt Agent and Foundry IQ knowledge base | Participant in portal | Deleted with the parent project |
-| Toolbox versions and evaluation runs | Python SDK wrapper | Created in labs; deleted explicitly when supported or with parent project |
+| Toolbox versions | Python Notebook / SDK wrapper | Created in Lab 4; deleted explicitly when supported or with parent project |
+| Synthetic evaluation dataset and rubric | Setup adapter | Idempotently prepared for Portal Labs 5 and 6 |
+| Evaluation runs | Participant in portal | Created in Lab 5; deleted with the parent project |
 | Hosted Agent and immutable versions | Python SDK wrapper | Created in Lab 7; deleted before Terraform |
+| Hosted Agent runtime telemetry role | Hosted Agent deploy adapter | Resource-scoped grant after the runtime identity exists |
 
 Terraform and SDK wrappers must not manage the same object.
 
@@ -52,8 +55,8 @@ Core infrastructure in the participant resource group:
 
 - Microsoft Foundry account (`AIServices`) with project management enabled
 - Microsoft Foundry project
-- `gpt-4.1` deployment for agent inference, evaluation, and Foundry IQ query planning
-- a supported `gpt-5` family deployment for Agent Optimizer
+- `gpt-4.1` deployment for agent inference and evaluation
+- a supported `gpt-5` family deployment for Foundry IQ query planning and Agent Optimizer
 - `text-embedding-3-small` deployment for the seeded vector index
 - Azure AI Search Basic, one replica and one partition
 - Log Analytics and workspace-based Application Insights
@@ -71,8 +74,8 @@ the same cached Entra identity through `DefaultAzureCredential`.
 - Local/shared keys are disabled where supported.
 - The participant receives Foundry and data-plane roles inside the existing resource
   group through Terraform.
-- The project and Search managed identities receive only the roles required to call
-  models and read or update workshop data.
+- The project, Search, and Hosted Agent runtime identities receive only the
+  resource-scoped roles needed for model, data, and trace access.
 - Terraform state can contain provider-computed credentials and is treated as
   sensitive even when runtime access is keyless.
 
@@ -89,8 +92,10 @@ Data-plane operations remain in typed Python adapters:
 - generate embeddings
 - create/update the semantic vector index
 - merge-or-upload indexed chunks
-- create toolbox and evaluation objects
-- deploy/delete Hosted Agent versions from source
+- create Toolbox objects and optional automated evaluation runs
+- prepare the synthetic evaluation dataset and rubric used by the Portal
+- deploy/delete Hosted Agent versions from source and grant their dynamic runtime
+  identities trace-ingestion access
 
 Pure configuration, chunking, validation, and policy logic is kept independent from
 Azure clients so tests run without Azure access.

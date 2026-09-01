@@ -1,111 +1,99 @@
-# Lab 6 — Agent Optimizer とバージョン比較（20分）
+# Lab 6 — Agent Optimizer（20分）
 
 ## ゴール
 
-Prompt Agent Optimizer の Portal ウィザードで `contoso-travel-assistant`
-（Lab 2 の baseline instructions のまま）を最適化し、生成された候補
-（candidate）を Lab 5 の評価結果と比較し、良いものを新しい version として
-昇格（promote）します。
+Lab 5 と同じ評価データを使って Prompt Agent の構成候補を生成し、
+baseline より良い候補だけを agent に反映します。
 
 > [!WARNING]
-> **Preview**: Agent Optimizer は preview 機能で、SLA なしで提供されています。
-> 本番ワークロードでの利用は推奨されません。ウィザードの画面構成や挙動は
-> 今後変わる可能性があります。
->
-> **最適化の実行中、agent は実際にツールを呼び出します**（Lab 4 で接続した
-> Travel Ops API の Toolbox を含む）。本ハンズオンの Travel Ops API は状態を
-> 持たない決定的なモックなので副作用の心配はありませんが、これは一般に
-> 「本番 API やコストが発生する外部サービスに接続したまま最適化を実行すると、
-> 評価のたびに実際の呼び出しが発生する」という preview の重要な注意点です。
+> Agent Optimizer は preview です。Agent と tool を dataset の各行で繰り返し実行するため、
+> model と外部 tool の料金が発生します。
 
-## 1. 最適化ウィザードを開く
+## 使用する値
 
-Foundry portal で `contoso-travel-assistant` を開き、**Optimize** タブから
-**Create optimization run** を選びます。
+```bash
+jq -r '
+  .terraform_outputs
+  | {
+      evaluation_model: .primary_model_deployment_name.value,
+      optimization_model: .optimizer_model_deployment_name.value
+    }
+' .workshop/context.json
+```
 
-## 2. Target ステップ
+## 1. Optimization wizard を開く
 
-- **Agent version**: baseline（Lab 2〜4 を経た現在の最新 version。既定で選択されています）
-- **Optimization model**: `.workshop/context.json` の
-  `optimizer_model_deployment_name` 出力（`preflight.sh` が発見した、実際に
-  利用可能な `gpt-5` 系 model。Optimizer がサポートするのは `gpt-5` /
-  `gpt-5.1` / `gpt-5.2` / `gpt-5.4` / `gpt-5.5` などの `gpt-5` ファミリーです）
-- **Evaluation model**: `primary_model_deployment_name`（`gpt-4.1`）
-- **Maximum number of candidates**: 小さい値（**2〜3 件**）にしてください。
-  候補数が多いほど実行時間とコストが増えます。
-- **Compare across models**: このハンズオンでは OFF のままで構いません
-  （時間短縮のため）。
+1. **Build > Agents > contoso-travel-assistant** を開きます。
+2. **Optimize** tab を選択します。
+3. 初回は **Optimize my agent**、2 回目以降は **Create optimization run** を選択します。
 
-## 3. Dataset ステップ
+## 2. Target を設定する
 
-次のいずれかを選びます。
+**Target** step で次を設定します。
 
-- Lab 5 で `run_evaluation.py` がアップロード済みの Foundry dataset
-  （名前 `contoso-travel-eval-live-subset`）を**既存データセットとして選択**する。
-- または `data/eval/live_subset.jsonl` を直接アップロードする。
+| 項目 | 値 |
+|---|---|
+| Agent version | 既定で選択される最新の保存内容 |
+| Optimization model | `optimizer_model_deployment_name` の値 |
+| Max candidates | `2` |
+| Evaluation model | `primary_model_deployment_name` の値 |
+| Compare across models | Off |
 
-> [!NOTE]
-> ウィザードは列名のマッピング機能を持たないため、選択した評価者（evaluator）
-> が要求する列名と、データセットの列名が一致している必要があります。
-> `data/eval/live_subset.jsonl` の列（`query`、`expected_behavior`、
-> `ground_truth` など）は `data/schemas/eval_case.schema.json` に固定されて
-> おり、Lab 5 のルーブリック評価者もこの列名を前提に作られています。
+設定後、**Dataset** へ進みます。
 
-## 4. Criteria ステップ
+## 3. Dataset を選択する
 
-- Lab 5 で作成したカスタムルーブリック評価者 `contoso-travel-rubric` を選択します
-  （custom evaluator として一覧に表示されます）。
-- 加えて、組み込み評価者（built-in evaluator）を 1〜2 個選びます。Lab 5 と
-  同じ観点を使うなら `task_adherence` や `coherence` が扱いやすい候補です。
-- 各評価者がデータセットのスキーマと互換であることを確認してから次に進みます。
+1. `contoso-travel-eval-live-subset` を選択します。
+2. **Next** を選択します。
 
-## 5. Review ステップとコスト見積もり
+## 4. Criteria を選択する
 
-Review 画面には **Minimum / Estimated / Maximum** の3段階でコスト見積もりが
-表示され、内訳（Running your agent / Scoring responses / Generating
-improvements）も展開できます。
+Optimizer の Criteria は **Custom only** です。setup が登録した
+**Contoso Travel Rubric** を選択し、**Next** を選択します。
 
-> [!IMPORTANT]
-> この見積もりは**モデル化された範囲であり、支出上限や確定金額ではありません**。
-> 前提となる計算方法や除外事項を確認してから Submit してください。
+![Optimizer の custom rubric 選択](../docs/images/lab06-optimizer-criteria.png)
 
-内容（agent とバージョン、データセット、評価者、候補モデル）を確認し、
-**Submit** します。実行時間はデータセットサイズ・候補数・選択したモデルに
-依存します。
+## 5. Cost estimate を確認して実行する
 
-## 6. 結果を比較する
+**Review** で次を確認します。
 
-実行が完了したら、各候補のスコア（0.0〜1.0 の合成スコア）を baseline と比較し、
-instructions の before/after の差分、評価者ごとのスコアを確認します。
+- Agent と dataset
+- Evaluation / optimization model
+- Candidate 数
+- Evaluator
+- **Estimated cost**
 
-**スコアの読み方の目安**:
+見積もりの表示を待ちます。これは上限ではありません。
+内容を確認して **Submit** を選択します。
 
-- baseline に対して**明確な改善**があり、トークン使用量やコストの増加が
-  許容範囲内の候補を選びます。
-- **すべての候補が baseline を下回った場合は、現在の agent をそのまま維持
-  してください。** データセット・評価者・最適化設定を見直してから再実行する
-  ことが推奨されています — 無理に低いスコアの候補を昇格させる必要はありません。
+## 6. Candidate を比較する
 
-## 7. 候補を昇格し、テストする
+Run detail の status が **Succeeded** になるまで待ちます。実行中は
+**Working on iteration 1 of 1** と表示されます。同じ run を再送しないでください。
 
-良い候補が見つかったら、**Promote candidate** → 対象候補を選択 → baseline
-との score 改善を確認 → **Promote to agent version** の順で、新しい
-Prompt Agent version を作成します。
+1. **Improvement**、**Baseline**、**Best score** を比較します。
+2. **Candidate results** の **View changes** で変更前後を確認します。
+3. Candidate の evaluation run を開き、rubric の score と reason を確認します。
 
-昇格しただけでは、pinned version 運用の agent には自動的にトラフィックが
-流れません。Playground で新しい version を明示的に開いてテストし、Lab 2 で
-弱点として観察した質問（multi-hop、tool_choice、out_of_scope など）が
-改善しているかを確認してください。
+![Optimizer の candidate 比較](../docs/images/lab06-optimizer-results.png)
 
-## live 実行ができない場合
+Score 差が `0.03` 未満なら noise の可能性があります。すべての candidate が baseline より
+低い場合は、現在の agent を維持してください。
 
-Optimizer は preview 機能のため、region やモデルの組み合わせによっては
-ウィザードの一部操作が制限されることがあります。当日 live 実行が難しい場合は、
-講師が別途用意する事前収録のデモ・スクリーンショット等の instructor 資料
-（本リポジトリでは別ワークストリームが今後追加します）を参照し、
-ウィザードの流れ自体はこの Lab の説明で理解を進めてください。
+## 7. 改善した candidate を反映する
 
-## 次のステップ
+明確に改善した candidate がある場合だけ実行します。
 
-Lab 7（Hosted Agent／Microsoft Agent Framework）に進んでください。その後
-[Lab 8 — Observability・cleanup](08-observability-cleanup.md) で全体を締めくくります。
+1. **Promote candidate** を選択します。
+2. Best candidate と baseline の score 差、変更内容を再確認します。
+3. 確認ダイアログの **Promote to agent version** を選択します。
+
+**Promoted** の表示を確認します。参加者が version 番号を記録する必要はありません。
+
+詳細は
+[Quickstart: Optimize a prompt agent](https://learn.microsoft.com/azure/foundry/agents/quickstarts/quickstart-optimize-prompt-agent)
+を参照してください。
+
+## 次の Lab
+
+[Lab 7 — Agent Framework の Hosted Agent](07-hosted-multi-agent.md)

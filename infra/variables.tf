@@ -102,8 +102,8 @@ variable "travel_api_memory" {
 # Model deployments
 #
 # Three deployments are provisioned on the Foundry AIServices account:
-#   1. primary/query/eval model   -> gpt-4.1   (prompt agent + eval + Foundry IQ query)
-#   2. optimizer model            -> a supported gpt-5-family model (Agent Optimizer)
+#   1. primary/eval model         -> gpt-4.1   (prompt agent + evaluation)
+#   2. optimizer/query model      -> a supported gpt-5-family model (Foundry IQ + Optimizer)
 #   3. embedding model            -> text-embedding-3-small (Foundry IQ / Azure AI Search vectors)
 #
 # Exact version/SKU/capacity are overridable and MUST be checked by
@@ -113,7 +113,7 @@ variable "travel_api_memory" {
 # ---------------------------------------------------------------------------
 
 variable "primary_model_name" {
-  description = "Model name for the primary/query/eval deployment used by the Prompt Agent, evaluation, and Foundry IQ query model."
+  description = "Model name for the primary deployment used by the Prompt Agent and evaluation."
   type        = string
   default     = "gpt-4.1"
 }

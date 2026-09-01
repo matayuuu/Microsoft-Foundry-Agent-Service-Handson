@@ -2,7 +2,8 @@
 """scripts/run_evaluation.py
 
 Runs an agent-target Microsoft Foundry evaluation against the deployed
-``contoso-travel-assistant`` Prompt Agent, used in labs/05-evaluation.md.
+``contoso-travel-assistant`` Prompt Agent. The core Lab 5 uses the Foundry
+Portal; this adapter remains available for repeatable automation and CI.
 
 What this does, per docs/architecture.md and the OpenAI-compatible Evals API
 that ``azure-ai-projects``/``openai`` expose on a Foundry project
@@ -17,9 +18,12 @@ retrieved 2026-08-21):
 3. Ensures a hand-authored rubric evaluator exists (``beta.evaluators``,
    manual ``create_version`` -- no LLM generation job, so authoring is free
    and deterministic; see build_rubric_definition()).
-4. Creates an evaluation (``client.evals.create``) pairing that rubric with
-   sensible built-in evaluators (task adherence, coherence, and one
-   content-safety evaluator), then creates an
+   ``--prepare-only`` stops here; ``scripts/setup.sh`` uses this mode to make
+   the synthetic dataset and rubric available to the Portal-only Labs 5 and 6.
+4. Without ``--prepare-only``, creates an evaluation
+   (``client.evals.create``) pairing that rubric with sensible built-in
+   evaluators (task adherence, coherence, and one content-safety evaluator),
+   then creates an
    agent-target run (``client.evals.runs.create`` with
    ``data_source.type == "azure_ai_target_completions"`` and
    ``target.type == "azure_ai_agent"``) so the service itself calls the
@@ -192,7 +196,7 @@ def build_rubric_definition(
             description=(
                 "日当・旅費見積り・事前承認シミュレーションが必要な質問では、"
                 "対応する Travel Ops API ツール"
-                "(get_per_diem / post_trip_estimate / post_preapproval)を"
+                "(getPerDiem / createTripEstimate / createPreapproval)を"
                 "妥当な引数で呼び出しており、ツール結果と矛盾する回答をしていない。"
             ),
             weight=6,
@@ -484,6 +488,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--context", type=Path, default=DEFAULT_CONTEXT_PATH, help="Path to .workshop/context.json"
     )
     parser.add_argument(
+        "--project-endpoint",
+        default=None,
+        help=(
+            "Foundry project endpoint "
+            "(overrides --context; used by setup before context is written)"
+        ),
+    )
+    parser.add_argument(
         "--dataset",
         type=Path,
         default=DEFAULT_DATASET_PATH,
@@ -556,6 +568,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--output", choices=["human", "json"], default="human", help="Output format"
     )
+    parser.add_argument(
+        "--prepare-only",
+        action="store_true",
+        help="Upload/reuse the synthetic dataset and rubric without creating an evaluation run",
+    )
     return parser.parse_args(argv)
 
 
@@ -568,8 +585,11 @@ def main(argv: list[str] | None = None) -> int:
     run_name = args.run_name or f"{args.agent_name}-run-{int(time.time())}"
 
     try:
-        context = load_context(args.context)
-        endpoint = project_endpoint(context)
+        endpoint = (
+            args.project_endpoint
+            if args.project_endpoint
+            else project_endpoint(load_context(args.context))
+        )
         schema = json.loads(args.schema.read_text(encoding="utf-8"))
         load_eval_cases(args.dataset, schema)  # validate up front; fail before touching Azure
         dataset_version = dataset_content_version(args.dataset)
@@ -591,6 +611,26 @@ def main(argv: list[str] | None = None) -> int:
             rubric_evaluator = ensure_rubric_evaluator(
                 project_client, name=args.rubric_name, desired=desired_rubric
             )
+            if args.prepare_only:
+                prepared = {
+                    "status": "ready",
+                    "dataset": {"name": dataset.name, "version": dataset.version},
+                    "rubric_evaluator": {
+                        "name": rubric_evaluator.name,
+                        "version": rubric_evaluator.version,
+                    },
+                }
+                if args.output == "json":
+                    print(json.dumps(prepared, ensure_ascii=False, indent=2))
+                else:
+                    print(f"dataset: {dataset.name} (version {dataset.version})")
+                    print(
+                        f"rubric evaluator: {rubric_evaluator.name} "
+                        f"(version {rubric_evaluator.version})"
+                    )
+                    print("status: ready")
+                return 0
+
             testing_criteria = build_testing_criteria(
                 rubric_evaluator_name=rubric_evaluator.name,
                 judge_deployment=args.judge_deployment,

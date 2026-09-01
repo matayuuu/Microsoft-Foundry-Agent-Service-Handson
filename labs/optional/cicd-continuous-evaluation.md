@@ -224,11 +224,12 @@ jobs:
           PY
 ```
 
-継続的評価ジョブは本編 [Lab 5](../05-evaluation.md) の `scripts/run_evaluation.py` をそのまま
-呼び出し、`--output json` が返す `result_counts.total`/`result_counts.passed` から算出した
+本編 [Lab 5](../05-evaluation.md) は Portal で評価しますが、CI では自動化用の
+`scripts/run_evaluation.py` を呼び出せます。`--output json` が返す
+`result_counts.total`/`result_counts.passed` から算出した
 合格率がしきい値を下回った場合にパイプラインを失敗させるゲートの例です。実際のフィールド名は
 `run_evaluation.py` の `format_report()` の出力に対応しています。しきい値は
-[Lab 5](../05-evaluation.md) で定義される合格基準に合わせて調整してください。
+チームのリリース基準に合わせて調整してください。
 
 ## 4. 何をこのラボが「作らない」か
 
