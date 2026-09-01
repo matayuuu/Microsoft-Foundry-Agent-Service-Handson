@@ -1,111 +1,321 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
-  <title id="title">Microsoft Foundry Agent Service hands-on architecture</title>
-  <desc id="desc">Participant and Codespaces connect to a Foundry project containing a Prompt Agent, Foundry IQ, Toolbox, and Hosted Agent. Azure AI Search, Travel Ops API, and Application Insights provide knowledge, tools, and traces.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="870" viewBox="0 0 1600 870" role="img" aria-labelledby="title desc">
+  <title id="title">Microsoft Foundry Agent Service workshop architecture</title>
+  <desc id="desc">Azure architecture diagram for a portal-first workshop. A participant and GitHub Codespaces access an existing Azure resource group. The resource group contains a Microsoft Foundry account and project, Azure AI Search, and an Azure Container Apps environment. Prompt and hosted agents use model deployments, Foundry IQ, a toolbox, and synthetic data through public endpoints secured with Microsoft Entra ID and Azure RBAC.</desc>
+
   <defs>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="7" flood-color="#000000" flood-opacity=".12"/>
+    <marker id="arrow-runtime" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#0078D4"/>
+    </marker>
+    <marker id="arrow-retrieval" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#5C2D91"/>
+    </marker>
+    <marker id="arrow-tool" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#F7630C"/>
+    </marker>
+    <marker id="arrow-deploy" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#6B7280"/>
+    </marker>
+    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#111827" flood-opacity="0.08"/>
     </filter>
-    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0078D4"/>
-    </marker>
-    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5C2D91"/>
-    </marker>
-    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#F7630C"/>
-    </marker>
-    <marker id="arrow-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#008272"/>
-    </marker>
+
+    <!-- Official Microsoft Azure architecture icons, used without modification. -->
+    <linearGradient id="af-1" x1="10.91" y1="13.66" x2="13.62" y2="13.66" gradientTransform="translate(0 20) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#302ec9"/><stop offset=".12" stop-color="#151698"/><stop offset=".25" stop-color="#0a0b7e"/><stop offset=".43" stop-color="#090c7f"/><stop offset=".51" stop-color="#141698"/><stop offset=".61" stop-color="#282ac4"/><stop offset=".77" stop-color="#8e8ff4"/><stop offset=".85" stop-color="#a7a6f7"/><stop offset=".91" stop-color="#cacafb"/><stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+    <linearGradient id="af-2" x1="12.26" y1="8.32" x2="12.26" y2="18.23" gradientTransform="translate(0 20) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset=".02" stop-color="#201ba6"/><stop offset=".64" stop-color="#2d29c7"/><stop offset="1" stop-color="#201ba6"/>
+    </linearGradient>
+    <linearGradient id="af-3" x1="14.19" y1="8.27" x2="14.19" y2="14.47" gradientTransform="translate(0 20) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3530c3"/><stop offset=".5" stop-color="#6d71d1"/><stop offset=".97" stop-color="#c0bff5"/><stop offset="1" stop-color="#e3e4ff"/>
+    </linearGradient>
+    <linearGradient id="af-4" x1="6.51" y1="3" x2="6.51" y2="19.15" gradientTransform="translate(0 20) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#302ec9"/><stop offset=".45" stop-color="#302ec9"/><stop offset=".95" stop-color="#cacafb"/><stop offset="1" stop-color="#7f7eaf"/>
+    </linearGradient>
+    <symbol id="icon-foundry" viewBox="0 0 18 18">
+      <path d="M11.96,11.68s.07-.1.07-.24v-3.87c0-.85.66-1.76,1.59-2.03-.06-.19-.64-2.11-.81-2.65-.17-.56-.67-1.9-1.29-1.9,0,0,0,0-.01,0h0s-.09.05-.13.13c-.32.58-.46,3.02-.46,4.84v2.26c.27.97.91,3.22.96,3.35,0,0,.05.1.09.1h0Z" fill="url(#af-1)"/>
+      <path d="M11.96,11.68s.07-.1.07-.24v-3.87c0-.85.66-1.76,1.59-2.03-.06-.19-.64-2.11-.81-2.65-.17-.56-.67-1.9-1.29-1.9,0,0,0,0-.01,0h0s-.09.05-.13.13c-.32.58-.46,3.02-.46,4.84v2.26c.27.97.91,3.22.96,3.35,0,0,.05.1.09.1h0Z" fill="url(#af-2)"/>
+      <path d="M16.01,5.46h-1.81c-1.21,0-2.17,1.09-2.17,2.11v3.87c0,.14-.04.24-.07.24s-.09-.1-.09-.1c0,0,.07.21.17.21h1.98c.62,0,2.48-.61,2.48-2.52v-3.25c0-.41-.24-.55-.49-.55Z" fill="url(#af-3)"/>
+      <path d="M2.34,17h5.38c2.35,0,3.2-2.03,3.2-3.81v-7.23c0-2.08.19-4.97.61-4.97h-3.23c-.77,0-1.43.82-2.18,2.48-.75,1.66-4.36,11.87-4.52,12.36-.26.79-.02,1.16.74,1.16Z" fill="url(#af-4)"/>
+    </symbol>
+
+    <linearGradient id="fp-1" x1="8.798" y1="8.703" x2="14.683" y2="8.703" gradientUnits="userSpaceOnUse">
+      <stop offset=".001" stop-color="#773adc"/><stop offset="1" stop-color="#552f99"/>
+    </linearGradient>
+    <linearGradient id="fp-2" x1="5.764" y1="3.777" x2="5.764" y2="13.78" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a67af4"/><stop offset=".999" stop-color="#773adc"/>
+    </linearGradient>
+    <symbol id="icon-project" viewBox="0 0 18 18">
+      <path d="M16.932,11.578a8.448,8.448,0,0,1-7.95,5.59,8.15,8.15,0,0,1-2.33-.33,2.133,2.133,0,0,0,.18-.83c.01,0,.03.01.04.01a7.422,7.422,0,0,0,2.11.3,7.646,7.646,0,0,0,6.85-4.28l.01-.01Z" fill="#32bedd"/>
+      <path d="M3.582,14.068a2.025,2.025,0,0,0-.64.56,8.6,8.6,0,0,1-1.67-2.44l1.04.23v.26a.6.6,0,0,0,.47.59l.14.03a6.136,6.136,0,0,0,.62.73Z" fill="#32bedd"/>
+      <path d="M12.352.958a2.28,2.28,0,0,0-.27.81c-.02-.01-.05-.02-.07-.03a7.479,7.479,0,0,0-3.03-.63,7.643,7.643,0,0,0-5.9,2.8l-.29.06a.6.6,0,0,0-.48.58v.46l-1.02.19A8.454,8.454,0,0,1,8.982.268,8.6,8.6,0,0,1,12.352.958Z" fill="#32bedd"/>
+      <path d="M16.872,5.7l-1.09-.38a6.6,6.6,0,0,0-.72-1.16c-.02-.03-.04-.05-.05-.07a2.083,2.083,0,0,0,.72-.45A7.81,7.81,0,0,1,16.872,5.7Z" fill="#32bedd"/>
+      <path d="M1.1,5.668l1.21-.23v6.55l-1.23-.27-.99-.22a.111.111,0,0,1-.09-.12v-5.4a.12.12,0,0,1,.09-.12Z" fill="#a67af4"/>
+      <path d="M10.072,11.908l2.54.56L8.672,14.1c-.02,0-.03.01-.05.01a.154.154,0,0,1-.15-.15V3.448a.154.154,0,0,1,.15-.15.09.09,0,0,1,.05.01l4.46,1.56-3.05.57a.565.565,0,0,0-.44.54v5.4A.537.537,0,0,0,10.072,11.908Z" fill="url(#fp-1)"/>
+      <path d="M8.586,3.3,2.878,4.378a.177.177,0,0,0-.14.175V12.68a.177.177,0,0,0,.137.174L8.581,14.1a.176.176,0,0,0,.21-.174V3.478A.175.175,0,0,0,8.619,3.3Z" fill="url(#fp-2)"/>
+      <polygon points="5.948 4.921 5.948 12.483 7.934 12.814 7.934 4.564 5.948 4.921" fill="#b796f9" opacity=".5"/>
+      <polygon points="3.509 5.329 3.509 11.954 5.238 12.317 5.238 5.031 3.509 5.329" fill="#b796f9" opacity=".5"/>
+      <path d="M16,2.048a1.755,1.755,0,1,1-1.76-1.76A1.756,1.756,0,0,1,16,2.048Z" fill="#32bedd"/>
+      <circle cx="4.65" cy="15.973" r="1.759" fill="#32bedd"/>
+      <path d="M18,6.689v3.844a.222.222,0,0,1-.133.2l-.766.316-3.07,1.268-.011,0a.126.126,0,0,1-.038,0,.1.1,0,0,1-.1-.1V5.234a.1.1,0,0,1,.054-.088l0,0,.019,0a.031.031,0,0,1,.019,0,.055.055,0,0,1,.034.008l.011,0,.012,0L17.05,6.2l.8.282A.213.213,0,0,1,18,6.689Z" fill="#773adc"/>
+      <path d="M13.959,5.14l-3.8.715a.118.118,0,0,0-.093.117v5.409a.118.118,0,0,0,.091.116l3.8.831a.115.115,0,0,0,.137-.09.109.109,0,0,0,0-.026V5.256a.117.117,0,0,0-.115-.118A.082.082,0,0,0,13.959,5.14Z" fill="#a67af4"/>
+    </symbol>
+
+    <linearGradient id="agent-1" x1="-608.13" y1="-206.36" x2="-608.13" y2="-222.59" gradientTransform="translate(617.13 -205.76) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b6b6e1"/><stop offset="1" stop-color="#7372d8"/>
+    </linearGradient>
+    <symbol id="icon-agent" viewBox="0 0 18 18">
+      <path d="M17.46,3.36h-7.74c-.08,0-.16-.02-.23-.07l-2.21-1.47c-.07-.05-.15-.07-.23-.07H.54c-.11,0-.22.04-.3.12-.08.08-.12.18-.12.3v13.67c0,.05.01.11.03.16.02.05.05.1.09.14.04.04.08.07.14.09.05.02.1.03.16.03h16.91c.05,0,.11-.01.16-.03.05-.02.1-.05.14-.09.04-.04.07-.08.09-.14.02-.05.03-.11.03-.16V3.77c0-.11-.05-.21-.12-.29-.08-.08-.18-.12-.29-.12Z" fill="#4846df"/>
+      <path d="M5.6,2.54H1.91c-.09,0-.17.08-.17.17v.47c0,.09.08.17.17.17h3.7c.09,0,.17-.08.17-.17v-.47c0-.09-.08-.17-.17-.17Z" fill="#fff"/>
+      <path d="M17.46,3.34h-8.5c-.11,0-.22.04-.3.12l-1.36,1.37c-.08.08-.18.12-.3.12H.54c-.05,0-.11.01-.16.03-.05.02-.1.05-.14.09-.04.04-.07.08-.09.14-.02.05-.03.1-.03.16v10.44c0,.11.04.22.12.3.08.08.18.12.3.12h16.91c.11,0,.22-.04.3-.12.08-.08.12-.18.12-.3V3.75c0-.11-.04-.22-.12-.3-.08-.08-.18-.12-.3-.12h0Z" fill="url(#agent-1)"/>
+      <path d="M12.6,8.43h-.8s-.07.02-.1.02l-.04-.13c-.1-.3-.24-.73-.29-.89-.15-.46-.42-.99-.87-1.03v-.02h-1.57c-.6,0-.99.65-1.3,1.28-.37.78-2.15,5.49-2.21,5.67-.1.27-.09.48.03.64.11.16.3.24.58.24h2.62c1.26,0,1.82-1,1.82-2v-.58l.09.15h.03c.05.03.11.05.17.05h.89c.5,0,1.47-.43,1.47-1.41v-1.49c0-.31-.2-.51-.5-.51h0ZM9.93,12.22c0,.25-.06,1.48-1.29,1.48h-2.62c-.09,0-.13-.01-.15-.01h0s0-.06.03-.17c.07-.2,1.84-4.88,2.19-5.62.32-.66.59-.99.83-.99h1.16c-.07.3-.12.8-.14,1.57,0,.22,0,.39,0,.44v3.3ZM12.58,10.43c0,.72-.82.89-.95.89h-.63v-1.67c0-.08.02-.16.06-.23,0-.02.03-.04.04-.06.03-.05.07-.11.12-.16.02-.02.04-.03.06-.05.06-.05.12-.09.19-.12.02,0,.03-.02.05-.02.09-.04.19-.06.29-.06h.78v1.48Z" fill="#fff"/>
+    </symbol>
+
+    <linearGradient id="iq-1" x1="9.52" y1="1882" x2="17.62" y2="1887.9" gradientTransform="translate(0 -1882.5)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7274ff"/><stop offset="1" stop-color="#4f42fd"/></linearGradient>
+    <linearGradient id="iq-2" x1="7.5" y1="1885.6" x2="10" y2="1883.1" gradientTransform="translate(0 -1882.5)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd"/><stop offset="1" stop-color="#2c08ac"/></linearGradient>
+    <linearGradient id="iq-3" x1="-.5" y1="1890.98" x2="5.4" y2="1882.88" gradientTransform="translate(0 -1882.5)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7274ff"/><stop offset="1" stop-color="#4f42fd"/></linearGradient>
+    <linearGradient id="iq-4" x1="3.11" y1="1892.99" x2=".61" y2="1890.49" gradientTransform="translate(0 -1882.5)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd"/><stop offset="1" stop-color="#2c08ac"/></linearGradient>
+    <linearGradient id="iq-5" x1="8.46" y1="1900.94" x2=".36" y2="1895.14" gradientTransform="translate(0 -1882.5)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7274ff"/><stop offset="1" stop-color="#4f42fd"/></linearGradient>
+    <linearGradient id="iq-6" x1="10.54" y1="1897.44" x2="8.04" y2="1899.94" gradientTransform="translate(0 -1882.5)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd"/><stop offset="1" stop-color="#2c08ac"/></linearGradient>
+    <linearGradient id="iq-7" x1="18.44" y1="1892.04" x2="12.64" y2="1900.14" gradientTransform="translate(0 -1882.5)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7274ff"/><stop offset="1" stop-color="#4f42fd"/></linearGradient>
+    <linearGradient id="iq-8" x1="14.95" y1="1889.95" x2="17.45" y2="1892.45" gradientTransform="translate(0 -1882.5)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f42fd"/><stop offset="1" stop-color="#2c08ac"/></linearGradient>
+    <symbol id="icon-iq" viewBox="0 0 18 18">
+      <path d="M7.85.25h5.2c.4,0,.8.2,1.1.5l1.1,1.1c.1.1.1.3,0,.4l-1.9,1.9h-.4l-1.2-1.2-1.7-1.7c-.4-.4-.8-.6-1.3-.8-.3,0-.6-.1-.9-.1h0v-.1Z" fill="url(#iq-1)"/>
+      <path d="M2.75,1.85l1.1-1.1c.3-.3.7-.5,1.1-.5h2.8c.4,0,.7,0,1,.1.5.1,1,.4,1.3.8l1,1c-.2-.2-.5,0-.5.2v4s-.1.3-.3.3h-2.7s-.3,0-.3-.3V2.35c0-.2,0-.3-.3-.3s0,0-.2,0l-1.1,1.1-.9.9h-.4l-1.9-1.9v-.4h.3v.1Z" fill="url(#iq-2)"/>
+      <path d="M.25,10.15v-5.2c0-.4.2-.8.5-1.1l1.1-1.1h.4l1.9,1.9v.4l-1.2,1.2-1.7,1.7c-.4.4-.6.8-.8,1.3,0,.3-.1.6-.1.9h-.1Z" fill="url(#iq-3)"/>
+      <path d="M1.85,15.25l-1.1-1.1c-.3-.3-.5-.7-.5-1.1v-2.8c0-.4,0-.7.1-1,.1-.5.4-1,.8-1.3l1-1c-.2.2,0,.5.2.5h4s.3,0,.3.3v2.7c0,.1,0,.3-.3.3H2.35c-.2,0-.3.1-.3.3v.2l1.1,1.1.9.9v.4l-1.9,1.9c-.1.1-.3.1-.4,0h0v-.3h.1Z" fill="url(#iq-4)"/>
+      <path d="M10.15,17.75h-5.2c-.4,0-.8-.2-1.1-.5l-1.1-1.1v-.4l1.9-1.9c0-.1.3-.1.4,0l1.2,1.2,1.7,1.7c.4.4.8.6,1.3.8.3,0,.6.1.9.1h0v.1Z" fill="url(#iq-5)"/>
+      <path d="M15.25,16.15l-1.1,1.1c-.3.3-.7.5-1.1.5h-2.8c-.3,0-.6,0-.9-.1-.5-.1-1-.4-1.3-.8l-1-1c.2.2.5,0,.5-.2v-4c0-.1,0-.3.3-.3h2.7c.1,0,.3.1.3.3v4c0,.2.1.3.3.3h.2l1.1-1.1.9-.9c.1-.1.3-.1.4,0l1.9,1.9c.1.1.1.3,0,.4h-.4v-.1Z" fill="url(#iq-6)"/>
+      <path d="M17.75,7.85v5.2c0,.4-.2.8-.5,1.1l-1.1,1.1c-.1.1-.3.1-.4,0l-1.9-1.9c-.1-.1-.1-.3,0-.4l1.2-1.2,1.7-1.7c.4-.4.6-.8.8-1.3,0-.3.1-.6.1-.9,0,0,.1,0,.1,0Z" fill="url(#iq-7)"/>
+      <path d="M16.15,2.75l1.1,1.1c.3.3.5.7.5,1.1v2.8c0,.3,0,.6-.1.9-.1.5-.4,1-.8,1.3l-1,1c.2-.2,0-.5-.2-.5h-4c-.1,0-.3-.1-.3-.3v-2.7s.1-.3.3-.3h4c.2,0,.3,0,.3-.3s0,0,0-.2l-1.1-1.1-.9-.9c-.1,0-.1-.3,0-.4l1.9-1.9c.1-.1.3-.1.4,0h0v.4h-.1Z" fill="url(#iq-8)"/>
+    </symbol>
+
+    <linearGradient id="toolbox-1" x1="9" y1="16.431" x2="9" y2="4.559" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0078d4"/><stop offset=".156" stop-color="#1380da"/><stop offset=".528" stop-color="#3c91e5"/><stop offset=".822" stop-color="#559cec"/><stop offset="1" stop-color="#5ea0ef"/>
+    </linearGradient>
+    <symbol id="icon-toolbox" viewBox="0 0 18 18">
+      <path d="M13.135,4.659h-.85V2.422a.1.1,0,0,0-.026,0H5.845a.093.093,0,0,0-.026,0V4.659h-.85V2.379a.846.846,0,0,1,.876-.81h6.414a.846.846,0,0,1,.876.81Z" fill="#a3a3a3"/>
+      <rect x=".5" y="4.559" width="17" height="11.872" rx=".567" fill="url(#toolbox-1)"/>
+      <rect x=".5" y="7.594" width="17" height="1.311" fill="#9cebff"/>
+      <path d="M6.617,8.905H11.5v1.531a.281.281,0,0,1-.281.281H6.9a.281.281,0,0,1-.281-.281V8.905Z" fill="#005ba1"/>
+      <polygon points=".5 10.894 .5 13.889 5.144 15.378 6.015 12.662 .5 10.894" fill="#83b9f9"/>
+      <path d="M17.5,10.745a2.718,2.718,0,1,0,0,4.837Z" fill="#5ea0ef"/>
+    </symbol>
+
+    <linearGradient id="search-1" x1="9" y1=".36" x2="9" y2="18.31" gradientUnits="userSpaceOnUse"><stop offset=".18" stop-color="#5ea0ef"/><stop offset="1" stop-color="#0078d4"/></linearGradient>
+    <symbol id="icon-search" viewBox="0 0 18 18">
+      <path d="M18,11.32a4.12,4.12,0,0,0-3.51-4,5.15,5.15,0,0,0-5.25-5,5.25,5.25,0,0,0-5,3.49A4.86,4.86,0,0,0,0,10.59a5,5,0,0,0,5.07,4.82l.44,0h8.21a.78.78,0,0,0,.22,0A4.13,4.13,0,0,0,18,11.32Z" fill="url(#search-1)"/>
+      <path d="M12.33,6.59a3.07,3.07,0,0,0-5.61.85,3.16,3.16,0,0,0,.33,2.27L4.71,12.08a.79.79,0,0,0,0,1.12.78.78,0,0,0,.56.23.76.76,0,0,0,.56-.23l2.33-2.36a3.14,3.14,0,0,0,.81.33,3.08,3.08,0,0,0,3.36-4.58Zm-.54,2.1A2.16,2.16,0,0,1,9.7,10.34a1.79,1.79,0,0,1-.51-.07,1.87,1.87,0,0,1-.7-.32,2.13,2.13,0,0,1-.56-.56,2.17,2.17,0,0,1-.31-1.73A2.14,2.14,0,0,1,9.7,6a2.31,2.31,0,0,1,.52.06,2.18,2.18,0,0,1,1.32,1A2.13,2.13,0,0,1,11.79,8.69Z" fill="#f2f2f2"/>
+      <ellipse cx="9.69" cy="8.18" rx="2.15" ry="2.16" fill="#83b9f9"/>
+    </symbol>
+
+    <linearGradient id="container-1" x1="11.729" y1="4.88" x2="11.729" y2="13.099" gradientUnits="userSpaceOnUse"><stop offset=".001" stop-color="#773adc"/><stop offset=".528" stop-color="#6635bb"/><stop offset="1" stop-color="#552f99"/></linearGradient>
+    <linearGradient id="container-2" x1="6.35" y1="13.914" x2="6.35" y2="4.198" gradientUnits="userSpaceOnUse"><stop offset=".001" stop-color="#773adc"/><stop offset=".307" stop-color="#793ddd"/><stop offset=".532" stop-color="#8046e1"/><stop offset=".731" stop-color="#8c56e7"/><stop offset=".915" stop-color="#9c6def"/><stop offset="1" stop-color="#a67af4"/></linearGradient>
+    <symbol id="icon-container" viewBox="0 0 18 18">
+      <path d="M8.617,8.644H.639V1.784A1.16,1.16,0,0,1,1.788.624H8.617ZM1.63,7.653h6V1.594H1.788a.158.158,0,0,0-.158.158h0Z" fill="#949494"/>
+      <path d="M17.5,8.644H9.523V.624h6.828A1.16,1.16,0,0,1,17.5,1.784Zm-6.987-.991h6V1.784a.157.157,0,0,0-.123-.187.2.2,0,0,0-.035,0H10.513Z" fill="#949494"/>
+      <path d="M8.617,17.485H1.788A1.149,1.149,0,0,1,.639,16.347V9.476H8.617ZM1.63,10.467v5.88a.158.158,0,0,0,.158.158H7.626V10.467Z" fill="#949494"/>
+      <path d="M16.351,17.485H9.523V9.476H17.5v6.871A1.149,1.149,0,0,1,16.351,17.485Zm-5.838-.991h5.838a.157.157,0,0,0,.158-.158V10.467h-6Z" fill="#949494"/>
+      <path d="M14.6,6.294a.294.294,0,0,0-.2-.278L9.044,4.205A.128.128,0,0,0,9,4.2H9a.132.132,0,0,0-.133.133v9.445A.133.133,0,0,0,9,13.911H9a.138.138,0,0,0,.049-.01l5.365-2.145a.292.292,0,0,0,.184-.272Z" fill="url(#container-1)"/>
+      <path d="M8.966,4.2l-5.293.966a.161.161,0,0,0-.13.158V12.63a.16.16,0,0,0,.126.157L8.962,13.91a.161.161,0,0,0,.191-.121.22.22,0,0,0,0-.036V4.358A.16.16,0,0,0,9,4.2.163.163,0,0,0,8.966,4.2Z" fill="url(#container-2)"/>
+      <path d="M6.52,5.656v6.8l1.842.3V5.335Zm-2.262.367v5.955l1.6.326V5.754Z" fill="#b796f9" opacity=".5"/>
+    </symbol>
+
     <style>
-      .title { font: 700 30px "Segoe UI", "Noto Sans JP", sans-serif; fill: #1e1e1e; }
-      .section { font: 600 19px "Segoe UI", "Noto Sans JP", sans-serif; fill: #323130; }
-      .label { font: 600 17px "Segoe UI", "Noto Sans JP", sans-serif; fill: #1e1e1e; text-anchor: middle; }
-      .small { font: 400 14px "Segoe UI", "Noto Sans JP", sans-serif; fill: #605e5c; text-anchor: middle; }
-      .flow { font: 600 13px "Segoe UI", "Noto Sans JP", sans-serif; fill: #605e5c; text-anchor: middle; }
-      .footer { font: 500 15px "Segoe UI", "Noto Sans JP", sans-serif; fill: #323130; text-anchor: middle; }
+      text { font-family: "Segoe UI", "Noto Sans JP", Arial, sans-serif; fill: #111827; }
+      .title { font-size: 30px; font-weight: 700; letter-spacing: -.3px; }
+      .subtitle { font-size: 15px; fill: #5F6B7A; }
+      .boundary-label { font-size: 13px; font-weight: 600; fill: #4B5563; letter-spacing: .3px; }
+      .resource-title { font-size: 17px; font-weight: 650; }
+      .service-title { font-size: 15px; font-weight: 650; }
+      .service-subtitle { font-size: 12px; fill: #667085; }
+      .caption { font-size: 11px; fill: #667085; }
+      .chip { font-size: 11px; font-weight: 600; }
+      .flow-label { font-size: 11px; font-weight: 600; paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+      .legend { font-size: 12px; fill: #475467; }
+      .runtime { fill: none; stroke: #0078D4; stroke-width: 2.25; marker-end: url(#arrow-runtime); }
+      .retrieval { fill: none; stroke: #5C2D91; stroke-width: 2.25; marker-end: url(#arrow-retrieval); }
+      .tool { fill: none; stroke: #F7630C; stroke-width: 2.25; marker-end: url(#arrow-tool); }
+      .deploy { fill: none; stroke: #6B7280; stroke-width: 2; stroke-dasharray: 7 6; marker-end: url(#arrow-deploy); }
+      .soft-line { fill: none; stroke: #B9A7E8; stroke-width: 1.5; }
     </style>
   </defs>
 
-  <rect width="1200" height="650" rx="24" fill="#FAF9F8"/>
-  <text x="48" y="55" class="title">Microsoft Foundry Agent Service Hands-on</text>
-  <text x="48" y="82" class="section">Contoso 社内出張・経費支援を、Portal と Notebook で段階的に構築</text>
+  <rect width="1600" height="900" fill="#FFFFFF"/>
 
-  <g filter="url(#shadow)">
-    <rect x="44" y="150" width="180" height="92" rx="16" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
-    <text x="134" y="187" class="label">参加者</text>
-    <text x="134" y="216" class="small">Foundry Portal</text>
+  <text x="48" y="50" class="title">Microsoft Foundry Agent Service ハンズオン構成</text>
+  <text x="48" y="79" class="subtitle">Portal と Notebook から、既存の Azure Resource Group に構築する keyless architecture</text>
+
+  <g transform="translate(1105 28)">
+    <rect width="447" height="56" rx="12" fill="#F8FAFC" stroke="#D7DEE8"/>
+    <circle cx="28" cy="28" r="14" fill="#E8F3FF"/>
+    <path d="M22 29l4 4 8-10" fill="none" stroke="#0078D4" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="52" y="24" class="chip">Public endpoints</text>
+    <text x="52" y="42" class="caption">Microsoft Entra ID + Azure RBAC · synthetic data only</text>
   </g>
 
-  <g filter="url(#shadow)">
-    <rect x="44" y="350" width="180" height="92" rx="16" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
-    <text x="134" y="387" class="label">GitHub Codespaces</text>
-    <text x="134" y="416" class="small">Notebook / Terraform</text>
+  <!-- External actors -->
+  <g>
+    <rect x="40" y="124" width="250" height="652" rx="16" fill="#F8FAFC" stroke="#D8DEE8"/>
+    <text x="64" y="157" class="boundary-label">PARTICIPANT WORKSPACE</text>
+
+    <g filter="url(#card-shadow)">
+      <rect x="64" y="194" width="202" height="132" rx="12" fill="#FFFFFF" stroke="#D5DCE6"/>
+      <circle cx="100" cy="236" r="18" fill="#E8F3FF"/>
+      <circle cx="100" cy="231" r="6" fill="none" stroke="#0078D4" stroke-width="2"/>
+      <path d="M88 254c2-9 8-13 12-13s10 4 12 13" fill="none" stroke="#0078D4" stroke-width="2" stroke-linecap="round"/>
+      <text x="130" y="232" class="resource-title">Participant</text>
+      <text x="130" y="254" class="service-subtitle">Foundry Portal</text>
+      <rect x="82" y="282" width="166" height="25" rx="12.5" fill="#EEF6FF"/>
+      <text x="165" y="299" text-anchor="middle" class="chip" fill="#005A9E">Build · Test in Portal</text>
+    </g>
+
+    <g filter="url(#card-shadow)">
+      <rect x="64" y="420" width="202" height="176" rx="12" fill="#FFFFFF" stroke="#D5DCE6"/>
+      <rect x="82" y="444" width="45" height="34" rx="5" fill="#24292F"/>
+      <circle cx="90" cy="452" r="2" fill="#F85149"/><circle cx="97" cy="452" r="2" fill="#F0B72F"/><circle cx="104" cy="452" r="2" fill="#3FB950"/>
+      <path d="M90 463l5 4-5 4M100 471h10" fill="none" stroke="#FFFFFF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="140" y="452" class="resource-title">GitHub</text>
+      <text x="140" y="474" class="resource-title">Codespaces</text>
+      <g>
+        <rect x="82" y="500" width="72" height="24" rx="12" fill="#F3F4F6"/><text x="118" y="516" text-anchor="middle" class="chip">az login</text>
+        <rect x="160" y="500" width="88" height="24" rx="12" fill="#F3F4F6"/><text x="204" y="516" text-anchor="middle" class="chip">Terraform</text>
+        <rect x="82" y="533" width="78" height="24" rx="12" fill="#F3F4F6"/><text x="121" y="549" text-anchor="middle" class="chip">Notebook</text>
+        <rect x="166" y="533" width="82" height="24" rx="12" fill="#F3F4F6"/><text x="207" y="549" text-anchor="middle" class="chip">Python SDK</text>
+      </g>
+      <text x="165" y="579" text-anchor="middle" class="caption">setup · seed · deploy</text>
+    </g>
   </g>
 
-  <rect x="300" y="112" width="590" height="438" rx="22" fill="#FFFFFF" stroke="#5C2D91" stroke-width="2"/>
-  <text x="330" y="148" class="section">Microsoft Foundry project</text>
-
-  <g filter="url(#shadow)">
-    <rect x="485" y="180" width="220" height="76" rx="16" fill="#DFF6DD" stroke="#107C10" stroke-width="2"/>
-    <text x="595" y="225" class="label">Prompt Agent</text>
+  <!-- Existing resource group -->
+  <rect x="320" y="116" width="1240" height="660" rx="18" fill="#FFFFFF" stroke="#0078D4" stroke-width="1.6"/>
+  <path d="M320 134a18 18 0 0 1 18-18h1204a18 18 0 0 1 18 18v86H320Z" fill="#EAF4FF"/>
+  <g transform="translate(345 142)">
+    <rect width="30" height="30" rx="7" fill="#0078D4"/>
+    <path d="M8 9h14v12H8zM11 6h8v3h-8z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+  </g>
+  <text x="388" y="155" class="resource-title">Existing Azure Resource Group</text>
+  <text x="388" y="178" class="service-subtitle">participant-owned · setup does not create or delete the group</text>
+  <g transform="translate(1287 143)">
+    <rect width="222" height="28" rx="14" fill="#FFFFFF" stroke="#B9D9F7"/>
+    <circle cx="17" cy="14" r="5" fill="#107C10"/>
+    <text x="31" y="18" class="chip">Public network + managed identity</text>
   </g>
 
-  <g filter="url(#shadow)">
-    <rect x="350" y="318" width="200" height="82" rx="16" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
-    <text x="450" y="350" class="label">Foundry IQ</text>
-    <text x="450" y="377" class="small">Knowledge Base</text>
+  <!-- Foundry account boundary -->
+  <g>
+    <rect x="370" y="238" width="690" height="530" rx="14" fill="#FBFAFF" stroke="#8B78D7" stroke-width="1.5"/>
+    <path d="M370 252a14 14 0 0 1 14-14h662a14 14 0 0 1 14 14v46H370Z" fill="#F0EDFC"/>
+    <use href="#icon-foundry" x="392" y="251" width="34" height="34"/>
+    <text x="440" y="266" class="resource-title">Microsoft Foundry account</text>
+    <text x="440" y="285" class="service-subtitle">AIServices · project management enabled</text>
+    <rect x="872" y="255" width="166" height="27" rx="13.5" fill="#FFFFFF" stroke="#C9C1EC"/>
+    <text x="955" y="273" text-anchor="middle" class="chip">System-assigned identity</text>
+
+    <!-- Foundry project -->
+    <rect x="394" y="314" width="642" height="430" rx="12" fill="#FFFFFF" stroke="#B9A7E8" stroke-width="1.4"/>
+    <use href="#icon-project" x="416" y="329" width="32" height="32"/>
+    <text x="462" y="344" class="resource-title">Foundry project</text>
+    <text x="462" y="363" class="service-subtitle">Agents, knowledge, tools, and model deployments</text>
+
+    <!-- Model deployments -->
+    <rect x="418" y="382" width="594" height="84" rx="10" fill="#F8FAFC" stroke="#D8DEE8"/>
+    <g transform="translate(437 401)">
+      <circle cx="20" cy="20" r="20" fill="#EDE9FE"/>
+      <path d="M10 25l10-15 10 15-10 6zM20 10v21" fill="none" stroke="#5C2D91" stroke-width="1.8" stroke-linejoin="round"/>
+    </g>
+    <text x="476" y="405" class="service-title">Model deployments</text>
+    <text x="476" y="424" class="service-subtitle">Shared inference plane</text>
+    <g transform="translate(630 397)">
+      <rect width="110" height="26" rx="13" fill="#E8F3FF"/><text x="55" y="17" text-anchor="middle" class="chip">primary · gpt-4.1</text>
+      <text x="55" y="43" text-anchor="middle" class="caption">Prompt Agent</text>
+    </g>
+    <g transform="translate(750 397)">
+      <rect width="110" height="26" rx="13" fill="#F0EDFC"/><text x="55" y="17" text-anchor="middle" class="chip">optimizer · gpt-5</text>
+      <text x="55" y="43" text-anchor="middle" class="caption">Foundry IQ</text>
+    </g>
+    <g transform="translate(870 397)">
+      <rect width="122" height="26" rx="13" fill="#EAF9F7"/><text x="61" y="17" text-anchor="middle" class="chip">text-embedding-3</text>
+      <text x="61" y="43" text-anchor="middle" class="caption">Search vectors</text>
+    </g>
+
+    <!-- Agent Service nodes -->
+    <g filter="url(#card-shadow)">
+      <rect x="418" y="492" width="278" height="116" rx="11" fill="#FFFFFF" stroke="#C9C1EC"/>
+      <use href="#icon-agent" x="440" y="514" width="44" height="44"/>
+      <text x="500" y="526" class="resource-title">Prompt Agent</text>
+      <text x="500" y="548" class="service-subtitle">Foundry Agent Service</text>
+      <rect x="500" y="565" width="168" height="25" rx="12.5" fill="#F0EDFC"/>
+      <text x="584" y="582" text-anchor="middle" class="chip">Knowledge + Tools</text>
+    </g>
+    <g filter="url(#card-shadow)">
+      <rect x="726" y="492" width="286" height="116" rx="11" fill="#FFFFFF" stroke="#C9C1EC"/>
+      <use href="#icon-agent" x="748" y="514" width="44" height="44"/>
+      <text x="808" y="526" class="resource-title">Hosted Agent</text>
+      <text x="808" y="548" class="service-subtitle">Microsoft Agent Framework</text>
+      <rect x="808" y="565" width="182" height="25" rx="12.5" fill="#F0EDFC"/>
+      <text x="899" y="582" text-anchor="middle" class="chip">policy → planner → reviewer</text>
+    </g>
+
+    <!-- Project capabilities -->
+    <g>
+      <rect x="418" y="642" width="278" height="76" rx="10" fill="#FAF9FF" stroke="#C9C1EC"/>
+      <use href="#icon-iq" x="434" y="659" width="38" height="38"/>
+      <text x="500" y="668" class="service-title">Foundry IQ</text>
+      <text x="500" y="689" class="service-subtitle">Knowledge Base</text>
+
+      <rect x="726" y="642" width="286" height="76" rx="10" fill="#F7FBFF" stroke="#B9D9F7"/>
+      <use href="#icon-toolbox" x="748" y="659" width="38" height="38"/>
+      <text x="808" y="668" class="service-title">Toolbox</text>
+      <text x="808" y="689" class="service-subtitle">MCP + OpenAPI</text>
+    </g>
   </g>
 
-  <g filter="url(#shadow)">
-    <rect x="640" y="318" width="200" height="82" rx="16" fill="#FFF4CE" stroke="#F7630C" stroke-width="2"/>
-    <text x="740" y="350" class="label">Toolbox</text>
-    <text x="740" y="377" class="small">Travel Ops OpenAPI</text>
+  <!-- Supporting Azure services -->
+  <g>
+    <g filter="url(#card-shadow)">
+      <rect x="1090" y="254" width="420" height="160" rx="12" fill="#FFFFFF" stroke="#B9D9F7"/>
+      <use href="#icon-search" x="1116" y="276" width="48" height="48"/>
+      <text x="1182" y="291" class="resource-title">Azure AI Search</text>
+      <text x="1182" y="314" class="service-subtitle">Basic · system-assigned identity</text>
+      <rect x="1116" y="342" width="368" height="48" rx="9" fill="#F1F8FF" stroke="#D6E9FB"/>
+      <text x="1134" y="361" class="service-title">Index: contoso-travel-policy</text>
+      <text x="1134" y="379" class="caption">synthetic policy chunks · GitHub source_url</text>
+    </g>
+
+    <g filter="url(#card-shadow)">
+      <rect x="1090" y="444" width="420" height="160" rx="12" fill="#FFFFFF" stroke="#B9D9F7"/>
+      <use href="#icon-container" x="1116" y="466" width="48" height="48"/>
+      <text x="1182" y="481" class="resource-title">Azure Container Apps environment</text>
+      <text x="1182" y="504" class="service-subtitle">Consumption plan · scale to zero</text>
+      <rect x="1116" y="532" width="368" height="48" rx="9" fill="#F1F8FF" stroke="#D6E9FB"/>
+      <text x="1134" y="551" class="service-title">Travel Ops API · Container App</text>
+      <text x="1134" y="569" class="caption">deterministic mock · public OpenAPI 3.1 endpoint</text>
+    </g>
   </g>
 
-  <g filter="url(#shadow)">
-    <rect x="485" y="455" width="220" height="68" rx="16" fill="#DFF6DD" stroke="#107C10" stroke-width="2"/>
-    <text x="595" y="485" class="label">Hosted Agent</text>
-    <text x="595" y="509" class="small">Agent Framework workflow</text>
+  <!-- Flows: build, runtime, retrieval, and tools -->
+  <path d="M266 506 H322 Q342 506 342 486 V270 Q342 255 370 255" class="deploy"/>
+  <text x="300" y="493" class="flow-label" fill="#6B7280">setup.sh · Terraform · Python SDK</text>
+
+  <path d="M266 244 H330 Q350 244 350 264 V475 H869" fill="none" stroke="#0078D4" stroke-width="2.25"/>
+  <text x="298" y="232" class="flow-label" fill="#0078D4">Portal / Responses API</text>
+  <path d="M557 475 V492" class="runtime"/>
+  <path d="M869 475 V492" class="runtime"/>
+
+  <path d="M557 608 V642" class="retrieval"/>
+  <path d="M650 608 C710 626 806 628 869 642" class="tool"/>
+
+  <path d="M696 680 H706 V624 H1058 Q1072 624 1072 610 V337 Q1072 328 1090 328" class="retrieval"/>
+
+  <path d="M869 718 V732 H1046 Q1060 732 1060 716 V528 Q1060 520 1090 520" class="tool"/>
+
+  <!-- Legend -->
+  <g transform="translate(410 810)">
+    <line x1="0" y1="0" x2="42" y2="0" class="runtime"/><text x="54" y="5" class="legend">runtime request</text>
+    <line x1="194" y1="0" x2="236" y2="0" class="retrieval"/><text x="248" y="5" class="legend">knowledge retrieval</text>
+    <line x1="421" y1="0" x2="463" y2="0" class="tool"/><text x="475" y="5" class="legend">tool call</text>
+    <line x1="574" y1="0" x2="616" y2="0" class="deploy"/><text x="628" y="5" class="legend">provision / deploy / seed</text>
   </g>
-
-  <g filter="url(#shadow)">
-    <rect x="970" y="176" width="190" height="82" rx="16" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
-    <text x="1065" y="209" class="label">Azure AI Search</text>
-    <text x="1065" y="236" class="small">合成規程データ</text>
-  </g>
-
-  <g filter="url(#shadow)">
-    <rect x="970" y="318" width="190" height="82" rx="16" fill="#FFF4CE" stroke="#F7630C" stroke-width="2"/>
-    <text x="1065" y="351" class="label">Travel Ops API</text>
-    <text x="1065" y="378" class="small">決定的 mock</text>
-  </g>
-
-  <g filter="url(#shadow)">
-    <rect x="970" y="458" width="190" height="82" rx="16" fill="#D7F5F0" stroke="#008272" stroke-width="2"/>
-    <text x="1065" y="491" class="label">Application Insights</text>
-    <text x="1065" y="518" class="small">Trace / Metrics</text>
-  </g>
-
-  <path d="M224 196 C330 196 380 212 485 218" fill="none" stroke="#0078D4" stroke-width="3" marker-end="url(#arrow-blue)"/>
-  <text x="350" y="185" class="flow">Portal</text>
-
-  <path d="M224 396 C340 396 370 475 485 486" fill="none" stroke="#0078D4" stroke-width="3" marker-end="url(#arrow-blue)"/>
-  <text x="350" y="438" class="flow">Python source deploy</text>
-
-  <path d="M560 256 C540 285 500 296 470 318" fill="none" stroke="#5C2D91" stroke-width="3" marker-end="url(#arrow-purple)"/>
-  <path d="M630 256 C650 285 700 296 720 318" fill="none" stroke="#F7630C" stroke-width="3" marker-end="url(#arrow-orange)"/>
-
-  <path d="M550 359 C730 285 820 217 970 217" fill="none" stroke="#0078D4" stroke-width="3" marker-end="url(#arrow-blue)"/>
-  <text x="775" y="260" class="flow">検索・引用</text>
-
-  <path d="M840 359 L970 359" fill="none" stroke="#F7630C" stroke-width="3" marker-end="url(#arrow-orange)"/>
-  <text x="905" y="346" class="flow">tool call</text>
-
-  <path d="M705 489 C810 489 865 499 970 499" fill="none" stroke="#008272" stroke-width="3" marker-end="url(#arrow-teal)"/>
-  <path d="M705 218 C900 218 870 470 970 488" fill="none" stroke="#008272" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#arrow-teal)"/>
-  <text x="846" y="514" class="flow">telemetry</text>
-
-  <rect x="165" y="584" width="870" height="42" rx="21" fill="#FFFFFF" stroke="#D2D0CE"/>
-  <text x="600" y="611" class="footer">既存 Resource Group 内に構築　|　Microsoft Entra ID + RBAC　|　すべて合成データ</text>
+  <text x="1552" y="852" text-anchor="end" class="caption">Official Azure service icons · Azure Architecture Center</text>
 </svg>
