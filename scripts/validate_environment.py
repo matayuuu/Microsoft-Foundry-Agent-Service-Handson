@@ -358,12 +358,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Path to a file containing `terraform output -json` output (a process substitution "
         "or plain file both work).",
     )
-    parser.add_argument("--index-name", default="contoso-travel-policy")
+    parser.add_argument(
+        "--index-name",
+        dest="index_names",
+        action="append",
+        default=None,
+        help="Azure AI Search index to validate. Repeat for multiple indexes. "
+        "Defaults to contoso-travel-policy.",
+    )
     parser.add_argument(
         "--min-documents",
         type=int,
         default=1,
-        help="Minimum number of documents the search index must contain to pass.",
+        help="Minimum number of documents each requested search index must contain to pass.",
     )
     parser.add_argument(
         "--skip-search-checks",
@@ -472,21 +479,31 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if not args.skip_search_checks and search_service_endpoint:
         credential = build_credential()
+        index_names = args.index_names or ["contoso-travel-policy"]
+        for index_name in index_names:
+            schema_label = f"search-index-schema:{index_name}"
+            count_label = f"search-index-document-count:{index_name}"
 
-        def _index_fields_check() -> CheckResult:
-            fields = fetch_search_index_fields(search_service_endpoint, args.index_name, credential)
-            return validate_search_index(fields, EXPECTED_INDEX_FIELDS, "search-index-schema")
+            def _index_fields_check(
+                selected_index_name: str = index_name,
+                label: str = schema_label,
+            ) -> CheckResult:
+                fields = fetch_search_index_fields(
+                    search_service_endpoint, selected_index_name, credential
+                )
+                return validate_search_index(fields, EXPECTED_INDEX_FIELDS, label)
 
-        def _document_count_check() -> CheckResult:
-            count = fetch_search_document_count(
-                search_service_endpoint, args.index_name, credential
-            )
-            return validate_search_document_count(
-                count, args.min_documents, "search-index-document-count"
-            )
+            def _document_count_check(
+                selected_index_name: str = index_name,
+                label: str = count_label,
+            ) -> CheckResult:
+                count = fetch_search_document_count(
+                    search_service_endpoint, selected_index_name, credential
+                )
+                return validate_search_document_count(count, args.min_documents, label)
 
-        specs.append(CheckSpec(name="search-index-schema", run=_index_fields_check))
-        specs.append(CheckSpec(name="search-index-document-count", run=_document_count_check))
+            specs.append(CheckSpec(name=schema_label, run=_index_fields_check))
+            specs.append(CheckSpec(name=count_label, run=_document_count_check))
 
     report = run_checks(specs)
 

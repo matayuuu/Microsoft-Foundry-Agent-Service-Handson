@@ -57,7 +57,7 @@ Core infrastructure in the participant resource group:
 - Microsoft Foundry project
 - `gpt-4.1` deployment for agent inference and evaluation
 - a supported `gpt-5` family deployment for Foundry IQ query planning and Agent Optimizer
-- `text-embedding-3-small` deployment for the seeded vector index
+- `text-embedding-3-small` deployment for the seeded vector indexes
 - Azure AI Search Basic, one replica and one partition
 - Log Analytics and workspace-based Application Insights
 - Container Apps consumption environment and scale-to-zero Travel Ops API
@@ -90,7 +90,7 @@ Data-plane operations remain in typed Python adapters:
 
 - load synthetic source documents directly into Azure AI Search
 - generate embeddings
-- create/update the semantic vector index
+- create/update the semantic vector indexes
 - merge-or-upload indexed chunks
 - create Toolbox objects and optional automated evaluation runs
 - prepare the synthetic evaluation dataset and rubric used by the Portal

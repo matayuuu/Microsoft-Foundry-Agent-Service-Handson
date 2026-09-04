@@ -24,6 +24,8 @@ script:
 
   * validates the manifest against that JSON Schema (all violations
     reported at once, never just the first),
+  * selects the document partition assigned to ``--index-name`` by
+    ``manifest["search_indexes"]``,
   * re-hashes every referenced source file and refuses to index anything
     whose sha256/size does not match the manifest (protects against stale
     or tampered content),
@@ -230,6 +232,66 @@ def iter_documents(manifest: dict[str, Any]) -> list[ManifestDocument]:
         except KeyError as exc:
             raise ManifestError(f"documents[{index}] is missing required field {exc}") from exc
     return documents
+
+
+def select_documents_for_index(
+    manifest: dict[str, Any],
+    documents: Sequence[ManifestDocument],
+    index_name: str,
+) -> list[ManifestDocument]:
+    """Return the manifest documents assigned to ``index_name``.
+
+    Manifests without ``search_indexes`` retain the legacy behavior of
+    indexing every document. When partitions are declared, unknown indexes,
+    duplicate document IDs, and references to missing documents fail loudly
+    instead of silently producing an incomplete index.
+    """
+    raw_indexes = manifest.get("search_indexes")
+    if raw_indexes is None:
+        return list(documents)
+    if not isinstance(raw_indexes, list):
+        raise ManifestError("search_indexes must be a JSON array")
+
+    matching_specs: list[dict[str, Any]] = []
+    available_names: list[str] = []
+    for position, raw_index in enumerate(raw_indexes):
+        if not isinstance(raw_index, dict):
+            raise ManifestError(f"search_indexes[{position}] must be a JSON object")
+        name = raw_index.get("name")
+        if not isinstance(name, str) or not name:
+            raise ManifestError(f"search_indexes[{position}].name must be a non-empty string")
+        available_names.append(name)
+        if name == index_name:
+            matching_specs.append(raw_index)
+
+    if len(matching_specs) != 1:
+        available = ", ".join(sorted(available_names)) or "(none)"
+        if not matching_specs:
+            raise ManifestError(
+                f"search_indexes does not define index '{index_name}' "
+                f"(available indexes: {available})"
+            )
+        raise ManifestError(f"search_indexes defines index '{index_name}' more than once")
+
+    raw_document_ids = matching_specs[0].get("document_ids")
+    if not isinstance(raw_document_ids, list) or not raw_document_ids:
+        raise ManifestError(
+            f"search index '{index_name}' must declare a non-empty document_ids array"
+        )
+    if not all(isinstance(document_id, str) and document_id for document_id in raw_document_ids):
+        raise ManifestError(
+            f"search index '{index_name}' document_ids must contain non-empty strings"
+        )
+    if len(raw_document_ids) != len(set(raw_document_ids)):
+        raise ManifestError(f"search index '{index_name}' contains duplicate document_ids")
+
+    documents_by_id = {document.id: document for document in documents}
+    unknown_ids = sorted(set(raw_document_ids) - set(documents_by_id))
+    if unknown_ids:
+        raise ManifestError(
+            f"search index '{index_name}' references unknown document_ids: {', '.join(unknown_ids)}"
+        )
+    return [documents_by_id[document_id] for document_id in raw_document_ids]
 
 
 # ---------------------------------------------------------------------------
@@ -467,7 +529,7 @@ def build_search_document(
     resolved_source_url: str,
 ) -> dict[str, Any]:
     """Builds the plain-dict search document uploaded/merged into the
-    ``contoso-travel-policy`` index for one chunk. Pure: no I/O, only
+    target Azure AI Search index for one chunk. Pure: no I/O, only
     shaping already-fetched/-computed values. The Foundry Azure AI Search tool
     reads the conventional ``url`` field for clickable citation annotations.
     ``source_url`` and ``blob_url`` remain compatibility aliases."""
@@ -538,7 +600,7 @@ def validate_search_documents(
 
 def build_index_fields(embedding_dimensions: int) -> list[dict[str, Any]]:
     """Returns a plain-dict field-list contract for the
-    ``contoso-travel-policy`` index. Kept as plain dicts (rather than
+    workshop search indexes. Kept as plain dicts (rather than
     azure-search-documents SDK model instances) so this function has zero
     SDK/network coupling and can be unit tested with a bare Python
     interpreter; ``to_search_index()`` below is the thin adapter that
@@ -729,6 +791,24 @@ def delete_chunk_documents(search_client: Any, chunk_ids: Sequence[str]) -> Any 
     return search_client.delete_documents(documents=[{"id": chunk_id} for chunk_id in chunk_ids])
 
 
+def validate_indexing_results(
+    results: Sequence[Any],
+    expected_count: int,
+    operation: str,
+) -> list[str]:
+    """Return actionable errors for failed or missing Azure Search results."""
+    errors: list[str] = []
+    if len(results) != expected_count:
+        errors.append(f"{operation} returned {len(results)} result(s), expected {expected_count}")
+    for result in results:
+        if getattr(result, "succeeded", False):
+            continue
+        key = getattr(result, "key", "(unknown key)")
+        error_message = getattr(result, "error_message", None) or "no error message returned"
+        errors.append(f"{operation} failed for {key}: {error_message}")
+    return errors
+
+
 def build_tokenizer() -> Tokenizer:
     """Adapter: returns a real tiktoken ``cl100k_base`` encoder. Imported
     lazily (only when Azure I/O actually runs, i.e. not in pure-function
@@ -822,7 +902,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Overrides manifest['chunking']['overlap_tokens'] when set.",
     )
-    parser.add_argument("--index-name", default="contoso-travel-policy")
+    parser.add_argument(
+        "--index-name",
+        default="contoso-travel-policy",
+        help="Target index name. If manifest.search_indexes is present, only its assigned "
+        "document_ids are indexed.",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -917,7 +1002,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"  - {error}", file=sys.stderr)
         return 2
 
-    documents = iter_documents(manifest)
+    all_documents = iter_documents(manifest)
+    try:
+        documents = select_documents_for_index(manifest, all_documents, args.index_name)
+    except ManifestError as exc:
+        print(f"bootstrap_data.py: {exc}", file=sys.stderr)
+        return 2
     rag_dir = args.rag_dir if args.rag_dir is not None else manifest_path.parent
     source_base = args.source_base if args.source_base is not None else rag_dir.resolve().as_uri()
 
@@ -944,7 +1034,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     def _read_bytes_fn(document: ManifestDocument) -> bytes:
         return read_source_bytes(rag_dir, document)
 
-    checksum_errors = verify_source_checksums(documents, _read_bytes_fn)
+    checksum_errors = verify_source_checksums(all_documents, _read_bytes_fn)
     if checksum_errors:
         print(
             f"bootstrap_data.py: source files under {rag_dir} do not match data/manifest.json:",
@@ -963,7 +1053,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.dry_run:
         tokenizer = build_tokenizer()
         print(
-            f"bootstrap_data.py: dry run -- {len(documents)} document(s) validated "
+            f"bootstrap_data.py: dry run -- index '{args.index_name}' has "
+            f"{len(documents)} document(s) selected "
             f"(schema OK, checksums OK, embedding_dimensions={embedding_dimensions}, "
             f"max_tokens={max_tokens}, overlap_tokens={overlap_tokens}):"
         )
@@ -1025,21 +1116,37 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"  - {error}", file=sys.stderr)
         return 2
 
-    result = merge_or_upload_documents(search_client, search_documents)
-
-    succeeded = sum(1 for item in result if getattr(item, "succeeded", False))
+    upload_results = list(merge_or_upload_documents(search_client, search_documents))
+    upload_errors = validate_indexing_results(
+        upload_results,
+        expected_count=len(search_documents),
+        operation="merge/upload",
+    )
+    succeeded = len(upload_results) - len(
+        [item for item in upload_results if not getattr(item, "succeeded", False)]
+    )
     print(
         f"bootstrap_data.py: merged/uploaded {succeeded}/{len(search_documents)} "
         f"chunk document(s) into '{args.index_name}'."
     )
-    if succeeded != len(search_documents):
-        print(
-            "bootstrap_data.py: one or more documents failed to upload; see above.",
-            file=sys.stderr,
-        )
+    if upload_errors:
+        print("bootstrap_data.py: search document upload failed:", file=sys.stderr)
+        for error in upload_errors:
+            print(f"  - {error}", file=sys.stderr)
         return 2
 
-    delete_chunk_documents(search_client, stale_ids)
+    delete_results = delete_chunk_documents(search_client, stale_ids)
+    if delete_results is not None:
+        delete_errors = validate_indexing_results(
+            list(delete_results),
+            expected_count=len(stale_ids),
+            operation="delete stale document",
+        )
+        if delete_errors:
+            print("bootstrap_data.py: stale search document deletion failed:", file=sys.stderr)
+            for error in delete_errors:
+                print(f"  - {error}", file=sys.stderr)
+            return 2
     if stale_ids:
         print(
             f"bootstrap_data.py: deleted {len(stale_ids)} stale chunk document(s) no longer "

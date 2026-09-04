@@ -72,9 +72,11 @@
 - **デモプロンプト**（`data/eval/live_subset.jsonl` の実データ、そのまま読み上げ可）:
   - `direct_policy_fact`: 「東京から大阪へ日帰り出張する場合、食事の日当はいくらですか?」
     — baseline でも答えられることが多い単純な事実確認。
-  - `multi_hop`: 「国際線でビジネスクラスを利用するには、片道飛行時間が何時間以上である
-    必要があり、誰の事前承認が必要ですか?」— baseline では 2 つの規程を統合できず、
-    どちらか一方しか答えられないことが多い。
+  - `multi_hop`: 「片道12時間の国際線を出発2日前にビジネスクラスで予約したいです。
+    直前予約として添付が必要なもの、ビジネスクラスの承認者と順序、申請に使う機能名、
+    申請から承認完了までの標準最大営業日数をまとめてください。」— Direct search では
+    直前予約の添付要件だけ、Foundry IQ では 4 項目すべてを 2 文書の citation 付きで
+    回答する構成。
   - `ambiguity_missing_info`: 「出張費はいくら戻ってきますか?」— baseline では行き先・
     日程を勝手に仮定して金額を答えてしまいがちな点を観察させる。
 - **チェックポイント**: 参加者が baseline の instructions を書き換えていないこと
@@ -82,8 +84,9 @@
 
 ### 00:50–01:25 Lab 3 — Azure AI Search と Foundry IQ
 
-- **チェックポイント**: Foundry IQ Knowledge Base（**Preview**）の作成が完了し、
-  Lab 2 と同じ質問（特に `multi_hop`）で改善が見られること。
+- **チェックポイント**: Foundry IQ Knowledge Base（**Preview**）に利用条件と承認手続きの
+  2 source が接続され、`multi_hop` の根拠付き回答数が Direct search の原則 1/4 から
+  4/4 へ改善すること。Medium の再検索は不足時だけなので、発生自体は必須にしない。
 - **preview の注意喚起**: Foundry IQ の agentic retrieval は preview のため、
   ウィザードの画面構成が変わっている可能性がある旨を伝える。
 

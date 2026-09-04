@@ -70,8 +70,9 @@ setup を再実行し、data bootstrap を更新します。
   --resource-group "<resource-group>"
 ```
 
-直らない場合は、Azure AI Search の `contoso-travel-policy` index で `url` field が
-retrievable かを管理者へ確認してもらいます。
+直らない場合は、Azure AI Search の `contoso-travel-policy` と
+`contoso-travel-approval` index で `url` field が retrievable かを管理者へ
+確認してもらいます。
 
 ## Toolbox Notebook
 

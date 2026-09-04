@@ -286,6 +286,64 @@ def test_iter_documents_raises_when_applies_to_is_not_a_list() -> None:
         bootstrap_data.iter_documents(manifest)
 
 
+def test_select_documents_for_index_uses_manifest_partition_order() -> None:
+    manifest = _valid_manifest(
+        {"id": "policy-flights-001"},
+        {"id": "policy-hotels-001", "category": "hotels"},
+    )
+    manifest["search_indexes"] = [
+        {
+            "name": "contoso-travel-policy",
+            "document_ids": ["policy-hotels-001", "policy-flights-001"],
+        }
+    ]
+
+    selected = bootstrap_data.select_documents_for_index(
+        manifest,
+        bootstrap_data.iter_documents(manifest),
+        "contoso-travel-policy",
+    )
+
+    assert [document.id for document in selected] == [
+        "policy-hotels-001",
+        "policy-flights-001",
+    ]
+
+
+def test_select_documents_for_index_rejects_unknown_index() -> None:
+    manifest = _valid_manifest()
+    manifest["search_indexes"] = [
+        {
+            "name": "contoso-travel-policy",
+            "document_ids": ["policy-flights-001"],
+        }
+    ]
+
+    with pytest.raises(bootstrap_data.ManifestError, match="available indexes"):
+        bootstrap_data.select_documents_for_index(
+            manifest,
+            bootstrap_data.iter_documents(manifest),
+            "contoso-travel-approval",
+        )
+
+
+def test_select_documents_for_index_rejects_unknown_document_id() -> None:
+    manifest = _valid_manifest()
+    manifest["search_indexes"] = [
+        {
+            "name": "contoso-travel-policy",
+            "document_ids": ["policy-missing-001"],
+        }
+    ]
+
+    with pytest.raises(bootstrap_data.ManifestError, match="unknown document_ids"):
+        bootstrap_data.select_documents_for_index(
+            manifest,
+            bootstrap_data.iter_documents(manifest),
+            "contoso-travel-policy",
+        )
+
+
 # ---------------------------------------------------------------------------
 # checksum verification
 # ---------------------------------------------------------------------------
@@ -892,6 +950,51 @@ def test_delete_chunk_documents_deletes_given_ids() -> None:
     bootstrap_data.delete_chunk_documents(client, ["doc-a", "doc-b"])
 
     assert client.deleted_documents == [{"id": "doc-a"}, {"id": "doc-b"}]
+
+
+class _FakeIndexingResult:
+    def __init__(
+        self,
+        key: str,
+        *,
+        succeeded: bool,
+        error_message: str | None = None,
+    ) -> None:
+        self.key = key
+        self.succeeded = succeeded
+        self.error_message = error_message
+
+
+def test_validate_indexing_results_accepts_complete_success() -> None:
+    errors = bootstrap_data.validate_indexing_results(
+        [
+            _FakeIndexingResult("doc-a", succeeded=True),
+            _FakeIndexingResult("doc-b", succeeded=True),
+        ],
+        expected_count=2,
+        operation="delete stale document",
+    )
+
+    assert errors == []
+
+
+def test_validate_indexing_results_reports_failed_and_missing_results() -> None:
+    errors = bootstrap_data.validate_indexing_results(
+        [
+            _FakeIndexingResult(
+                "doc-a",
+                succeeded=False,
+                error_message="document was not deleted",
+            )
+        ],
+        expected_count=2,
+        operation="delete stale document",
+    )
+
+    assert errors == [
+        "delete stale document returned 1 result(s), expected 2",
+        "delete stale document failed for doc-a: document was not deleted",
+    ]
 
 
 # ---------------------------------------------------------------------------

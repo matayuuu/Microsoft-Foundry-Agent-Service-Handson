@@ -1,5 +1,5 @@
 {
-  "corpus_version": "2026.04.1",
+  "corpus_version": "2026.04.2",
   "language": "ja",
   "source_url_base_placeholder": "{{WORKSHOP_SOURCE_BASE}}",
   "chunking": {
@@ -23,6 +23,28 @@
       "effective_date"
     ]
   },
+  "search_indexes": [
+    {
+      "name": "contoso-travel-policy",
+      "document_ids": [
+        "policy-general-001",
+        "policy-flights-001",
+        "policy-hotels-001",
+        "policy-per-diem-001",
+        "policy-ground-transport-001",
+        "policy-receipts-001",
+        "policy-international-security-001",
+        "policy-accessibility-exceptions-001",
+        "policy-faq-001"
+      ]
+    },
+    {
+      "name": "contoso-travel-approval",
+      "document_ids": [
+        "policy-approval-process-001"
+      ]
+    }
+  ],
   "documents": [
     {
       "id": "policy-general-001",
@@ -47,8 +69,8 @@
         "all_employees"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/02-flights.md",
-      "sha256": "be16c910615a3f930aee83774f6941b41e6d21529e2184175dec85c794733afa",
-      "size_bytes": 2331
+      "sha256": "ffc9cf034ea2ccb67992e2a0d1520e27d1b999302d4ab814b33fc24d47516174",
+      "size_bytes": 2446
     },
     {
       "id": "policy-hotels-001",
@@ -142,8 +164,8 @@
         "department_vps"
       ],
       "source_url": "{{WORKSHOP_SOURCE_BASE}}/data/policies/09-approval-process.md",
-      "sha256": "6a34cd7beda48e2d7d73ee0b145a3919b1e753300b687394a0462919ca7eec14",
-      "size_bytes": 2404
+      "sha256": "504c8470d040529911c243456db5684ef25924360d6e920b6000fd7d87badd9f",
+      "size_bytes": 2529
     },
     {
       "id": "policy-faq-001",
@@ -190,14 +212,14 @@
       {
         "name": "eval_master_jsonl",
         "path": "eval/master.jsonl",
-        "sha256": "00d4af5c520026f2f65a6d3a74a6616f4f3b1f7ced14d00bc56c255e22dbe7cb",
-        "size_bytes": 11219
+        "sha256": "3b0630709f44824b8d1bc149d652ea5e6af1486f4b4497d6c2321af97bd7cec5",
+        "size_bytes": 11703
       },
       {
         "name": "eval_live_subset_jsonl",
         "path": "eval/live_subset.jsonl",
-        "sha256": "f6e6c7056cb45009f879032527974daaff2aa2ab3332983fbf6bc941a530de45",
-        "size_bytes": 6192
+        "sha256": "f6ddc4aa739313d33f5f68b9f0a08700fdc835cda70c3d2b0f126e03c9f4d1c5",
+        "size_bytes": 6676
       }
     ]
   }

@@ -139,6 +139,47 @@ def test_expected_citations_reference_known_manifest_documents(data_dir):
             )
 
 
+def test_multi_hop_quality_case_requires_citations_from_both_search_indexes(data_dir):
+    manifest = json.loads((data_dir / "manifest.json").read_text(encoding="utf-8"))
+    index_by_document_id = {
+        document_id: index["name"]
+        for index in manifest["search_indexes"]
+        for document_id in index["document_ids"]
+    }
+    cases_by_id = {case["id"]: case for case in _load_jsonl(data_dir / "eval" / "master.jsonl")}
+
+    citation_indexes = {
+        index_by_document_id[citation_id]
+        for citation_id in cases_by_id["eval-003"]["expected_citations"]
+    }
+
+    assert citation_indexes == {
+        "contoso-travel-policy",
+        "contoso-travel-approval",
+    }
+
+
+def test_multi_hop_quality_evidence_is_exclusive_to_each_search_index(data_dir):
+    manifest = json.loads((data_dir / "manifest.json").read_text(encoding="utf-8"))
+    paths_by_document_id = {
+        document["id"]: data_dir / document["path"] for document in manifest["documents"]
+    }
+    text_by_index = {
+        index["name"]: "\n".join(
+            paths_by_document_id[document_id].read_text(encoding="utf-8")
+            for document_id in index["document_ids"]
+        )
+        for index in manifest["search_indexes"]
+    }
+
+    assert "承認コメント" in text_by_index["contoso-travel-policy"]
+    assert "承認コメント" not in text_by_index["contoso-travel-approval"]
+    assert "標準最大所要期間" in text_by_index["contoso-travel-approval"]
+    assert "標準最大所要期間" not in text_by_index["contoso-travel-policy"]
+    assert "事前承認リクエスト" in text_by_index["contoso-travel-approval"]
+    assert "事前承認リクエスト" not in text_by_index["contoso-travel-policy"]
+
+
 def test_tool_choice_cases_declare_expected_tool_calls(data_dir):
     cases = _load_jsonl(data_dir / "eval" / "master.jsonl")
     tool_choice_cases = [case for case in cases if case["category"] == "tool_choice"]
