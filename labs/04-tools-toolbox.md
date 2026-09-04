@@ -10,7 +10,9 @@ Python Notebook で Travel Ops API の Toolbox を作り、Prompt Agent から
 1. VS Code Explorer で
    [`notebooks/04-create-toolbox.ipynb`](../notebooks/04-create-toolbox.ipynb)
    を開きます。
-2. 右上の kernel picker で **Python (Foundry Workshop)** を選択します。
+2. 右上の kernel picker で、ワークスペースルートの **`.venv/bin/python`** を選択します
+   （表示例: `.venv (Python 3.13.x) .../.venv/bin/python`。`src/hosted-agent/.venv/bin/python`
+   やシステム Python ではなく、リポジトリ直下の `.venv` を選びます）。
 3. Notebook の説明を読み、上から 1 cell ずつ実行します。
 
 Notebook では次を順に確認できます。
