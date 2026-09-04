@@ -21,7 +21,7 @@ jq -r '
 
 1. Microsoft Foundry Portal で対象 project を開きます。
 2. 上部の **Build** を開き、**Agents** tab を選択します。
-3. **New agent** を選択し、agent type に **Prompt agent** を選びます。
+3. **New agent** から **Build an agent** を選択します（この UI ではそのまま Agent name 入力画面に遷移します）。
 4. 次を設定します。
 
    | 項目 | 値 |
