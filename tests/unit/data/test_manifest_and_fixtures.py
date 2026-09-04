@@ -49,6 +49,24 @@ def test_manifest_document_ids_are_unique(data_dir):
     assert len(ids) == len(set(ids))
 
 
+def test_manifest_search_indexes_partition_every_policy_document_once(data_dir):
+    manifest = _load_json(data_dir / "manifest.json")
+    indexes = manifest["search_indexes"]
+    names = [index["name"] for index in indexes]
+    assigned_ids = [document_id for index in indexes for document_id in index["document_ids"]]
+    document_ids = {document["id"] for document in manifest["documents"]}
+
+    assert names == ["contoso-travel-policy", "contoso-travel-approval"]
+    assert len(assigned_ids) == len(set(assigned_ids))
+    assert set(assigned_ids) == document_ids
+
+    ids_by_index = {index["name"]: set(index["document_ids"]) for index in indexes}
+    assert "policy-flights-001" in ids_by_index["contoso-travel-policy"]
+    assert "policy-faq-001" in ids_by_index["contoso-travel-policy"]
+    assert "policy-approval-process-001" not in ids_by_index["contoso-travel-policy"]
+    assert "policy-approval-process-001" in ids_by_index["contoso-travel-approval"]
+
+
 def test_manifest_documents_reference_files_that_exist_on_disk(data_dir):
     manifest = _load_json(data_dir / "manifest.json")
     for doc in manifest["documents"]:

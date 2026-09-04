@@ -505,6 +505,10 @@ trap 'rm -f "${TF_OUTPUTS_FILE}"' EXIT
 # ---------------------------------------------------------------------------
 
 MANIFEST_PATH="${REPO_ROOT}/data/manifest.json"
+SEARCH_INDEX_NAMES=()
+if [[ -f "${MANIFEST_PATH}" ]]; then
+  mapfile -t SEARCH_INDEX_NAMES < <(jq -r '.search_indexes[].name' "${MANIFEST_PATH}")
+fi
 if [[ "${SKIP_BOOTSTRAP}" == "true" ]]; then
   echo "==> [3/5] Skipping bootstrap_data.py (--skip-bootstrap)." >&2
 elif [[ ! -f "${MANIFEST_PATH}" ]]; then
@@ -528,13 +532,20 @@ else
   # couple of minutes to propagate through Entra/RBAC. Search writes are
   # idempotent (merge-or-upload by id), so retrying the whole invocation on a
   # transient auth/data-plane failure is safe.
-  retry 5 20 "${PYTHON_BIN}" "${SCRIPT_DIR}/bootstrap_data.py" \
-    --manifest "${MANIFEST_PATH}" \
-    --search-endpoint "${SEARCH_ENDPOINT}" \
-    --openai-endpoint "${OPENAI_ENDPOINT}" \
-    --embedding-deployment "${EMBEDDING_DEPLOYMENT_NAME}" \
-    --source-base "${SOURCE_BASE}" \
-    --index-name "contoso-travel-policy"
+  if [[ ${#SEARCH_INDEX_NAMES[@]} -eq 0 ]]; then
+    echo "ERROR: ${MANIFEST_PATH} does not define any search_indexes." >&2
+    exit 1
+  fi
+  for SEARCH_INDEX_NAME in "${SEARCH_INDEX_NAMES[@]}"; do
+    echo "    Seeding Azure AI Search index '${SEARCH_INDEX_NAME}'..." >&2
+    retry 5 20 "${PYTHON_BIN}" "${SCRIPT_DIR}/bootstrap_data.py" \
+      --manifest "${MANIFEST_PATH}" \
+      --search-endpoint "${SEARCH_ENDPOINT}" \
+      --openai-endpoint "${OPENAI_ENDPOINT}" \
+      --embedding-deployment "${EMBEDDING_DEPLOYMENT_NAME}" \
+      --source-base "${SOURCE_BASE}" \
+      --index-name "${SEARCH_INDEX_NAME}"
+  done
 
   echo "==> [3/5] Preparing synthetic evaluation assets..." >&2
   FOUNDRY_PROJECT_ENDPOINT="$(jq -r '.foundry_project_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
@@ -558,10 +569,15 @@ else
   # retrying it is always safe; retry() itself prints every failed attempt,
   # so a real (non-transient) validation failure is still visible, just
   # after this bounded number of attempts rather than immediately.
+  SEARCH_INDEX_ARGS=()
+  for SEARCH_INDEX_NAME in "${SEARCH_INDEX_NAMES[@]}"; do
+    SEARCH_INDEX_ARGS+=(--index-name "${SEARCH_INDEX_NAME}")
+  done
   retry 5 15 "${PYTHON_BIN}" "${SCRIPT_DIR}/validate_environment.py" \
     --subscription "${SUBSCRIPTION_ID}" \
     --resource-group "${RESOURCE_GROUP_NAME}" \
-    --terraform-outputs "${TF_OUTPUTS_FILE}"
+    --terraform-outputs "${TF_OUTPUTS_FILE}" \
+    "${SEARCH_INDEX_ARGS[@]}"
 fi
 
 # ---------------------------------------------------------------------------

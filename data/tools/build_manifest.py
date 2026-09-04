@@ -10,9 +10,10 @@ It regenerates data/manifest.json from:
   * the YAML front matter embedded in each data/policies/*.md file (single
     source of truth for id/title/category/effective_date/applies_to/source_url)
   * SHA-256 checksums computed from canonical LF bytes
+  * the search-index partitions declared in SEARCH_INDEXES below
 
 so that scripts/bootstrap_data.py (owned by another workstream) can verify
-corpus integrity before indexing content into Azure AI Search / Foundry IQ.
+corpus integrity and seed each document into exactly one Azure AI Search index.
 
 The script is idempotent: running it twice with unchanged inputs produces a
 byte-identical data/manifest.json.
@@ -30,7 +31,7 @@ import yaml
 
 DATA_DIR = Path(__file__).resolve().parent.parent
 SOURCE_URL_BASE_PLACEHOLDER = "{{WORKSHOP_SOURCE_BASE}}"
-CORPUS_VERSION = "2026.04.1"
+CORPUS_VERSION = "2026.04.2"
 
 CHUNKING = {
     "strategy": "markdown-heading",
@@ -47,6 +48,29 @@ EMBEDDING = {
 CITATION = {
     "required_fields": ["id", "title", "source_url", "effective_date"],
 }
+
+SEARCH_INDEXES = [
+    {
+        "name": "contoso-travel-policy",
+        "document_ids": [
+            "policy-general-001",
+            "policy-flights-001",
+            "policy-hotels-001",
+            "policy-per-diem-001",
+            "policy-ground-transport-001",
+            "policy-receipts-001",
+            "policy-international-security-001",
+            "policy-accessibility-exceptions-001",
+            "policy-faq-001",
+        ],
+    },
+    {
+        "name": "contoso-travel-approval",
+        "document_ids": [
+            "policy-approval-process-001",
+        ],
+    },
+]
 
 
 def canonical_bytes(path: Path) -> bytes:
@@ -136,6 +160,7 @@ def build_manifest() -> dict[str, Any]:
         "chunking": CHUNKING,
         "embedding": EMBEDDING,
         "citation": CITATION,
+        "search_indexes": SEARCH_INDEXES,
         "documents": documents,
         "receipts": receipts,
         "fixtures": fixtures,

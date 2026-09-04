@@ -417,6 +417,74 @@ def test_main_reports_pass_when_outputs_present_and_search_skipped(
     assert exit_code == 0
 
 
+def test_main_validates_each_requested_search_index(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    checked_fields: list[str] = []
+    checked_counts: list[str] = []
+    monkeypatch.setattr(
+        validate_environment,
+        "fetch_role_assignments",
+        lambda resource_id: [
+            {
+                "principalId": "principal-1",
+                "roleDefinitionId": (
+                    f"/providers/.../roleDefinitions/{validate_environment.FOUNDRY_USER_ROLE_ID}"
+                ),
+            },
+        ],
+    )
+    monkeypatch.setattr(validate_environment, "_signed_in_principal_id", lambda: "principal-1")
+    monkeypatch.setattr(
+        validate_environment,
+        "fetch_resource_by_id",
+        lambda resource_id: {"id": resource_id, "properties": {"provisioningState": "Succeeded"}},
+    )
+    monkeypatch.setattr(validate_environment, "fetch_travel_api_health", lambda fqdn: 200)
+    monkeypatch.setattr(validate_environment, "build_credential", lambda: object())
+
+    def _fetch_fields(endpoint: str, index_name: str, credential: object) -> list[str]:
+        checked_fields.append(index_name)
+        return list(validate_environment.EXPECTED_INDEX_FIELDS)
+
+    def _fetch_count(endpoint: str, index_name: str, credential: object) -> int:
+        checked_counts.append(index_name)
+        return 1
+
+    monkeypatch.setattr(validate_environment, "fetch_search_index_fields", _fetch_fields)
+    monkeypatch.setattr(validate_environment, "fetch_search_document_count", _fetch_count)
+
+    outputs_path = tmp_path / "outputs.json"
+    outputs_path.write_text(json.dumps(VALID_OUTPUTS), encoding="utf-8")
+
+    exit_code = validate_environment.main(
+        [
+            "--subscription",
+            "00000000-0000-0000-0000-000000000000",
+            "--resource-group",
+            "rg-test",
+            "--terraform-outputs",
+            str(outputs_path),
+            "--index-name",
+            "contoso-travel-policy",
+            "--index-name",
+            "contoso-travel-approval",
+            "--format",
+            "json",
+        ]
+    )
+
+    assert exit_code == 0
+    assert checked_fields == ["contoso-travel-policy", "contoso-travel-approval"]
+    assert checked_counts == ["contoso-travel-policy", "contoso-travel-approval"]
+    report = json.loads(capsys.readouterr().out)
+    check_names = {check["name"] for check in report["checks"]}
+    assert "search-index-schema:contoso-travel-policy" in check_names
+    assert "search-index-schema:contoso-travel-approval" in check_names
+
+
 def test_main_returns_2_when_outputs_file_missing(tmp_path: Path) -> None:
     exit_code = validate_environment.main(
         [

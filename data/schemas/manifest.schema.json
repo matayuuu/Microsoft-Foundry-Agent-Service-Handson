@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "{{WORKSHOP_SOURCE_BASE}}/data/schemas/manifest.schema.json",
   "title": "Travel Ops corpus manifest",
-  "description": "Deterministic manifest describing every synthetic corpus document, receipt fixture, trip fixture, and evaluation file shipped under data/. bootstrap_data.py uses this contract to verify checksums before indexing content into Azure AI Search / Foundry IQ.",
+  "description": "Deterministic manifest describing search-index partitions and every synthetic corpus document, receipt fixture, trip fixture, and evaluation file shipped under data/. bootstrap_data.py uses this contract to verify checksums before indexing content into Azure AI Search / Foundry IQ.",
   "type": "object",
   "required": [
     "corpus_version",
@@ -11,6 +11,7 @@
     "chunking",
     "embedding",
     "citation",
+    "search_indexes",
     "documents",
     "receipts",
     "fixtures",
@@ -89,6 +90,12 @@
         }
       }
     },
+    "search_indexes": {
+      "type": "array",
+      "description": "Search indexes seeded by setup. document_ids partition the policy corpus so the workshop can compare single-source direct retrieval with multi-source agentic retrieval.",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/searchIndex" }
+    },
     "documents": {
       "type": "array",
       "minItems": 1,
@@ -99,6 +106,26 @@
     "evaluation": { "$ref": "#/$defs/fileGroup" }
   },
   "$defs": {
+    "searchIndex": {
+      "type": "object",
+      "required": ["name", "document_ids"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,126}[a-z0-9]$"
+        },
+        "document_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^policy-[a-z0-9-]+-[0-9]{3}$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
     "document": {
       "type": "object",
       "required": [
