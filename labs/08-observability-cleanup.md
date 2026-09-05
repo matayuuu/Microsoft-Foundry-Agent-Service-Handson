@@ -30,12 +30,14 @@ Trace detail の **Trajectories** で、必要に応じて **Graph view** に切
 
 ![Hosted Agent の sequential trace](../docs/images/lab08-hosted-agent-trace.png)
 
+画像は以前の構成で取得した参考例です。現在の Lab 7 は 3 agent の構成で、
+reviewer の後に独自の後処理ステップはありません。
+
 ## 完了チェック
 
 - `policy_agent`、`planner_agent`、`reviewer_agent` の model call が順番に表示される
 - 最後の output が reviewer の回答になっている
 - `workflow.run` と 3 つの `invoke_agent` が **Success** になっている
-- `executor.process ensure-simulation-notice` が最後に **Success** になっている
 
 Cold start の最初に state store の `GET` が 1 回だけ `404` になり、直後の `POST` が
 **Success** になる場合があります。これは state store の新規作成確認であり、

@@ -58,7 +58,7 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[dev]" -e "./src/travel-api[dev]"
 
 python3.13 -m venv src/hosted-agent/.venv
-src/hosted-agent/.venv/bin/python -m pip install -r src/hosted-agent/requirements.txt pytest ruff
+src/hosted-agent/.venv/bin/python -m pip install -r src/hosted-agent/requirements.txt pytest ruff ipykernel
 az login --use-device-code
 ```
 

@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 sudo apt-get update
-sudo apt-get install --yes --no-install-recommends jq
+sudo apt-get install --yes --no-install-recommends jq graphviz
 sudo rm -rf /var/lib/apt/lists/*
 
 python -m venv .venv

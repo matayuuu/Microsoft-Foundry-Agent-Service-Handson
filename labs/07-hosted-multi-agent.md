@@ -2,19 +2,28 @@
 
 ## ゴール
 
-Microsoft Agent Framework の sequential workflow を Notebook で実行し、
-同じ source を Hosted Agent として Microsoft Foundry に deploy します。
+Microsoft Agent Framework のエージェントを Notebook 上で作り、sequential workflow
+として接続します。実物のグラフと各 agent の途中回答を確認し、入力を変えてテストした後、
+同じ構成の source を Hosted Agent として Microsoft Foundry に deploy します。
 
 ```text
 policy_agent -> planner_agent -> reviewer_agent
 ```
 
-最後に model を使わない `SimulationNoticeExecutor` が、simulation の注意書きを保証します。
+`reviewer_agent` の回答をそのまま最終回答として返します。simulation の注意書きは
+instructions で指示し、Notebook 上で回答に含まれているか確認します。自動補完は行いません。
 
 > [!IMPORTANT]
-> この workflow は学習用 simulation です。予約や承認は行いません。
+> この workflow は学習用 simulation です。予約や承認は行わず、前の Lab の
+> Foundry IQ / Toolbox / Travel Ops API にも接続しません。Notebook でローカル実行しても
+> 推論は Foundry で行われ、入力と途中回答が送信されます。架空のデータだけを使ってください。
 
-## 1. Notebook で workflow を実行する
+> [!WARNING]
+> 標準の依頼と追加テスト 2 件で合計 9 回のエージェント呼び出しがあり、モデル利用料金が
+> 発生します。再実行にも料金がかかります。Hosted Agent / source remote build の
+> プレビュー制約と実行料金にも注意してください。Notebook の Run All は deploy しません。
+
+## 1. Notebook で作成・可視化・テストする
 
 1. VS Code Explorer で
    [`notebooks/07-hosted-agent.ipynb`](../notebooks/07-hosted-agent.ipynb)
@@ -22,23 +31,49 @@ policy_agent -> planner_agent -> reviewer_agent
 2. 右上の kernel picker で **Python (Foundry Hosted Agent)** を選択します。
 3. 説明を読み、上から 1 cell ずつ実行します。
 
-Notebook では次を確認します。
+Notebook は次の順に進みます。agent 作成と workflow 構築だけでは推論は始まりません。
 
 1. `.workshop/context.json` から endpoint と model を取得
-2. `policy_agent`、`planner_agent`、`reviewer_agent` の責務
-3. `SequentialBuilder` の workflow を 1 回実行
-4. 決定的な最終チェックで simulation 注意書きを検証
-5. Azure を呼ばない contract test を実行
+2. `chat_client.as_agent()` で 3 agent を作り、それぞれの instructions を読む
+3. `SequentialBuilder` に 3 agent を実行順に並べる
+4. `WorkflowViz` とローカルの Graphviz で、構築した workflow を Notebook 内に描画
+5. 開始イベント・policy / planner の途中回答・reviewer の最終回答を分けて表示
+6. 入力不足と海外 business のケースで、期待する振る舞いと回答を比較
+7. Azure を呼ばない contract test で順序・会話の引き継ぎ・source との一致を確認
+8. Notebook の cell と `workflow.py` / `main.py` の対応を確認して deploy へ進む
+
+以前作った Codespace に Graphviz がない場合は、Terminal で次を実行し、
+可視化 cell を再実行します。グラフは外部サービスへ送信しません。
+
+```bash
+sudo apt-get update && sudo apt-get install -y graphviz
+```
+
+`intermediate_output_from="all_other"` は Notebook だけの観察設定です。
+デプロイ用 workflow は途中回答を公開せず、reviewer の最終回答だけを返します。
 
 ## 完了チェック
 
+- agent の instructions と、次の agent に渡る情報を説明できる
+- 実物のグラフに 3 agent が意図した順序で接続されている
+- 各 agent の途中回答を読み、どこで規程確認・概算・修正をしたか追える
 - 最終回答に「規程確認」「概算」「次のアクション」がある
 - 最後に「実際の予約・承認ではありません」と明示される
+- 入力不足では推測せず確認し、海外 business では必要な事前確認を案内している
 - Contract test が pass する
+
+Contract test の fake client は固定回答を返します。モデルの判断品質を保証するものでは
+ないため、実モデルの回答も Notebook の期待値と読み比べてください。
 
 ## 2. Hosted Agent を deploy する
 
-Notebook を閉じ、repository root の terminal で実行します。
+Notebook の出力を確認後、repository root の Terminal で実行します。
+Notebook の kernel ではなく、deploy SDK 用の root `.venv` を使います。
+
+> Notebook 自体やメモリ上の変更はデプロイされません。デプロイ対象は
+> `src/hosted-agent/` です。Notebook で agent 名・instructions・順序を変更した場合は
+> `workflow.py` にも反映し、kernel を再起動して上から再実行・テストしてください。
+> 通常の手順では source の変更は不要です。
 
 ```bash
 .venv/bin/python scripts/deploy_hosted_agent.py --output json

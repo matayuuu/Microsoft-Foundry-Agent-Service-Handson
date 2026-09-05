@@ -129,10 +129,16 @@
 
 ### 02:55–03:40 Lab 7 — Agent Framework workflow の Hosted Agent 配布
 
-- **チェックポイント**: `.venv/bin/python scripts/deploy_hosted_agent.py --output json` が
-  `"succeeded": true` を返し、Playground でストリーミング応答が確認できること。
+- **学習順序**: Notebook で `as_agent()` による作成、`SequentialBuilder` による接続、
+  実物のグラフ表示、途中回答の観察、入力を変えたテストの順に進めてから deploy する。
+  最初から完成済み workflow の呼び出しや deploy だけを実行させない。
+- **チェックポイント**: 3 agent の役割と会話の引き継ぎを説明でき、Notebook の
+  入力不足・海外 business の回答を期待値と比較できること。その後、
+  `.venv/bin/python scripts/deploy_hosted_agent.py --output json` が
+  `status: "active"` を返し、Playground で応答が確認できること。
 - **リモートビルド待ち時間の目安**: 数分程度かかることがあるため、待ち時間中に
-  `src/hosted-agent/workflow.py` の3エージェントと `SequentialBuilder` を解説する時間に充てる。
+  Notebook と `workflow.py` / `main.py` の対応を振り返る。Notebook の観察用
+  intermediate 出力と、Hosted Agent が返す最終回答の違いも確認する。
 - **live 実行が難しい場合**（リモートビルドの混雑・失敗が続く場合）:
   [completed-run-assets/hosted-agent-deploy.simulated.json](completed-run-assets/hosted-agent-deploy.simulated.json)
   を画面共有し、`agent_name`/`version`/`status`/`portal_url` の各フィールドが何を

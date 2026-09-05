@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
 from fakes import (
     PLANNER_RESPONSE,
     POLICY_RESPONSE,
@@ -18,7 +19,6 @@ from workflow import (
     SIMULATION_NOTICE,
     WORKFLOW_NAME,
     build_workflow,
-    ensure_simulation_notice,
     run_workflow,
 )
 
@@ -67,11 +67,21 @@ def test_final_reviewer_is_instructed_to_include_simulation_notice() -> None:
     assert SIMULATION_NOTICE in REVIEWER_RESPONSE
 
 
-def test_simulation_notice_postprocessor_is_idempotent() -> None:
-    assert ensure_simulation_notice(REVIEWER_RESPONSE) == REVIEWER_RESPONSE
+def test_workflow_as_agent_streams_only_the_final_review(
+    chat_client: ScriptedChatClient,
+) -> None:
+    workflow_agent = build_workflow(chat_client=chat_client).as_agent(name=WORKFLOW_NAME)
+
+    async def collect() -> str:
+        chunks = [update.text async for update in workflow_agent.run(SAMPLE_REQUEST, stream=True)]
+        assert len(chunks) >= 2
+        return "".join(chunks)
+
+    assert asyncio.run(collect()) == REVIEWER_RESPONSE
 
 
-def test_workflow_appends_notice_when_reviewer_omits_it() -> None:
+@pytest.mark.parametrize("stream", [False, True])
+def test_workflow_preserves_reviewer_answer_when_notice_is_omitted(stream: bool) -> None:
     class OmittingNoticeClient(ScriptedChatClient):
         @staticmethod
         def _response_for(instructions: str) -> str:
@@ -81,9 +91,26 @@ def test_workflow_appends_notice_when_reviewer_omits_it() -> None:
 
     workflow_agent = build_workflow(chat_client=OmittingNoticeClient()).as_agent(name=WORKFLOW_NAME)
 
-    response = asyncio.run(workflow_agent.run(SAMPLE_REQUEST))
+    async def collect() -> str:
+        if stream:
+            return "".join(
+                [update.text async for update in workflow_agent.run(SAMPLE_REQUEST, stream=True)]
+            )
+        return (await workflow_agent.run(SAMPLE_REQUEST)).text
 
-    assert response.text.endswith(SIMULATION_NOTICE)
+    assert asyncio.run(collect()) == "規程確認\n概算\n次のアクション"
+
+
+def test_run_workflow_rejects_an_empty_reviewer_response() -> None:
+    class EmptyReviewerClient(ScriptedChatClient):
+        @staticmethod
+        def _response_for(instructions: str) -> str:
+            if instructions == REVIEWER_AGENT_INSTRUCTIONS:
+                return ""
+            return ScriptedChatClient._response_for(instructions)
+
+    with pytest.raises(RuntimeError, match="without a final reviewer response"):
+        asyncio.run(run_workflow(SAMPLE_REQUEST, chat_client=EmptyReviewerClient()))
 
 
 def test_final_reviewer_must_not_invent_airfare() -> None:

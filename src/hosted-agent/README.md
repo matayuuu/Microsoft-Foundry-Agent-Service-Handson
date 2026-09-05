@@ -19,7 +19,9 @@ workflow = SequentialBuilder(participants=participants).build()
 ```
 
 Each participant sees the original request and earlier agent messages. The
-Hosted Agent returns only `reviewer_agent`'s final answer.
+Hosted Agent returns only `reviewer_agent`'s final answer without postprocessing.
+The reviewer's instructions request a simulation notice; the notebook checks
+whether it was included, rather than appending it automatically.
 
 > This is a training simulation. It does not book travel, approve requests, or
 > connect to a production system. The policy values in `workflow.py` are
@@ -44,7 +46,7 @@ deployment scripts require different `azure-ai-projects` versions.
 cd src/hosted-agent
 python3.13 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt pytest ruff
+python -m pip install -r requirements.txt pytest ruff ipykernel
 cp .env.example .env
 ```
 
@@ -58,6 +60,30 @@ PORT=8088
 
 Run `az login` before local execution. `DefaultAzureCredential` uses that
 session locally and the managed identity when the code runs as a Hosted Agent.
+
+## Build and inspect the workflow in a notebook
+
+Open [the Lab 7 notebook](../../notebooks/07-hosted-agent.ipynb) with the
+**Python (Foundry Hosted Agent)** kernel. It explicitly creates the three agents,
+connects them with `SequentialBuilder`, renders the actual graph using
+`WorkflowViz` and local Graphviz, and shows intermediate responses before the
+final output. It then exercises missing-input and overseas-business requests
+and runs network-free contract tests.
+
+Codespace setup installs Graphviz. For an older Codespace, install it with
+`sudo apt-get update && sudo apt-get install -y graphviz`. No graph content is
+sent to an external rendering service.
+
+The notebook imports the policy and instructions from
+`workflow.py`. Its explicit construction mirrors `build_workflow()`; contract
+tests execute the saved notebook cells with a fake client to enforce this parity.
+Only the notebook selects `intermediate_output_from="all_other"` for observation;
+the deployed agent still exposes just the final response.
+
+Notebook-only edits are not deployed. To deploy an experiment, update
+`workflow.py` as well, save the notebook, restart its kernel, and rerun the
+notebook and tests. The deployment command at the end is guidance, not an
+automatically executed cell.
 
 ## Run the sequence directly
 

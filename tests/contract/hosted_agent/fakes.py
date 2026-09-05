@@ -55,10 +55,12 @@ class ScriptedChatClient:
             from agent_framework import ChatResponseUpdate, Content, ResponseStream
 
             async def _stream() -> Any:
-                yield ChatResponseUpdate(
-                    contents=[Content.from_text(text)],
-                    role="assistant",
-                )
+                midpoint = len(text) // 2
+                for chunk in (text[:midpoint], text[midpoint:]):
+                    yield ChatResponseUpdate(
+                        contents=[Content.from_text(chunk)],
+                        role="assistant",
+                    )
 
             return ResponseStream(_stream())
 

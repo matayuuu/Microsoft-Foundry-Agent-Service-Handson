@@ -6,7 +6,6 @@ import asyncio
 import os
 from typing import Any
 
-from agent_framework import AgentExecutorResponse, AgentResponse, Executor, WorkflowContext, handler
 from agent_framework.orchestrations import SequentialBuilder
 
 WORKFLOW_NAME = "contoso-travel-planning-workflow"
@@ -69,30 +68,6 @@ SAMPLE_REQUEST = (
 )
 
 
-def ensure_simulation_notice(text: str) -> str:
-    """Append the mandatory simulation notice when the reviewer omitted it."""
-    normalized = text.rstrip()
-    if SIMULATION_NOTICE in normalized:
-        return normalized
-    return f"{normalized}\n\n{SIMULATION_NOTICE}"
-
-
-class SimulationNoticeExecutor(Executor):
-    """Enforce the final safety notice without relying on model compliance."""
-
-    @handler
-    async def enforce(
-        self,
-        response: AgentExecutorResponse,
-        ctx: WorkflowContext[AgentExecutorResponse, AgentResponse],
-    ) -> None:
-        text = response.agent_response.text
-        if not text:
-            raise RuntimeError("Reviewer completed without a final response.")
-        revised = response.with_text(ensure_simulation_notice(text))
-        await ctx.yield_output(revised.agent_response)
-
-
 def create_chat_client() -> Any:
     """Create the Foundry client used by every participant agent."""
     from agent_framework_foundry import FoundryChatClient
@@ -123,12 +98,7 @@ def build_workflow(*, chat_client: Any | None = None) -> Any:
         instructions=REVIEWER_AGENT_INSTRUCTIONS,
     )
 
-    participants = [
-        policy_agent,
-        planner_agent,
-        reviewer_agent,
-        SimulationNoticeExecutor(id="ensure-simulation-notice"),
-    ]
+    participants = [policy_agent, planner_agent, reviewer_agent]
     return SequentialBuilder(participants=participants).build()
 
 
