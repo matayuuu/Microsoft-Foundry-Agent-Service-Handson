@@ -87,6 +87,28 @@ resources を削除します。**割り当てられた resource group 自体は�
 [cleanup troubleshooting](../docs/participant/troubleshooting.md#cleanup)を確認して
 同じ command を再実行してください。
 
+## 5. Codespace を停止する
+
+Azure の cleanup が完了したら、Codespace の稼働も止めます。
+**Codespace を停止するだけでは Azure resources は削除されません。**
+必ず上の cleanup の完了を先に確認してください。
+
+1. 残しておきたい Notebook などの作業を保存します。
+2. **Ctrl+Shift+P**（macOS は **Cmd+Shift+P**）で Command Palette を開きます。
+3. `Codespaces: Stop Current Codespace` と入力し、同名の項目を選択します。
+
+![1: Codespaces: Stop Current Codespace を入力し、2: 同名の項目を選択する](../docs/images/lab08-stop-codespace.png)
+
+4. 停止処理が終わり、**Codespace is stopped** と表示されることを確認します。
+   **Stopping codespace...** の表示が続く場合は、ブラウザーを再読み込みして確認します。
+
+![Codespace is stopped と表示されたら停止完了。Restart codespace は押さない](../docs/images/lab08-codespace-stopped.png)
+
+5. **Restart codespace** は押さず、ブラウザーのタブを閉じます。
+
+これは今開いている Codespace の停止です。GitHub repository や、ほかの Codespace は
+削除しません。保存した作業は、あとで同じ Codespace を開き直すと続けられます。
+
 ## 完了
 
 これでハンズオンは終了です。
