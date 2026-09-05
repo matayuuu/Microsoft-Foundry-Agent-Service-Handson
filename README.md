@@ -3,7 +3,7 @@
 # Microsoft Foundry Agent Service Hands-on
 
 架空の「Contoso 社内出張・経費支援」を題材に、Prompt Agent、Foundry IQ、
-Toolbox、評価、最適化、Hosted Agent、観測までを体験するハンズオンです。
+Toolbox と Skills、評価、最適化、Hosted Agent、観測までを体験するハンズオンです。
 すべてのデータは合成データです。
 
 ![ハンズオンの構成](docs/images/workshop-architecture.svg)
@@ -34,7 +34,7 @@ Toolbox、評価、最適化、Hosted Agent、観測までを体験するハン�
 | [Lab 2](labs/02-prompt-agent.md) | Prompt Agent の作成 | 10分 |
 | [Lab 3](labs/03-rag-foundry-iq.md) | Azure AI Search と Foundry IQ | 35分 |
 | — | 休憩 | 10分 |
-| [Lab 4](labs/04-tools-toolbox.md) | Travel Ops API の Toolbox | 30分 |
+| [Lab 4](labs/04-tools-toolbox.md) | Portal で Toolbox と Skills を作成 | 30分 |
 | [Lab 5](labs/05-evaluation.md) | Portal で Agent evaluation | 15分 |
 | [Lab 6](labs/06-optimization.md) | Agent Optimizer | 20分 |
 | [Lab 7](labs/07-hosted-multi-agent.md) | Agent Framework の Hosted Agent | 40分 |

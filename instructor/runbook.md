@@ -94,10 +94,16 @@
 
 ### 01:35–02:10 Lab 4 — Tools・Tool Catalog・Toolbox
 
-- **コスト警告の再読み上げ**: Web Search は呼び出しごとに課金される旨、Code Interpreter
-  はセッションごとに課金される旨を再度伝える。
-- **チェックポイント**: Travel Ops API の OpenAPI ツールが Toolbox v2 として
-  `scripts/create_toolbox.py` 経由で追加されていること（Portal 非対応の操作）。
+- **操作面**: 本編は Web Portal。`prepare_toolbox_assets.py` は素材のローカル出力のみ。
+  Notebook で先に Toolbox を作らせない。2026-09-05 の実画面では OpenAPI と Skill upload
+  に対応しているため、古い「Portal 非対応」という説明を使わない。
+- **チェックポイント**: Included に `travel_ops_api`、`travel-estimation`、
+  `preapproval-simulation` があり、Publish 後も保持されていること。
+- **Skills の説明**: API は実行機能、Skill は操作手順、Foundry IQ は規程。
+  Skill は preview の MCP resource であり、登録と実際の読み込みは別。
+  API call が成功しただけで Skill を利用できたと説明しない。
+- **コスト・境界**: モデル／API の料金と Foundry 外へ送るデータの注意を再確認する。
+  本編では Web Search・Code Interpreter を追加しない。
 
 ### 02:10–02:35 Lab 5 — Agent evaluation
 

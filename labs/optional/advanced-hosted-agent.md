@@ -112,7 +112,7 @@ A2A を有効化する詳細な前提条件・手順は [A2A・Routines・Publis
 
 ## 4. Tool Search（preview）
 
-本編 [Lab 4](../04-tools-toolbox.md) の §5 で紹介したとおり、Tool Search は Toolbox 内の
+Tool Search は Toolbox 内の
 ツール数が多い場合に、モデルが動的にツールを検索して呼び出す preview 機能です。Portal からは
 利用できず、Foundry Toolkit または SDK からのみ設定できます。Hosted Agent の Toolbox に
 多数のツール（本ラボで扱う Fabric IQ、Work IQ、Travel Ops API の OpenAPI ツールなど）を
@@ -122,12 +122,18 @@ A2A を有効化する詳細な前提条件・手順は [A2A・Routines・Publis
 
 ## 5. Skills
 
-Hosted Agent は Toolbox 経由で **Skills**（Foundry が管理する再利用可能なタスク定義)
-にもアクセスできます。Code Interpreter・Web Search・Azure AI Search・OpenAPI・MCP・A2A と
-並んで、Toolbox がまとめて公開できるツール種別の 1 つです
-（[Hosted agents 概念ドキュメント](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents)
-の「Toolbox in Foundry」参照）。本ラボでは Skills の作成手順までは扱わず、Toolbox が公開する
-選択肢の 1 つとして存在を紹介するにとどめます。
+本編 [Lab 4](../04-tools-toolbox.md) では、Portal で `travel-estimation` と
+`preapproval-simulation` をアップロードし、Travel Ops API と同じ Toolbox に含めます。
+Skills は通常の API tool ではなく、別の `skills[]` に保持され、
+MCP の `resources/list` / `resources/read` で公開されます。
+
+Hosted Agent で利用するには、対応する Skill provider が必要です。
+Skill 名・description を提示し、必要なときだけ本文を読み込む progressive disclosure を
+実装します。本編 Lab 7 の Python workflow にはこの provider を含めていないため、
+Toolbox の作成だけで自動利用されるとは扱いません。
+拡張時は [公式の Agent Framework Toolbox Skills sample](https://github.com/microsoft-foundry/foundry-samples/tree/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-mcp-skills)
+と [Skills の仕様](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/skills)を参照し、
+Skill の読み込みと API 呼び出しを別々に確認してください。
 
 ## 6. 権限に関する注意点
 

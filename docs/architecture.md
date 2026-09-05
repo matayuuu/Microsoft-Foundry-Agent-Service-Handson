@@ -41,7 +41,8 @@ flowchart LR
 | Search, Application Insights, Container Apps | Terraform | `setup.sh` / `destroy.sh` |
 | Search index documents | Bootstrap adapter | Idempotent upsert after Terraform |
 | Prompt Agent and Foundry IQ knowledge base | Participant in portal | Deleted with the parent project |
-| Toolbox versions | Python Notebook / SDK wrapper | Created in Lab 4; deleted explicitly when supported or with parent project |
+| Toolbox versions | Participant in portal; optional SDK adapter | Created in Lab 4; SDK edits preserve Skills and guardrails |
+| Travel Ops Skills | Participant in portal | Upload synthetic `data/skills/` content in Lab 4; remove references before deleting Skills |
 | Synthetic evaluation dataset and rubric | Setup adapter | Idempotently prepared for Portal Labs 5 and 6 |
 | Evaluation runs | Participant in portal | Created in Lab 5; deleted with the parent project |
 | Hosted Agent and immutable versions | Python SDK wrapper | Created in Lab 7; deleted before Terraform |
@@ -92,13 +93,23 @@ Data-plane operations remain in typed Python adapters:
 - generate embeddings
 - create/update the semantic vector indexes
 - merge-or-upload indexed chunks
-- create Toolbox objects and optional automated evaluation runs
+- export live OpenAPI and Skill ZIPs for Portal upload without remote writes
+- optionally update Toolbox tools or connect an existing Toolbox when UI is unavailable
+- create optional automated evaluation runs
 - prepare the synthetic evaluation dataset and rubric used by the Portal
 - deploy/delete Hosted Agent versions from source and grant their dynamic runtime
   identities trace-ingestion access
 
 Pure configuration, chunking, validation, and policy logic is kept independent from
 Azure clients so tests run without Azure access.
+
+Lab 4 separates API execution from behavioral guidance: the Toolbox includes the
+Travel Ops OpenAPI tool plus `travel-estimation` and `preapproval-simulation` Skills.
+Foundry IQ remains the policy knowledge source, and Skills do not duplicate rate tables.
+Skills are MCP resources, not ordinary API tools or authorization controls. Consumers
+need a compatible Skill provider; neither a successful API call nor registration in
+the Portal proves a Skill was loaded. The Lab 7 workflow remains independent of this
+preview runtime integration.
 
 ## Network posture
 

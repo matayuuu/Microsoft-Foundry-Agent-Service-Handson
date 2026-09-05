@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """scripts/create_toolbox.py
 
-Creates (or updates) the ``contoso-travel-toolbox`` Microsoft Foundry toolbox
-used in labs/04-tools-toolbox.md and notebooks/04-create-toolbox.ipynb. The
-toolbox exposes the deployed Travel Ops API as an OpenAPI tool.
+Optional SDK path for the ``contoso-travel-toolbox`` Microsoft Foundry toolbox
+in notebooks/04-create-toolbox.ipynb. Lab 4 creates the toolbox in the Portal.
+This adapter adds the Travel Ops OpenAPI tool while preserving UI-managed
+tools, Skills, metadata, and guardrails.
 
 Why a script and not Terraform: per docs/architecture.md, toolbox versions are
 a Foundry data-plane object owned by SDK wrappers, not Terraform. The adapter
@@ -48,6 +49,7 @@ from azure.ai.projects.models import (
     OpenApiToolboxTool,
     PromptAgentDefinition,
     ToolboxTool,
+    ToolboxVersionObject,
 )
 from azure.core.exceptions import ResourceNotFoundError
 from lib.workshop_context import (
@@ -283,17 +285,15 @@ def fetch_openapi_spec(
     return set_live_server_url(spec, base_url)
 
 
-def get_existing_default_tools(
+def get_existing_default_version(
     client: AIProjectClient, toolbox_name: str
-) -> tuple[str, list[ToolboxTool]] | None:
-    """Return (default_version, tools) for an existing toolbox, or ``None`` if
-    the toolbox does not exist yet."""
+) -> ToolboxVersionObject | None:
+    """Read the complete default snapshot so SDK edits preserve Portal settings."""
     try:
         toolbox = client.toolboxes.get(toolbox_name)
     except ResourceNotFoundError:
         return None
-    version = client.toolboxes.get_version(toolbox_name, toolbox.default_version)
-    return toolbox.default_version, list(version.tools)
+    return client.toolboxes.get_version(toolbox_name, toolbox.default_version)
 
 
 def ensure_toolbox(
@@ -306,12 +306,12 @@ def ensure_toolbox(
     publish: bool = True,
 ) -> dict[str, Any]:
     """Create or update the toolbox and return a participant-friendly result."""
-    existing = get_existing_default_tools(client, toolbox_name)
-    existing_tools = existing[1] if existing is not None else []
+    existing = get_existing_default_version(client, toolbox_name)
+    existing_tools = list(existing.tools) if existing is not None else []
     tools_for_version, changed = upsert_openapi_tool(existing_tools, desired_tool)
 
     if existing is not None and not changed:
-        default_version, _ = existing
+        default_version = existing.version
         return {
             "toolbox_name": toolbox_name,
             "action": "unchanged",
@@ -322,7 +322,16 @@ def ensure_toolbox(
     new_version = client.toolboxes.create_version(
         toolbox_name,
         tools=tools_for_version,
-        description=description or "Contoso Travel Ops OpenAPI toolbox.",
+        description=(
+            description
+            if description is not None
+            else existing.description
+            if existing is not None
+            else "Contoso Travel Ops toolbox."
+        ),
+        skills=copy.deepcopy(existing.skills) if existing is not None else None,
+        policies=copy.deepcopy(existing.policies) if existing is not None else None,
+        metadata=copy.deepcopy(existing.metadata) if existing is not None else None,
     )
     action = "created"
     if existing is not None and publish:
@@ -335,7 +344,7 @@ def ensure_toolbox(
         "toolbox_name": toolbox_name,
         "action": action,
         "default_version": (
-            new_version.version if action != "created_unpublished" else existing[0]
+            new_version.version if action != "created_unpublished" else existing.version
         ),
         "new_version": new_version.version,
         "endpoints": mcp_endpoints(endpoint, toolbox_name, new_version.version),
@@ -516,7 +525,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     credential = build_credential(args.credential)
-    with AIProjectClient(endpoint=endpoint, credential=credential) as client:
+    with AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True) as client:
         result = ensure_toolbox(
             client,
             endpoint=endpoint,

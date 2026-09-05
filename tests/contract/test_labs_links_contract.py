@@ -202,6 +202,27 @@ def test_portal_labs_use_setup_prepared_evaluation_assets() -> None:
     assert "Contoso Travel Rubric" in optimization
 
 
+def test_toolbox_lab_uses_portal_for_openapi_and_skills() -> None:
+    lab = (LABS_DIR / "04-tools-toolbox.md").read_text(encoding="utf-8")
+    for step in (
+        "Build > Tools",
+        "Create toolbox",
+        "Select a tool > Custom > OpenAPI tool",
+        "OpenAPI 3.0+ schema",
+        "Add skill > Upload skill",
+        "Publish",
+        "prepare_toolbox_assets.py",
+        "travel-estimation",
+        "preapproval-simulation",
+        "resources/list",
+        "resources/read",
+        "登録・公開済み",
+        "利用は未確認",
+    ):
+        assert step in lab
+    assert "Notebook は本編では使いません" in lab
+
+
 # ---------------------------------------------------------------------------
 # Pure-function unit coverage (no filesystem access) for the helpers above.
 # ---------------------------------------------------------------------------
