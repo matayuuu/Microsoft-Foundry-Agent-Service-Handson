@@ -26,15 +26,10 @@
 参加者ごとに異なる resource 名や endpoint は
 `.workshop/context.json` から取得します。教材の例に見える名前を推測して入力しないでください。
 
-## 必ず守ること
+## Notice
 
-> [!IMPORTANT]
-> 規程、旅程、経費、評価質問はすべて架空の合成データです。
-> 実在する個人情報、顧客情報、予約情報を入力しないでください。
-
-> [!WARNING]
-> Foundry IQ の Portal 操作、Skills、Agent Optimizer は preview を含みます。
-> モデル推論、Search、評価、Hosted Agent には料金が発生します。
+> [!NOTE]
+> 本ハンズオンには数百円程度の Azure 利用料金が発生します。
 > 終了時は Lab 8 の cleanup を実行してください。
 
 この教材は **Foundry (new)** を対象にしています。旧 Azure AI Studio / Foundry classic
