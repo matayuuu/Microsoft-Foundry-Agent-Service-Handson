@@ -13,8 +13,8 @@ Microsoft Foundry Portal で、setup 済みの合成 test data を使い
 
 1. 対象 project の左 navigation で **Build > Evaluations** を開きます。
 2. **Create** を選択します。
-3. **Target** で **Agent** を選び、**Next** を選択します。
-4. **Scope** で `contoso-travel-assistant` を選び、**Next** を選択します。
+3. **Target** で **Agent** を選び、`contoso-travel-assistant` を選択してから **Next** を選択します。
+4. **Scope** で **Individual turns** を選び、**Next** を選択します。
 5. **Frequency** で **One time** を選び、**Next** を選択します。
 
 ## 2. 合成 dataset を選択する
