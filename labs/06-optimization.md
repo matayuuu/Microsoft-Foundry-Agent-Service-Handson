@@ -56,8 +56,8 @@ jq -r '
 
 ## 4. Criteria を選択する
 
-Optimizer の Criteria は **Custom only** です。setup が登録した
-**Contoso Travel Rubric** を選択し、**Next** を選択します。
+**Criteria** では、setup が登録したカスタム評価器 **Contoso Travel Rubric** を
+選択し、**Next** を選択します。この演習では、ほかの評価器は追加しません。
 
 ![Optimizer の custom rubric 選択](../docs/images/lab06-optimizer-criteria.png)
 
