@@ -56,15 +56,28 @@ Core infrastructure in the participant resource group:
 
 - Microsoft Foundry account (`AIServices`) with project management enabled
 - Microsoft Foundry project
-- `gpt-4.1` deployment for agent inference and evaluation
-- a supported `gpt-5` family deployment for Foundry IQ query planning and Agent Optimizer
-- `text-embedding-3-small` deployment for the seeded vector indexes
+- `gpt-5.6-luna` deployment for Prompt/Hosted Agent inference and Foundry IQ query planning
+- `gpt-5.5` deployment for configurable LLM evaluation judges and Agent Optimizer
+- `text-embedding-3-small`, deployed as `embedding`, for the seeded vector indexes
 - Azure AI Search Basic, one replica and one partition
 - Log Analytics and workspace-based Application Insights
 - Container Apps consumption environment and scale-to-zero Travel Ops API
 
 The exact model version, deployment SKU, and capacity are inputs. The subscription
 administrator preflight verifies them before participants start.
+
+There are exactly three deployments. `primary_model_deployment_name` still exposes
+`gpt-5.6-luna`; `optimizer_model_deployment_name` exposes `gpt-5.5`; the embedding output
+remains unchanged. Foundry IQ shares the primary deployment, not the optimizer.
+Evaluation still invokes the Luna-backed target agent, while configurable judges use
+GPT-5.5. Service-managed safety evaluators do not receive a judge deployment override.
+The two chat model versions have no Terraform defaults: preflight discovers each
+version and quota `usageName` from the same required-SKU catalog entry.
+
+Initial capacities are 40/20/40K TPM, respectively, subject to live preflight evidence.
+Shared uses are counted once per deployment, not once per lab. Verify that the current
+Portal uses a [Search API compatible with Luna knowledge-base query planning](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base);
+model catalog availability alone does not prove picker/API compatibility.
 
 ## Authentication and authorization
 

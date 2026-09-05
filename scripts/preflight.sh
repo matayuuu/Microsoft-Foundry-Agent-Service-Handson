@@ -8,7 +8,7 @@
 # existing resource group, its identity's role, resource-provider
 # registration state, and model/quota availability look workable BEFORE
 # terraform apply runs -- and to auto-discover a real, available
-# optimizer_model_version instead of guessing one.
+# primary/optimizer model versions instead of guessing them.
 #
 # Usage:
 #   scripts/preflight.sh --subscription <sub-id> --resource-group <rg-name>
@@ -115,7 +115,7 @@ REQUIRED_PROVIDERS=(
   "Microsoft.OperationalInsights"
   "Microsoft.App"
 )
-REQUIRED_MODELS=("gpt-4.1" "gpt-5" "text-embedding-3-small")
+REQUIRED_MODELS=("gpt-5.6-luna" "gpt-5.5" "text-embedding-3-small")
 # The exact SKU (deployment type) and TPM capacity (in thousands) this
 # workshop's Terraform requests for each model (infra/variables.tf:
 # primary/optimizer/embedding_model_capacity). A region is only resolved when
@@ -124,13 +124,13 @@ REQUIRED_MODELS=("gpt-4.1" "gpt-5" "text-embedding-3-small")
 # region can be "not tight" overall while still lacking the one bucket this
 # workshop actually deploys into.
 declare -A REQUIRED_MODEL_SKU=(
-  ["gpt-4.1"]="GlobalStandard"
-  ["gpt-5"]="GlobalStandard"
+  ["gpt-5.6-luna"]="GlobalStandard"
+  ["gpt-5.5"]="GlobalStandard"
   ["text-embedding-3-small"]="GlobalStandard"
 )
 declare -A REQUIRED_MODEL_CAPACITY_K=(
-  ["gpt-4.1"]="40"
-  ["gpt-5"]="20"
+  ["gpt-5.6-luna"]="40"
+  ["gpt-5.5"]="20"
   ["text-embedding-3-small"]="40"
 )
 
@@ -437,27 +437,27 @@ fi
 # ---------------------------------------------------------------------------
 
 MODEL_VERSIONS_JSON="$(jq -n \
-  --arg gpt41 "${RESOLVED_MODEL_VERSION[gpt-4.1]:-}" \
-  --arg gpt5 "${RESOLVED_MODEL_VERSION[gpt-5]:-}" \
+  --arg primary "${RESOLVED_MODEL_VERSION[gpt-5.6-luna]:-}" \
+  --arg optimizer "${RESOLVED_MODEL_VERSION[gpt-5.5]:-}" \
   --arg emb "${RESOLVED_MODEL_VERSION[text-embedding-3-small]:-}" \
-  '{"gpt-4.1": $gpt41, "gpt-5": $gpt5, "text-embedding-3-small": $emb}')"
+  '{"gpt-5.6-luna": $primary, "gpt-5.5": $optimizer, "text-embedding-3-small": $emb}')"
 
 # Per-model SKU/usageName evidence for the resolved region (empty object
 # fields when no region resolved), so setup.sh/participants can see exactly
 # which quota bucket was validated -- not just that "something" passed.
 MODEL_CAPACITY_EVIDENCE_JSON="$(jq -n \
-  --arg gpt41_sku "${RESOLVED_MODEL_SKU[gpt-4.1]:-}" \
-  --arg gpt41_usage "${RESOLVED_MODEL_USAGE_NAME[gpt-4.1]:-}" \
-  --argjson gpt41_capacity "${REQUIRED_MODEL_CAPACITY_K[gpt-4.1]}" \
-  --arg gpt5_sku "${RESOLVED_MODEL_SKU[gpt-5]:-}" \
-  --arg gpt5_usage "${RESOLVED_MODEL_USAGE_NAME[gpt-5]:-}" \
-  --argjson gpt5_capacity "${REQUIRED_MODEL_CAPACITY_K[gpt-5]}" \
+  --arg primary_sku "${RESOLVED_MODEL_SKU[gpt-5.6-luna]:-}" \
+  --arg primary_usage "${RESOLVED_MODEL_USAGE_NAME[gpt-5.6-luna]:-}" \
+  --argjson primary_capacity "${REQUIRED_MODEL_CAPACITY_K[gpt-5.6-luna]}" \
+  --arg optimizer_sku "${RESOLVED_MODEL_SKU[gpt-5.5]:-}" \
+  --arg optimizer_usage "${RESOLVED_MODEL_USAGE_NAME[gpt-5.5]:-}" \
+  --argjson optimizer_capacity "${REQUIRED_MODEL_CAPACITY_K[gpt-5.5]}" \
   --arg emb_sku "${RESOLVED_MODEL_SKU[text-embedding-3-small]:-}" \
   --arg emb_usage "${RESOLVED_MODEL_USAGE_NAME[text-embedding-3-small]:-}" \
   --argjson emb_capacity "${REQUIRED_MODEL_CAPACITY_K[text-embedding-3-small]}" \
   '{
-    "gpt-4.1": {sku: $gpt41_sku, usage_name: $gpt41_usage, required_capacity_k: $gpt41_capacity},
-    "gpt-5": {sku: $gpt5_sku, usage_name: $gpt5_usage, required_capacity_k: $gpt5_capacity},
+    "gpt-5.6-luna": {sku: $primary_sku, usage_name: $primary_usage, required_capacity_k: $primary_capacity},
+    "gpt-5.5": {sku: $optimizer_sku, usage_name: $optimizer_usage, required_capacity_k: $optimizer_capacity},
     "text-embedding-3-small": {sku: $emb_sku, usage_name: $emb_usage, required_capacity_k: $emb_capacity}
   }')"
 

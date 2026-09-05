@@ -398,8 +398,8 @@ elif [[ ${PREFLIGHT_EXIT} -ne 0 ]]; then
 fi
 
 RESOLVED_LOCATION="$(jq -r '.resolved_location' "${PREFLIGHT_REPORT}")"
-OPTIMIZER_MODEL_VERSION="$(jq -r '.resolved_model_versions["gpt-5"] // empty' "${PREFLIGHT_REPORT}")"
-PRIMARY_MODEL_VERSION="$(jq -r '.resolved_model_versions["gpt-4.1"] // empty' "${PREFLIGHT_REPORT}")"
+OPTIMIZER_MODEL_VERSION="$(jq -r '.resolved_model_versions["gpt-5.5"] // empty' "${PREFLIGHT_REPORT}")"
+PRIMARY_MODEL_VERSION="$(jq -r '.resolved_model_versions["gpt-5.6-luna"] // empty' "${PREFLIGHT_REPORT}")"
 EMBEDDING_MODEL_VERSION="$(jq -r '.resolved_model_versions["text-embedding-3-small"] // empty' "${PREFLIGHT_REPORT}")"
 
 if [[ -z "${RESOLVED_LOCATION}" || "${RESOLVED_LOCATION}" == "null" ]]; then
@@ -407,11 +407,20 @@ if [[ -z "${RESOLVED_LOCATION}" || "${RESOLVED_LOCATION}" == "null" ]]; then
   exit 2
 fi
 if [[ -z "${OPTIMIZER_MODEL_VERSION}" || "${OPTIMIZER_MODEL_VERSION}" == "null" ]]; then
-  echo "${SCRIPT_NAME}: preflight could not discover an available optimizer (gpt-5 family) model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
+  echo "${SCRIPT_NAME}: preflight could not discover an available optimizer/evaluation (gpt-5.5) model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
+  exit 2
+fi
+if [[ -z "${PRIMARY_MODEL_VERSION}" || "${PRIMARY_MODEL_VERSION}" == "null" ]]; then
+  echo "${SCRIPT_NAME}: preflight could not discover an available primary/query (gpt-5.6-luna) model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
+  exit 2
+fi
+if [[ -z "${EMBEDDING_MODEL_VERSION}" || "${EMBEDDING_MODEL_VERSION}" == "null" ]]; then
+  echo "${SCRIPT_NAME}: preflight could not discover an available embedding model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
   exit 2
 fi
 
 echo "    Resolved region: ${RESOLVED_LOCATION}" >&2
+echo "    Resolved primary model version: ${PRIMARY_MODEL_VERSION}" >&2
 echo "    Resolved optimizer model version: ${OPTIMIZER_MODEL_VERSION}" >&2
 
 PYTHON_BIN="${WORKSHOP_PYTHON:-${REPO_ROOT}/.venv/bin/python}"
@@ -465,13 +474,9 @@ TF_VAR_ARGS=(
   -var "travel_api_image_ref=${TRAVEL_API_IMAGE_REF}"
   -var "source_base=${SOURCE_BASE}"
   -var "optimizer_model_version=${OPTIMIZER_MODEL_VERSION}"
+  -var "primary_model_version=${PRIMARY_MODEL_VERSION}"
+  -var "embedding_model_version=${EMBEDDING_MODEL_VERSION}"
 )
-if [[ -n "${PRIMARY_MODEL_VERSION}" && "${PRIMARY_MODEL_VERSION}" != "null" ]]; then
-  TF_VAR_ARGS+=(-var "primary_model_version=${PRIMARY_MODEL_VERSION}")
-fi
-if [[ -n "${EMBEDDING_MODEL_VERSION}" && "${EMBEDDING_MODEL_VERSION}" != "null" ]]; then
-  TF_VAR_ARGS+=(-var "embedding_model_version=${EMBEDDING_MODEL_VERSION}")
-fi
 
 retry 3 10 terraform -chdir="${INFRA_DIR}" init -input=false -upgrade=false
 

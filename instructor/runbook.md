@@ -13,9 +13,11 @@
      `Microsoft.Search`、`Microsoft.Insights`、`Microsoft.OperationalInsights`、
      `Microsoft.App`）がすべての対象 region
      （`eastus2`、`swedencentral`）で `Registered` であること。
-  2. 想定参加者・チーム数に対して `gpt-4.1`（40K TPM/team）、`gpt-5` 系（20K TPM/team）、
+  2. 想定参加者・チーム数に対して `gpt-5.6-luna`（40K TPM/team）、`gpt-5.5`（20K TPM/team）、
      `text-embedding-3-small`（40K TPM/team）の model quota/capacity が両 region の
      少なくとも一方で足りていること。
+     Luna は Agent と Foundry IQ、GPT-5.5 は LLM judge と Optimizer で共有します。
+     合計 3 deployment を用途ごとに重複計上せず、初期容量で同時実行をリハーサルします。
   3. 未登録の provider がある場合のみ `--apply` を実行してもらう（quota・policy・
      resource group・role assignment は一切変更しない設計です）。
 - 各参加者（または参加チーム）に対して、既存 resource group を 1 つずつ用意し、
@@ -26,6 +28,10 @@
 
 - 自分用の resource group で `./scripts/preflight.sh` → `./scripts/setup.sh` を通し、
   `.workshop/context.json` が生成されることを確認します。
+- Luna の Foundry IQ 対応は、model catalog だけでなく現在の Portal の Search API と
+  picker で確認します。Agent・Foundry IQ は `primary_model_deployment_name`、
+  設定可能な judge・Optimizer の両モデル選択は `optimizer_model_deployment_name` を使います。
+  サービス管理の Violence などには judge を指定しません。
 - Lab 5（評価）・Lab 6（Optimizer）・Lab 7（Hosted Agent デプロイ）を一度通しで
   実行し、リモートビルドや preview 機能の待ち時間の当日の目安を体感しておきます。
 - [instructor/completed-run-assets/](completed-run-assets/README.md) の内容に目を通し、
@@ -107,6 +113,8 @@
 
 ### 02:10–02:35 Lab 5 — Agent evaluation
 
+- **モデルの確認**: 対象 Agent は Luna のまま、設定可能な LLM judge は GPT-5.5。
+  少数の rubric 判定と理由を人の判断と照合し、モデル名だけで評価の正しさを断定しません。
 - **チェックポイント**: `.venv/bin/python scripts/run_evaluation.py --output json` が
   `status: "completed"` で終わり、`report_url` が Foundry portal で開けること。
 - **live 実行が難しい場合**: judge model のレート制限や評価 API のタイムアウトで

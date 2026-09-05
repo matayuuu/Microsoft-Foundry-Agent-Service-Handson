@@ -11,7 +11,7 @@ report `limit`/`currentValue` in thousands of TPM).
 They assert the behavior this hardening pass requires:
 
 * `--participant-count` defaults to 1 and multiplies each model's
-  per-environment required capacity (gpt-4.1 40K, gpt-5 20K,
+  per-environment required capacity (gpt-5.6-luna 40K, gpt-5.5 20K,
   text-embedding-3-small 40K) by the participant count to get the
   AGGREGATE requirement the whole event needs from a single region's quota
   pool -- not just one environment's worth.
@@ -159,17 +159,21 @@ def _usage_entry(usage_name: str, limit: float, current: float) -> dict:
     return {"name": {"value": usage_name}, "limit": limit, "currentValue": current}
 
 
+# Synthetic chat versions/aliases, not verified live Luna/GPT5.5 values.
+# Historic bucket names exercise the rule that usageName cannot be derived.
+PRIMARY_MODEL = "gpt-5.6-luna"
+OPTIMIZER_MODEL = "gpt-5.5"
 GPT41_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt4.1"
 GPT5_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt-5"
 EMBEDDING_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.text-embedding-3-small"
 
 FULL_MODELS_FIXTURE = [
     _model_entry(
-        "gpt-4.1",
+        PRIMARY_MODEL,
         "2025-04-14",
         [("Standard", "OpenAI.Standard.gpt4.1"), ("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry("gpt-5", "2025-08-07", [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
+    _model_entry(OPTIMIZER_MODEL, "2025-08-07", [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -181,19 +185,19 @@ FULL_MODELS_FIXTURE = [
 ]
 
 
-# Regression fixture for the version/SKU-mismatch bug: gpt-4.1's HIGHEST
+# Regression fixture for the version/SKU-mismatch bug: the primary model's HIGHEST
 # version does not expose the required "GlobalStandard" SKU (only
 # "Standard"); an older version does. The report must resolve the
 # SKU-supporting version, never the highest version paired with a usageName
 # scraped from a different (non-SKU-supporting) entry.
 MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
-    _model_entry("gpt-4.1", "2025-04-14", [("Standard", "OpenAI.Standard.gpt4.1")]),
+    _model_entry(PRIMARY_MODEL, "2025-04-14", [("Standard", "OpenAI.Standard.gpt4.1")]),
     _model_entry(
-        "gpt-4.1",
+        PRIMARY_MODEL,
         "2025-01-01",
         [("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry("gpt-5", "2025-08-07", [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
+    _model_entry(OPTIMIZER_MODEL, "2025-08-07", [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -257,7 +261,7 @@ def _report(result: subprocess.CompletedProcess[str]) -> dict:
 def test_defaults_participant_count_to_one_and_reports_it(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    # Headroom of 40K is exactly sufficient for gpt-4.1's 40K single-
+    # Headroom of 40K is exactly sufficient for the primary model's 40K single-
     # environment requirement, but would fail for any count > 1.
     result = _run_admin_preflight(
         fake_az_bin,
@@ -279,15 +283,28 @@ def test_defaults_participant_count_to_one_and_reports_it(
     report = _report(result)
     assert report["participant_count"] == 1
 
-    gpt41_eastus2 = next(c for c in report["checks"] if c["name"] == "model-sku:gpt-4.1/eastus2")
+    gpt41_eastus2 = next(
+        c for c in report["checks"] if c["name"] == f"model-sku:{PRIMARY_MODEL}/eastus2"
+    )
     assert gpt41_eastus2["status"] == "pass"
     assert "40K * 1 participant(s) = 40K" in gpt41_eastus2["detail"]
+    model_checks = [c for c in report["checks"] if c["name"].startswith("model-sku:")]
+    assert {c["name"].split(":")[1].split("/")[0] for c in model_checks} == {
+        PRIMARY_MODEL,
+        OPTIMIZER_MODEL,
+        "text-embedding-3-small",
+    }
+    assert len(model_checks) == 6  # Three deployments, each checked in two regions.
+    optimizer_check = next(
+        c for c in model_checks if c["name"] == f"model-sku:{OPTIMIZER_MODEL}/eastus2"
+    )
+    assert "20K * 1 participant(s) = 20K" in optimizer_check["detail"]
 
 
 def test_aggregate_capacity_scales_with_participant_count(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    # Headroom of 90K covers 2 participants' worth of gpt-4.1 (2*40=80) but
+    # Headroom of 90K covers 2 participants' worth of primary (2*40=80) but
     # not 3 (3*40=120) -- proves the multiplication, not just a fixed
     # single-environment comparison.
     env = {
@@ -307,7 +324,9 @@ def test_aggregate_capacity_scales_with_participant_count(
         )
     )
     assert report_2["participant_count"] == 2
-    gpt41_2 = next(c for c in report_2["checks"] if c["name"] == "model-sku:gpt-4.1/eastus2")
+    gpt41_2 = next(
+        c for c in report_2["checks"] if c["name"] == f"model-sku:{PRIMARY_MODEL}/eastus2"
+    )
     assert gpt41_2["status"] == "pass"
     assert "40K * 2 participant(s) = 80K" in gpt41_2["detail"]
 
@@ -317,7 +336,9 @@ def test_aggregate_capacity_scales_with_participant_count(
         )
     )
     assert report_3["participant_count"] == 3
-    gpt41_3 = next(c for c in report_3["checks"] if c["name"] == "model-sku:gpt-4.1/eastus2")
+    gpt41_3 = next(
+        c for c in report_3["checks"] if c["name"] == f"model-sku:{PRIMARY_MODEL}/eastus2"
+    )
     assert gpt41_3["status"] == "warn"
     assert "40K * 3 participant(s) = 120K" in gpt41_3["detail"]
     assert "BELOW" in gpt41_3["detail"]
@@ -367,7 +388,7 @@ def test_resolves_the_sku_supporting_version_not_the_highest_overall_version(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
     """Regression test for the version/SKU-mismatch bug (same as
-    scripts/preflight.sh): gpt-4.1's HIGHEST version does not support the
+    scripts/preflight.sh): the primary model's HIGHEST version does not support the
     required 'GlobalStandard' SKU, only an older version does. The report
     must show the SKU-supporting version and its own usageName as evidence,
     never the highest version combined with a mismatched usageName."""
@@ -391,7 +412,9 @@ def test_resolves_the_sku_supporting_version_not_the_highest_overall_version(
         },
     )
     report = _report(result)
-    gpt41_eastus2 = next(c for c in report["checks"] if c["name"] == "model-sku:gpt-4.1/eastus2")
+    gpt41_eastus2 = next(
+        c for c in report["checks"] if c["name"] == f"model-sku:{PRIMARY_MODEL}/eastus2"
+    )
     assert gpt41_eastus2["status"] == "pass"
     assert "resolved version='2025-01-01'" in gpt41_eastus2["detail"]
     assert f"usageName='{GPT41_GLOBALSTANDARD_USAGE}'" in gpt41_eastus2["detail"]

@@ -39,12 +39,16 @@ the repository root `AGENTS.md` for full ownership boundaries.
     non-preview version for these resource types as of the 2026-08-21
     retrieval date recorded in `foundry_account.tf`).
 - **Model deployments are variable-driven, not guessed.** Three deployments
-  (`primary` = gpt-4.1, `optimizer` = a supported gpt-5-family model,
+  (`gpt-5.6-luna` = agents and Foundry IQ, `gpt-5.5` = LLM judges and Optimizer,
   `embedding` = text-embedding-3-small) have overridable
-  name/version/sku/capacity variables. `optimizer_model_version` has
-  intentionally no default: `scripts/preflight.sh` must discover a real,
-  available version via `az cognitiveservices model list` before it is
-  supplied to Terraform.
+  model-name/version/sku/capacity variables; deployment names are fixed.
+  `primary_model_version` and `optimizer_model_version` intentionally have no
+  defaults: `scripts/preflight.sh` must discover each version and quota `usageName`
+  from the same required-SKU entry returned by `az cognitiveservices model list`.
+  Initial capacities are 40/20/40K TPM, checked against live regional headroom.
+  The output keys `primary_model_deployment_name`, `optimizer_model_deployment_name`,
+  and `embedding_model_deployment_name` remain unchanged; no extra deployment/output
+  is needed for the shared uses.
 - **State is local by default and treated as sensitive.** No backend block
   is declared in `versions.tf`, so Terraform defaults to a local state file
   (already gitignored). `backend.remote.tf.example` documents how an
@@ -86,8 +90,8 @@ terraform -chdir=infra validate
 
 These are also what `make terraform-validate` runs. `terraform validate`
 does not evaluate custom variable `validation` blocks for variables without
-a default and no `-var`/tfvars supplied, so `optimizer_model_version` (which
-intentionally has no default) does not block a bare `validate` run; it is
+a default and no `-var`/tfvars supplied, so the two required chat model versions
+do not block a bare `validate` run; they are
 enforced at `plan`/`apply` time once `scripts/preflight.sh` supplies a real
 value.
 
@@ -98,7 +102,10 @@ value.
   time. `outputs.tf` and `scripts/setup.sh` print the guaranteed-correct
   generic portal URL plus resource names/IDs a participant can use to
   navigate manually.
-- Exact default version/capacity for the optimizer's `gpt-5`-family
-  deployment are intentionally left without a hardcoded default
-  (`optimizer_model_version` has no default) and must be resolved by
-  `scripts/preflight.sh` against the live subscription/region.
+- Exact Luna/GPT-5.5 versions are intentionally not hardcoded. Both must be
+  resolved by `scripts/preflight.sh` against the live subscription/region.
+  Model catalog/quota checks do not prove Portal picker support; Luna knowledge
+  bases require a compatible current Search API.
+- Renaming old `primary`/`optimizer` deployments can replace resources.
+  Review the plan and update saved consumers; retain state and cleanup inputs
+  until cleanup succeeds. Recovery uses the exact current deployment IDs.

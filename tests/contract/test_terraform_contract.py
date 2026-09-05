@@ -22,6 +22,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 INFRA_DIR = Path(__file__).resolve().parents[2] / "infra"
 
 
@@ -227,12 +229,80 @@ def test_travel_api_image_ref_variable_requires_immutable_digest() -> None:
     assert "@sha256" in match.group(0)
 
 
-def test_optimizer_model_version_has_no_default() -> None:
+@pytest.mark.parametrize("role", ["primary", "optimizer"])
+def test_chat_model_version_has_no_default(role: str) -> None:
     text = _read("variables.tf")
 
-    match = re.search(r'variable\s+"optimizer_model_version"\s*\{(.*?)\n\}', text, re.DOTALL)
+    match = re.search(rf'variable\s+"{role}_model_version"\s*\{{(.*?)\n\}}', text, re.DOTALL)
     assert match is not None
     assert "default" not in match.group(1)
+
+
+@pytest.mark.parametrize(
+    ("role", "model", "deployment", "capacity"),
+    [
+        ("primary", "gpt-5.6-luna", "gpt-5.6-luna", 40),
+        ("optimizer", "gpt-5.5", "gpt-5.5", 20),
+        ("embedding", "text-embedding-3-small", "embedding", 40),
+    ],
+)
+def test_model_defaults_deployment_ids_and_output_keys_agree(
+    role: str, model: str, deployment: str, capacity: int
+) -> None:
+    variables = _read("variables.tf")
+    for suffix, expected in [
+        ("name", f'"{model}"'),
+        ("sku", '"GlobalStandard"'),
+        ("capacity", str(capacity)),
+    ]:
+        block = re.search(
+            rf'variable\s+"{role}_model_{suffix}"\s*\{{(.*?)\n\}}', variables, re.DOTALL
+        )
+        assert block is not None
+        assert re.search(rf"default\s*=\s*{re.escape(expected)}\s*$", block.group(1), re.MULTILINE)
+
+    deployment_block = re.search(
+        rf'resource "azapi_resource" "{role}_model_deployment" \{{(.*?)\n\}}',
+        _read("foundry_deployments.tf"),
+        re.DOTALL,
+    )
+    assert deployment_block is not None
+    assert re.search(rf'name\s*=\s*"{deployment}"', deployment_block.group(1))
+    recovery_block = re.search(
+        rf'address\s*=\s*"azapi_resource\.{role}_model_deployment"(.*?)\n\s*\}}',
+        _read("state_recovery.tf"),
+        re.DOTALL,
+    )
+    assert recovery_block is not None
+    assert f'/deployments/{deployment}"' in recovery_block.group(1)
+    assert re.search(
+        rf'output "{role}_model_deployment_name" \{{\s*'
+        rf"value = azapi_resource\.{role}_model_deployment\.name\s*\}}",
+        _read("outputs.tf"),
+    )
+
+
+def test_exactly_three_model_deployments_and_existing_model_outputs() -> None:
+    deployments = re.findall(r'resource "azapi_resource" "(\w+_model_deployment)"', _all_tf_text())
+    outputs = re.findall(r'output "(\w+_model_deployment_name)"', _read("outputs.tf"))
+    assert set(deployments) == {
+        "primary_model_deployment",
+        "optimizer_model_deployment",
+        "embedding_model_deployment",
+    }
+    assert len(deployments) == 3
+    assert set(outputs) == {
+        f"{role}_model_deployment_name" for role in ("primary", "optimizer", "embedding")
+    }
+    assert len(outputs) == 3
+
+
+def test_tfvars_example_requires_discovered_chat_versions() -> None:
+    text = _read("terraform.tfvars.example")
+    for role in ("primary", "optimizer"):
+        assert re.search(
+            rf'{role}_model_version\s*=\s*"REPLACE_WITH_PREFLIGHT_VERIFIED_VERSION"', text
+        )
 
 
 def test_model_deployments_are_serialized_after_project_creation() -> None:

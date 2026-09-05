@@ -76,11 +76,11 @@ from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from lib.workshop_context import (
     DEFAULT_AGENT_NAME,
     DEFAULT_CONTEXT_PATH,
-    DEFAULT_PRIMARY_MODEL_DEPLOYMENT,
     WorkshopContextError,
     build_credential,
     load_context,
     project_endpoint,
+    terraform_output,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -306,23 +306,18 @@ def build_testing_criteria(
         response_field = (
             "output_items" if evaluator_name in _TOOL_CALL_AWARE_EVALUATORS else "output_text"
         )
-        init_params = (
-            None
-            if evaluator_name in _NO_JUDGE_DEPLOYMENT_EVALUATORS
-            else {"deployment_name": judge_deployment}
+        criterion = TestingCriterionAzureAIEvaluator(
+            type="azure_ai_evaluator",
+            name=short_name,
+            evaluator_name=evaluator_name,
+            data_mapping={
+                "query": "{{item.query}}",
+                "response": f"{{{{sample.{response_field}}}}}",
+            },
         )
-        criteria.append(
-            TestingCriterionAzureAIEvaluator(
-                type="azure_ai_evaluator",
-                name=short_name,
-                evaluator_name=evaluator_name,
-                initialization_parameters=init_params,
-                data_mapping={
-                    "query": "{{item.query}}",
-                    "response": f"{{{{sample.{response_field}}}}}",
-                },
-            )
-        )
+        if evaluator_name not in _NO_JUDGE_DEPLOYMENT_EVALUATORS:
+            criterion["initialization_parameters"] = {"deployment_name": judge_deployment}
+        criteria.append(criterion)
     return criteria
 
 
@@ -520,8 +515,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--judge-deployment",
-        default=DEFAULT_PRIMARY_MODEL_DEPLOYMENT,
-        help="Model deployment used as the LLM judge for the rubric and LLM-judge built-ins",
+        default=None,
+        help=(
+            "LLM judge deployment for the rubric and configurable built-ins "
+            "(default: context.json optimizer_model_deployment_name)"
+        ),
     )
     parser.add_argument(
         "--rubric-name", default=DEFAULT_RUBRIC_NAME, help="Name of the rubric evaluator to ensure"
@@ -585,11 +583,13 @@ def main(argv: list[str] | None = None) -> int:
     run_name = args.run_name or f"{args.agent_name}-run-{int(time.time())}"
 
     try:
-        endpoint = (
-            args.project_endpoint
-            if args.project_endpoint
-            else project_endpoint(load_context(args.context))
-        )
+        context: dict[str, Any] = {}
+        if not args.project_endpoint or (not args.prepare_only and not args.judge_deployment):
+            context = load_context(args.context)
+        endpoint = args.project_endpoint or project_endpoint(context)
+        judge_deployment = args.judge_deployment
+        if not args.prepare_only and not judge_deployment:
+            judge_deployment = terraform_output(context, "optimizer_model_deployment_name")
         schema = json.loads(args.schema.read_text(encoding="utf-8"))
         load_eval_cases(args.dataset, schema)  # validate up front; fail before touching Azure
         dataset_version = dataset_content_version(args.dataset)
@@ -633,7 +633,7 @@ def main(argv: list[str] | None = None) -> int:
 
             testing_criteria = build_testing_criteria(
                 rubric_evaluator_name=rubric_evaluator.name,
-                judge_deployment=args.judge_deployment,
+                judge_deployment=judge_deployment,
                 builtin_evaluators=builtin_evaluators,
             )
 

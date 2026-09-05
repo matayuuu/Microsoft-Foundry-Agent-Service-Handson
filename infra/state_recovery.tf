@@ -25,14 +25,14 @@ locals {
     },
     {
       address           = "azapi_resource.primary_model_deployment"
-      id                = "${local.ai_services_id}/deployments/primary"
+      id                = "${local.ai_services_id}/deployments/gpt-5.6-luna"
       api_version       = "2026-05-01"
       owner_id          = local.ai_services_id
       owner_api_version = "2026-05-01"
     },
     {
       address           = "azapi_resource.optimizer_model_deployment"
-      id                = "${local.ai_services_id}/deployments/optimizer"
+      id                = "${local.ai_services_id}/deployments/gpt-5.5"
       api_version       = "2026-05-01"
       owner_id          = local.ai_services_id
       owner_api_version = "2026-05-01"

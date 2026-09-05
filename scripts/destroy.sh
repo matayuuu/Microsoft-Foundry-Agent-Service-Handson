@@ -174,6 +174,10 @@ if [[ -z "${OPTIMIZER_MODEL_VERSION}" ]]; then
   echo "${SCRIPT_NAME}: could not resolve optimizer_model_version. Pass --optimizer-model-version or restore a setup context file; it has no Terraform default and must match what was applied." >&2
   exit 1
 fi
+if [[ -z "${PRIMARY_MODEL_VERSION}" ]]; then
+  echo "${SCRIPT_NAME}: could not resolve primary_model_version. Pass --primary-model-version or restore a setup context file; it has no Terraform default and must match what was applied." >&2
+  exit 1
+fi
 
 retry() {
   local max_attempts="$1" sleep_seconds="$2"
@@ -237,10 +241,8 @@ TF_VAR_ARGS=(
   -var "travel_api_image_ref=${TRAVEL_API_IMAGE_REF}"
   -var "source_base=${SOURCE_BASE}"
   -var "optimizer_model_version=${OPTIMIZER_MODEL_VERSION}"
+  -var "primary_model_version=${PRIMARY_MODEL_VERSION}"
 )
-if [[ -n "${PRIMARY_MODEL_VERSION}" ]]; then
-  TF_VAR_ARGS+=(-var "primary_model_version=${PRIMARY_MODEL_VERSION}")
-fi
 if [[ -n "${EMBEDDING_MODEL_VERSION}" ]]; then
   TF_VAR_ARGS+=(-var "embedding_model_version=${EMBEDDING_MODEL_VERSION}")
 fi

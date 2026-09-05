@@ -15,8 +15,8 @@ Owner cannot register providers, by design.
 
 ## `admin-preflight.sh` reports insufficient model quota/capacity
 
-This means the subscription's regional quota for `gpt-4.1`, the discovered `gpt-5`
-family model, or `text-embedding-3-small` is below what the workshop needs for your
+This means the subscription's regional quota for `gpt-5.6-luna`, `gpt-5.5`,
+or `text-embedding-3-small` is below what the workshop needs for your
 expected participant/team count in that region. Options, in order of speed:
 
 1. Re-run with `--location swedencentral` (or `eastus2`, whichever you did not just
@@ -30,6 +30,30 @@ expected participant/team count in that region. Options, in order of speed:
 Never tell participants to proceed against a subscription with confirmed insufficient
 capacity — `terraform apply` will fail late, mid-workshop, with a much worse
 participant experience than catching it here first.
+
+Luna is shared by Prompt/Hosted Agents and Foundry IQ; GPT-5.5 is shared by
+configurable LLM judges and Optimizer. Check each deployment's own same-SKU
+`usageName` evidence, using initial capacities 40/20/40K TPM respectively.
+Do not infer a quota bucket from a model name or substitute an old model version.
+
+## A model appears in the catalog but not in the Portal picker
+
+Catalog availability, quota, and feature/API support are separate checks. Confirm the
+selected project and deployment names in `.workshop/context.json`. Foundry IQ uses
+`primary_model_deployment_name` (`gpt-5.6-luna`), and the current Portal must use a
+[compatible Search API](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base).
+Evaluation and both Optimizer model selections use `optimizer_model_deployment_name`
+(`gpt-5.5`); service-managed evaluators do not expose a configurable judge.
+If the required picker/API is unavailable, stop and record the blocker rather than
+adding another deployment or silently switching models.
+
+## Updating an environment with old deployment names
+
+Changing `primary`/`optimizer` to `gpt-5.6-luna`/`gpt-5.5` can replace model resources.
+Review the Terraform plan and reconnect any saved agent/knowledge/evaluation references
+after the change. State recovery only imports the exact current deployment IDs; do not
+delete state to bypass a mismatch. Preserve the original cleanup inputs and state until
+cleanup succeeds, and never delete the existing resource group.
 
 ## Azure AI Search reports `InsufficientResourcesAvailable`
 

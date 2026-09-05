@@ -577,7 +577,8 @@ class _FakeAgentClient:
         self.agents = _FakeAgentOperations(definition)
 
 
-def test_attach_toolbox_to_agent_preserves_existing_knowledge_tool() -> None:
+@pytest.mark.parametrize("model", ["gpt-5.6-luna", "custom-agent-deployment"])
+def test_attach_toolbox_to_agent_preserves_existing_knowledge_tool_and_model(model: str) -> None:
     knowledge_tool = create_toolbox.MCPTool(
         server_label="knowledge",
         server_url="https://search.example/knowledge/mcp",
@@ -585,7 +586,7 @@ def test_attach_toolbox_to_agent_preserves_existing_knowledge_tool() -> None:
         require_approval="never",
     )
     definition = create_toolbox.PromptAgentDefinition(
-        model="primary",
+        model=model,
         instructions="Use knowledge and tools.",
         tools=[knowledge_tool],
     )
@@ -600,6 +601,7 @@ def test_attach_toolbox_to_agent_preserves_existing_knowledge_tool() -> None:
 
     assert result["action"] == "attached"
     assert result["agent_version"] == "14"
+    assert client.agents.created_definition.model == model
     created_tools = client.agents.created_definition.tools
     assert [tool.server_label for tool in created_tools] == ["knowledge", "travel_ops"]
     assert definition.tools == [knowledge_tool]
@@ -608,7 +610,7 @@ def test_attach_toolbox_to_agent_preserves_existing_knowledge_tool() -> None:
 def test_attach_toolbox_to_agent_reuses_existing_attachment() -> None:
     toolbox_endpoint = "https://project.example/toolboxes/demo/mcp?api-version=v1"
     definition = create_toolbox.PromptAgentDefinition(
-        model="primary",
+        model="gpt-5.6-luna",
         instructions="Use tools.",
         tools=[
             create_toolbox.MCPTool(

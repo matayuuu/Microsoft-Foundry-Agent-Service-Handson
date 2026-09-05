@@ -52,16 +52,16 @@ assignment. It reports, per region (`eastus2` and `swedencentral`):
    checked against the exact SKU/usage bucket Terraform will request, and against the
    **aggregate** requirement for all participants/teams the event will run at once (see
    `--participant-count` below), not just one environment's worth:
-   - `gpt-4.1` — SKU `GlobalStandard`, required headroom **40K TPM per environment**.
-     Primary agent inference, evaluation judge, and Foundry IQ query planning model.
-   - a supported `gpt-5` family model — SKU `GlobalStandard`, required headroom
-     **20K TPM per environment**. Agent Optimizer. The exact model name/version is
-     **not hardcoded**; the script queries the live model catalog for the
-     subscription/region and reports whichever supported `gpt-5` variant(s) are
-     actually available there. Never assume a specific version is available before the
-     script confirms it.
+   - `gpt-5.6-luna`, deployed as `gpt-5.6-luna` — SKU `GlobalStandard`, initial required
+     headroom **40K TPM per environment**. Shared by Prompt/Hosted Agent inference and
+     Foundry IQ query planning (`primary_model_deployment_name`).
+   - `gpt-5.5`, deployed as `gpt-5.5` — SKU `GlobalStandard`, initial required headroom
+     **20K TPM per environment**. Shared by configurable LLM evaluation judges and
+     Agent Optimizer (`optimizer_model_deployment_name`). Both chat model names are
+     fixed workshop requirements; their **versions are discovered**, not guessed.
+     There is no fallback to a different model family.
    - `text-embedding-3-small` — SKU `GlobalStandard`, required headroom **40K TPM per
-     environment**. The vector index embedding model.
+     environment**. The vector index embedding model, deployed as `embedding`.
    - For each model/region pair the script reads the model's own
      `model.skus[].usageName` (never guessed or string-built from the model name —
      usageName spelling is inconsistent across model families, for example a
@@ -72,6 +72,8 @@ assignment. It reports, per region (`eastus2` and `swedencentral`):
      capacity, the `--participant-count`-scaled aggregate requirement, and the
      headroom/limit/current-usage numbers used to decide pass/warn — so you can see
      the evidence, not just a verdict.
+     Version and `usageName` must come from the **same** catalog entry supporting the
+     required SKU; neither chat model has a Terraform version default.
    - The report always states the discovered/available capacity explicitly. If the
      script cannot resolve the required SKU on a model, cannot find that
      `usageName` bucket in the usage-list output, or the `az cognitiveservices
@@ -108,12 +110,22 @@ environment:
 ```
 
 This multiplies each model's per-environment required capacity by `<n>` (for example,
-`gpt-4.1`'s 40K TPM per environment becomes a 480K TPM aggregate requirement for 12
+`gpt-5.6-luna`'s 40K TPM per environment becomes a 480K TPM aggregate requirement for 12
 participants) and reports the exact `per-environment capacity * participant-count =
 required aggregate capacity` arithmetic alongside the discovered headroom for every
 model/region check, plus the participant count itself in the JSON/Markdown report
 header — never a single opaque number. `--participant-count` must be a positive
 integer; the script exits `1` before making any Azure call if it is not.
+
+Do not double-count a shared deployment for each lab: the environment has exactly
+three deployments. Luna capacity is shared by agents and Foundry IQ; GPT-5.5 capacity
+is shared by judges and optimization. Evaluation also calls the Luna target agent.
+Rehearse concurrency and check live quota before approving these initial capacities.
+Confirm that the current Portal uses a
+[Search API supporting Luna knowledge bases](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
+and exposes the required model in each picker. Catalog/quota availability does not
+prove Portal compatibility. Stop and investigate missing support; do not add a fourth
+deployment, change providers/quota automatically, or silently choose another model.
 
 ## Applying the fix
 

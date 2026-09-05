@@ -87,8 +87,8 @@ DEFAULT_SCHEMA_PATH = (
 )
 DEFAULT_SOURCE_URL_PLACEHOLDER = "{{WORKSHOP_SOURCE_BASE}}"
 FRONT_MATTER_DELIMITER = "---"
-# text-embedding-3-small (this workshop's embedding model) and the gpt-4.1
-# family both tokenize with the cl100k_base BPE vocabulary.
+# Chunk sizes use the embedding model's vocabulary, independently of the
+# model that later generates the Agent's answer.
 TIKTOKEN_ENCODING_NAME = "cl100k_base"
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 

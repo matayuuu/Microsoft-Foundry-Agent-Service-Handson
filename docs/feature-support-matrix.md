@@ -36,9 +36,9 @@ web Portal; do not interpret a missing Portal column as proof that the UI is una
 | Area | Requirement |
 |---|---|
 | Region | East US 2; Sweden Central is the first documented fallback |
-| Prompt/evaluation model | `gpt-4.1` deployment |
-| Foundry IQ query planning / Optimizer | Supported `gpt-5` family deployment |
-| Embeddings | `text-embedding-3-small` deployment |
+| Prompt/Hosted Agent and Foundry IQ query planning | Shared `gpt-5.6-luna` deployment; `primary_model_deployment_name` |
+| Configurable LLM judges / Agent Optimizer | Shared `gpt-5.5` deployment; `optimizer_model_deployment_name` |
+| Embeddings | `text-embedding-3-small`, deployment `embedding` |
 | Search | Azure AI Search Basic or higher |
 | Identity | Participant is Owner on the existing RG; Foundry roles are assigned in that RG |
 | Observability | Workspace-based Application Insights connected to the project |
@@ -46,6 +46,12 @@ web Portal; do not interpret a missing Portal column as proof that the UI is una
 
 ## Important status notes
 
+- Model-role references were checked on **2026-09-06**. The core creates exactly three
+  deployments; chat versions and same-SKU quota evidence are discovered by preflight,
+  not pinned or inferred from model names. Luna's Foundry IQ support also requires a
+  compatible current Portal Search API; verify the actual picker before the event.
+- GPT-5.5 is used for the rubric/configurable LLM judges and for both Optimizer model
+  selections. Service-managed evaluators such as Violence keep their own model.
 - Foundry Tool Catalog and Toolboxes are generally available, but individual tools can
   be preview.
 - Skills and Toolbox skill discovery are preview. Skill references are separate from
@@ -76,6 +82,8 @@ web Portal; do not interpret a missing Portal column as proof that the UI is una
 - [Foundry Toolkit release notes](https://github.com/microsoft/foundry-dev-tools/blob/6bf72ba71785202fe2d972a4b564a6fbaeb5db0e/WHATS_NEW.md)
 - [What is Foundry IQ?](https://learn.microsoft.com/azure/foundry/agents/concepts/what-is-foundry-iq)
 - [Agentic retrieval overview](https://learn.microsoft.com/azure/search/agentic-retrieval-overview)
+- [Knowledge base query-planning models and API support](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
+- [Choose a rubric LLM judge](https://learn.microsoft.com/azure/foundry/concepts/evaluation-evaluators/rubric-evaluators#choose-an-llm-judge-model)
 - [Evaluate your AI agents](https://learn.microsoft.com/azure/foundry/observability/how-to/evaluate-agent)
 - [Agent Optimizer overview](https://learn.microsoft.com/azure/foundry/agents/concepts/agent-optimizer-overview)
 - [Hosted agents](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents)

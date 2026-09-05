@@ -31,7 +31,6 @@ DEFAULT_CONTEXT_PATH = REPO_ROOT / ".workshop" / "context.json"
 DEFAULT_SEARCH_INDEX_NAME = "contoso-travel-policy"
 DEFAULT_AGENT_NAME = "contoso-travel-assistant"
 DEFAULT_TOOLBOX_NAME = "contoso-travel-toolbox"
-DEFAULT_PRIMARY_MODEL_DEPLOYMENT = "primary"
 
 
 class WorkshopContextError(Exception):

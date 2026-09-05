@@ -80,6 +80,23 @@ def test_terraform_output_returns_value() -> None:
     assert ctx.terraform_output(context, "search_service_name") == "srch-workshop-abc123"
 
 
+@pytest.mark.parametrize(
+    ("key", "deployment"),
+    [
+        ("primary_model_deployment_name", "gpt-5.6-luna"),
+        ("optimizer_model_deployment_name", "gpt-5.5"),
+        ("embedding_model_deployment_name", "embedding"),
+        ("primary_model_deployment_name", "custom-agent-deployment"),
+        ("optimizer_model_deployment_name", "custom-judge-deployment"),
+    ],
+)
+def test_model_deployment_output_uses_context_without_fixed_defaults(
+    tmp_path: Path, key: str, deployment: str
+) -> None:
+    context = ctx.load_context(_write_context(tmp_path, {key: {"value": deployment}}))
+    assert ctx.terraform_output(context, key) == deployment
+
+
 def test_terraform_output_raises_with_available_keys_listed() -> None:
     context = {"terraform_outputs": {"foo": {"value": "bar"}}}
 

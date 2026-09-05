@@ -19,10 +19,12 @@ the real script text, without ever touching Azure, Terraform, or the network.
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -284,3 +286,83 @@ def test_setup_persists_cleanup_inputs_before_terraform_can_create_resources() -
     assert 'RECOVERY_CONTEXT_FILE="${WORKSHOP_DIR}/terraform-inputs.json"' in setup_text
     assert 'setup_status: "inputs-resolved"' in setup_text
     assert write_index < terraform_init_index
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="model input harness requires jq")
+@pytest.mark.parametrize(
+    "missing_model", [None, "gpt-5.6-luna", "gpt-5.5", "text-embedding-3-small"]
+)
+def test_setup_uses_discovered_versions_and_fails_closed_before_terraform(
+    tmp_path: Path, missing_model: str | None
+) -> None:
+    versions = {
+        "gpt-5.6-luna": "fixture-primary-version",
+        "gpt-5.5": "fixture-optimizer-version",
+        "text-embedding-3-small": "fixture-embedding-version",
+    }
+    if missing_model:
+        del versions[missing_model]
+    report_path = tmp_path / "preflight.json"
+    report_path.write_text(
+        json.dumps(
+            {
+                "overall_status": "pass",
+                "resolved_location": "swedencentral",
+                "resolved_model_versions": versions,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    scripts_dir = tmp_path / "fixture-repo" / "scripts"
+    scripts_dir.mkdir(parents=True)
+    preflight = scripts_dir / "preflight.sh"
+    preflight.write_text(
+        "#!/usr/bin/env bash\nset -euo pipefail\n"
+        "while [[ $# -gt 0 ]]; do\n"
+        '  if [[ "$1" == "--output" ]]; then cp "$FAKE_PREFLIGHT_REPORT" "$2"; exit; fi\n'
+        "  shift\n"
+        "done\nexit 1\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    preflight.chmod(preflight.stat().st_mode | stat.S_IEXEC)
+    setup_text = SETUP_SH.read_text(encoding="utf-8")
+    start = setup_text.index(STEP_1_MARKER)
+    stop = setup_text.index('retry 3 10 terraform -chdir="${INFRA_DIR}" init')
+    harness = scripts_dir / "setup_model_harness.sh"
+    harness.write_text(
+        _extracted_setup_head()
+        + setup_text[start:stop]
+        + 'printf "%s\\n" "${TF_VAR_ARGS[@]}" >"${WORKSHOP_DIR}/model-args.txt"\n',
+        encoding="utf-8",
+        newline="\n",
+    )
+    env = {
+        **os.environ,
+        "FAKE_PREFLIGHT_REPORT": str(report_path),
+        "WORKSHOP_PYTHON": sys.executable,
+    }
+    result = subprocess.run(
+        [BASH, str(harness), *DEFAULT_ARGS],
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=scripts_dir,
+    )
+    workshop_dir = scripts_dir.parent / ".workshop"
+    recovery_path = workshop_dir / "terraform-inputs.json"
+    if missing_model:
+        assert result.returncode == 2, result.stderr
+        assert "aborting rather than guessing" in result.stderr
+        assert not recovery_path.exists()
+        assert not (workshop_dir / "model-args.txt").exists()
+    else:
+        assert result.returncode == 0, result.stderr
+        recovery = json.loads(recovery_path.read_text(encoding="utf-8"))
+        assert recovery["location"] == "swedencentral"
+        arguments = (workshop_dir / "model-args.txt").read_text(encoding="utf-8").splitlines()
+        for role in ("primary", "optimizer", "embedding"):
+            version = f"fixture-{role}-version"
+            assert recovery["terraform_inputs"][f"{role}_model_version"] == version
+            assert f"{role}_model_version={version}" in arguments

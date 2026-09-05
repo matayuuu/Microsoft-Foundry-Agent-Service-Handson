@@ -297,12 +297,15 @@ def _context_with_model_deployment(name: str = "gpt-4o-mini") -> dict:
     }
 
 
-def test_resolve_environment_variables_auto_injects_model_deployment_name() -> None:
+@pytest.mark.parametrize("deployment", ["gpt-5.6-luna", "custom-primary-deployment"])
+def test_resolve_environment_variables_auto_injects_model_deployment_name(
+    deployment: str,
+) -> None:
     result = deploy_hosted_agent.resolve_environment_variables(
-        {}, context=_context_with_model_deployment("gpt-4o-mini")
+        {}, context=_context_with_model_deployment(deployment)
     )
 
-    assert result == {"FOUNDRY_MODEL": "gpt-4o-mini"}
+    assert result == {"FOUNDRY_MODEL": deployment}
 
 
 def test_resolve_environment_variables_keeps_other_explicit_env_vars() -> None:

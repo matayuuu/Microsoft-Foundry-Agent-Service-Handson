@@ -16,6 +16,7 @@ import json
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from azure.core.exceptions import ResourceNotFoundError
@@ -204,11 +205,11 @@ def test_build_testing_criteria_includes_rubric_first() -> None:
     # plain dicts, so criteria are asserted with subscript access, not
     # attribute access.
     criteria = run_evaluation.build_testing_criteria(
-        rubric_evaluator_name="contoso-travel-rubric", judge_deployment="primary"
+        rubric_evaluator_name="contoso-travel-rubric", judge_deployment="gpt-5.5"
     )
 
     assert criteria[0]["evaluator_name"] == "contoso-travel-rubric"
-    assert criteria[0]["initialization_parameters"] == {"deployment_name": "primary"}
+    assert criteria[0]["initialization_parameters"] == {"deployment_name": "gpt-5.5"}
 
 
 def test_build_testing_criteria_includes_default_builtins() -> None:
@@ -228,7 +229,7 @@ def test_build_testing_criteria_violence_has_no_judge_deployment() -> None:
     )
 
     violence = next(c for c in criteria if c["evaluator_name"] == "builtin.violence")
-    assert violence["initialization_parameters"] is None
+    assert "initialization_parameters" not in violence
 
 
 def test_build_testing_criteria_task_adherence_sees_full_response() -> None:
@@ -506,3 +507,102 @@ def test_parse_args_runs_evaluation_by_default() -> None:
 
     assert args.prepare_only is False
     assert args.project_endpoint is None
+    assert args.judge_deployment is None
+
+
+@pytest.fixture
+def fake_evaluation_client(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    client = MagicMock()
+    client.__enter__.return_value = client
+    dataset = SimpleNamespace(name="ds", version="1", id="dataset-1")
+    rubric = SimpleNamespace(name="rubric", version="1")
+    client.get_openai_client.return_value.evals.create.return_value.id = "eval-1"
+    client.get_openai_client.return_value.evals.runs.create.return_value.id = "run-1"
+    monkeypatch.setattr(run_evaluation, "AIProjectClient", lambda **kwargs: client)
+    monkeypatch.setattr(run_evaluation, "build_credential", lambda kind: object())
+    monkeypatch.setattr(run_evaluation, "ensure_dataset", lambda *args, **kwargs: dataset)
+    monkeypatch.setattr(run_evaluation, "ensure_rubric_evaluator", lambda *args, **kwargs: rubric)
+    monkeypatch.setattr(run_evaluation, "poll_run", lambda **kwargs: {"status": "completed"})
+    return client
+
+
+@pytest.mark.parametrize("context_judge", ["gpt-5.5", "custom-context-judge"])
+@pytest.mark.parametrize("explicit_judge", [None, "explicit-judge"])
+@pytest.mark.parametrize("explicit_endpoint", [False, True])
+def test_main_resolves_optimizer_judge_and_preserves_explicit_override(
+    fake_evaluation_client: MagicMock,
+    tmp_path: Path,
+    context_judge: str,
+    explicit_judge: str | None,
+    explicit_endpoint: bool,
+) -> None:
+    endpoint = "https://example.services.ai.azure.com/api/projects/workshop"
+    context_path = tmp_path / "context.json"
+    context_path.write_text(
+        json.dumps(
+            {
+                "terraform_outputs": {
+                    "foundry_project_endpoint": {"value": endpoint},
+                    "primary_model_deployment_name": {"value": "gpt-5.6-luna"},
+                    "optimizer_model_deployment_name": {"value": context_judge},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    args = ["--context", str(context_path), "--output", "json"]
+    if explicit_endpoint:
+        args.extend(["--project-endpoint", endpoint])
+    if explicit_judge:
+        args.extend(["--judge-deployment", explicit_judge])
+    assert run_evaluation.main(args) == 0
+
+    evals = fake_evaluation_client.get_openai_client.return_value.evals
+    criteria = evals.create.call_args.kwargs["testing_criteria"]
+    for criterion in criteria:
+        if criterion["evaluator_name"] == "builtin.violence":
+            assert "initialization_parameters" not in criterion
+        else:
+            assert criterion["initialization_parameters"] == {
+                "deployment_name": explicit_judge or context_judge
+            }
+    target = evals.runs.create.call_args.kwargs["data_source"]["target"]
+    assert target["name"] == run_evaluation.DEFAULT_AGENT_NAME
+    assert "model" not in target
+
+
+@pytest.mark.parametrize("prepare_only", [False, True])
+def test_explicit_endpoint_can_run_without_context_when_judge_is_not_needed_from_it(
+    fake_evaluation_client: MagicMock, tmp_path: Path, prepare_only: bool
+) -> None:
+    args = [
+        "--context",
+        str(tmp_path / "missing.json"),
+        "--project-endpoint",
+        "https://example.services.ai.azure.com/api/projects/workshop",
+        "--output",
+        "json",
+    ]
+    args.extend(["--prepare-only"] if prepare_only else ["--judge-deployment", "explicit-judge"])
+    assert run_evaluation.main(args) == 0
+    assert fake_evaluation_client.get_openai_client.called is not prepare_only
+
+
+def test_missing_optimizer_output_fails_before_azure_calls(
+    fake_evaluation_client: MagicMock, tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    context_path = tmp_path / "context.json"
+    context_path.write_text(
+        json.dumps(
+            {
+                "terraform_outputs": {
+                    "foundry_project_endpoint": {"value": "https://example"},
+                    "primary_model_deployment_name": {"value": "gpt-5.6-luna"},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert run_evaluation.main(["--context", str(context_path)]) == 2
+    assert "optimizer_model_deployment_name" in capsys.readouterr().err
+    fake_evaluation_client.__enter__.assert_not_called()

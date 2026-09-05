@@ -155,8 +155,8 @@ def fixture_repo(tmp_path: Path) -> Path:
         "source_base": "https://github.com/example/workshop/blob/main",
         "terraform_inputs": {
             "travel_api_image_ref": "ghcr.io/example/travel-ops-api@sha256:" + "0" * 64,
-            "optimizer_model_version": "2025-08-07",
-            "primary_model_version": "2025-04-14",
+            "optimizer_model_version": "fixture-optimizer-version",
+            "primary_model_version": "fixture-primary-version",
             "embedding_model_version": "1",
         },
     }
@@ -261,9 +261,9 @@ def test_cli_overrides_recover_partial_setup_without_context_files(fixture_repo:
             "--source-base",
             "https://github.com/example/workshop/blob/main",
             "--optimizer-model-version",
-            "2025-08-07",
+            "fixture-optimizer-version",
             "--primary-model-version",
-            "2025-04-14",
+            "fixture-primary-version",
             "--embedding-model-version",
             "1",
             "--auto-approve",
@@ -277,3 +277,21 @@ def test_cli_overrides_recover_partial_setup_without_context_files(fixture_repo:
     assert result.returncode == 0, result.stderr
     assert "relying solely on CLI arguments" in result.stderr
     assert not (fixture_repo / "infra" / "terraform.tfstate").exists()
+
+
+@pytest.mark.parametrize("role", ["primary", "optimizer"])
+def test_missing_required_chat_version_fails_before_cleanup(fixture_repo: Path, role: str) -> None:
+    workshop_dir = fixture_repo / ".workshop"
+    for name in ("context.json", "terraform-inputs.json"):
+        path = workshop_dir / name
+        context = json.loads(path.read_text(encoding="utf-8"))
+        del context["terraform_inputs"][f"{role}_model_version"]
+        path.write_text(json.dumps(context), encoding="utf-8")
+
+    result = _run_destroy(fixture_repo, "empty")
+
+    assert result.returncode == 1
+    assert f"--{role}-model-version" in result.stderr
+    assert "Deleting SDK-managed" not in result.stderr
+    assert (fixture_repo / "infra" / "terraform.tfstate").exists()
+    assert (workshop_dir / "context.json").exists()

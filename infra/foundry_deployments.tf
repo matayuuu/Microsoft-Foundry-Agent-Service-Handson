@@ -1,8 +1,8 @@
 # Model deployments on the Foundry AIServices account.
 #
 # Three variable-driven deployments (see variables.tf for the rationale):
-#   1. primary   -> gpt-4.1                  (Prompt Agent + evaluation)
-#   2. optimizer -> gpt-5 family             (Foundry IQ query planner + Agent Optimizer)
+#   1. primary   -> gpt-5.6-luna             (Prompt/Hosted Agent + Foundry IQ)
+#   2. optimizer -> gpt-5.5                  (LLM judges + Agent Optimizer)
 #   3. embedding -> text-embedding-3-small    (Azure AI Search / Foundry IQ vectors)
 #
 # scripts/preflight.sh must confirm the chosen name/version/sku/capacity are
@@ -10,7 +10,7 @@
 # before apply -- these variables are never silently guessed at apply time.
 resource "azapi_resource" "primary_model_deployment" {
   type      = "Microsoft.CognitiveServices/accounts/deployments@2026-05-01"
-  name      = "primary"
+  name      = "gpt-5.6-luna"
   parent_id = azapi_resource.ai_services.id
 
   # Cognitive Services rejects concurrent child PUTs on a fresh account.
@@ -33,7 +33,7 @@ resource "azapi_resource" "primary_model_deployment" {
 
 resource "azapi_resource" "optimizer_model_deployment" {
   type      = "Microsoft.CognitiveServices/accounts/deployments@2026-05-01"
-  name      = "optimizer"
+  name      = "gpt-5.5"
   parent_id = azapi_resource.ai_services.id
 
   depends_on = [azapi_resource.primary_model_deployment]

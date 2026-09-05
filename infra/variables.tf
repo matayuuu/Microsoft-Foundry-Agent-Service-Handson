@@ -102,8 +102,8 @@ variable "travel_api_memory" {
 # Model deployments
 #
 # Three deployments are provisioned on the Foundry AIServices account:
-#   1. primary/eval model         -> gpt-4.1   (prompt agent + evaluation)
-#   2. optimizer/query model      -> a supported gpt-5-family model (Foundry IQ + Optimizer)
+#   1. primary model              -> gpt-5.6-luna (Prompt/Hosted Agent + Foundry IQ)
+#   2. optimizer/eval model       -> gpt-5.5 (LLM judges + Agent Optimizer)
 #   3. embedding model            -> text-embedding-3-small (Foundry IQ / Azure AI Search vectors)
 #
 # Exact version/SKU/capacity are overridable and MUST be checked by
@@ -113,33 +113,32 @@ variable "travel_api_memory" {
 # ---------------------------------------------------------------------------
 
 variable "primary_model_name" {
-  description = "Model name for the primary deployment used by the Prompt Agent and evaluation."
+  description = "Model name for the deployment shared by Prompt Agent, Hosted Agent, and Foundry IQ query planning."
   type        = string
-  default     = "gpt-4.1"
+  default     = "gpt-5.6-luna"
 }
 
 variable "primary_model_version" {
-  description = "Model version for the primary/query/eval deployment. Verify availability with `az cognitiveservices model list --location <location>` before apply."
+  description = "Model version for the primary/query deployment. Required: use the version discovered by preflight from the same entry as the required SKU; never guess a version."
   type        = string
-  default     = "2025-04-14"
 }
 
 variable "primary_model_sku" {
-  description = "Deployment SKU for the primary/query/eval model, e.g. GlobalStandard or Standard."
+  description = "Deployment SKU for the primary/query model, e.g. GlobalStandard or Standard."
   type        = string
   default     = "GlobalStandard"
 }
 
 variable "primary_model_capacity" {
-  description = "Deployment capacity (TPM in thousands) for the primary/query/eval model."
+  description = "Deployment capacity (TPM in thousands) shared by the primary agents and Foundry IQ query planning."
   type        = number
   default     = 40
 }
 
 variable "optimizer_model_name" {
-  description = "Model name for the Agent Optimizer deployment. Must be one of the Agent Optimizer allowed models (as of this writing: gpt-5, gpt-5.1, gpt-5.2, gpt-5.4, gpt-5.5, DeepSeek-V4-Pro, DeepSeek-V-3.2) -- verify the current allow-list in the Agent Optimizer docs before relying on this default."
+  description = "Model name for the deployment shared by configurable LLM evaluation judges and Agent Optimizer. Verify both evaluator and Optimizer support before overriding."
   type        = string
-  default     = "gpt-5"
+  default     = "gpt-5.5"
 }
 
 variable "optimizer_model_version" {
@@ -148,13 +147,13 @@ variable "optimizer_model_version" {
 }
 
 variable "optimizer_model_sku" {
-  description = "Deployment SKU for the optimizer model."
+  description = "Deployment SKU for the optimizer/evaluation model."
   type        = string
   default     = "GlobalStandard"
 }
 
 variable "optimizer_model_capacity" {
-  description = "Deployment capacity (TPM in thousands) for the optimizer model."
+  description = "Deployment capacity (TPM in thousands) shared by configurable LLM judges and Agent Optimizer."
   type        = number
   default     = 20
 }
