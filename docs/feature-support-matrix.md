@@ -1,18 +1,23 @@
 # Feature support matrix
 
-This matrix targets Microsoft Foundry **new** as of 2026-09-01. Preview surfaces and
-portal labels can change; use the linked official documentation as the source of truth.
+This matrix targets Microsoft Foundry **new**. Toolbox UI entries were updated from
+participant-supplied Portal screenshots on **2026-09-05**; other entries retain the
+2026-09-01 baseline. Preview surfaces and portal labels can change. The official
+toolbox article currently documents SDK/Toolkit flows more fully than the observed
+web Portal; do not interpret a missing Portal column as proof that the UI is unavailable.
 
 | Capability | Portal | Toolkit | Python SDK/REST | Status and workshop treatment |
 |---|---:|---:|---:|---|
 | Create/version/test Prompt Agent | Yes | Yes | Yes | Core, portal-first |
 | Attach Azure AI Search to Agent | Yes | Yes | Yes | Core; index and connection are prebuilt |
 | Create Foundry IQ Knowledge Base | Yes | N/A | Yes | Core; portal agentic retrieval remains preview |
-| Create Toolbox | No | Yes | Yes | Core; Python Notebook uses the SDK |
-| Full Toolbox version lifecycle | No | Partial | Yes | Notebook reuses the default version when unchanged |
+| Create Toolbox | Yes, observed | Yes | Yes | Core; web Portal Build > Tools > Create toolbox |
+| Full Toolbox version lifecycle | Publish observed; other controls vary | Partial | Yes | SDK fallback preserves existing Skills, tools, metadata and guardrails |
 | Web Search | Agent config | Yes | Yes | Outside the core workshop |
 | Code Interpreter | Agent config | Yes | Yes | Outside the core workshop |
-| OpenAPI in Toolbox | No | No | Yes | Core; Notebook uses a validated OpenAPI 3.1 definition |
+| OpenAPI in Toolbox | Yes, observed | UI advertised; Learn table differs | Yes | Core; Add tool > Custom > OpenAPI tool; paste live OpenAPI 3.1 |
+| Create/upload and attach Skills | Yes, observed | Documented in Skills article | Yes | Core; Add skill > Upload skill, then include both workshop Skills |
+| Consume Toolbox Skills | Client-dependent | Client-dependent | MCP Resources / Skill provider | Preview; registration is not proof of runtime loading |
 | Tool Search | No | Yes | Yes | Preview; outside the core workshop |
 | Submit agent evaluation | Yes | N/A | Yes | Core uses Portal with a prepared synthetic dataset |
 | View evaluation results | Yes | Yes | Yes | Core, portal |
@@ -43,6 +48,16 @@ portal labels can change; use the linked official documentation as the source of
 
 - Foundry Tool Catalog and Toolboxes are generally available, but individual tools can
   be preview.
+- Skills and Toolbox skill discovery are preview. Skill references are separate from
+  `tools[]` and require compatible MCP Resources consumption. The Lab 7 Python workflow
+  does not currently include a Skill provider; do not claim that adding a Toolbox to
+  a Prompt Agent alone proves Skills were loaded.
+- Lab 4 records the observed web Portal paths with screenshots. Local preparation only
+  exports the live OpenAPI definition and Skill ZIPs; it does not create remote objects.
+- Toolkit release notes announce OpenAPI custom tools and Skills in Toolboxes, whereas
+  the Learn Toolbox table still lists some of these Toolkit entries as unavailable.
+  Follow the observed Portal path in the core lab rather than using that table to
+  infer web Portal support.
 - The Microsoft Foundry and Azure portal paths for agentic retrieval provide preview
   access even where newer Search REST API operations are generally available.
 - Agent Optimizer is preview and uses both an evaluation model and a supported
@@ -56,6 +71,9 @@ portal labels can change; use the linked official documentation as the source of
 
 - [Types of tools in Foundry Agent Service](https://learn.microsoft.com/azure/foundry/agents/concepts/tool-catalog)
 - [Create and manage a toolbox](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/toolbox)
+- [Use skills with Foundry agents (preview)](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/skills)
+- [Observed Portal steps and screenshots](../labs/04-tools-toolbox.md)
+- [Foundry Toolkit release notes](https://github.com/microsoft/foundry-dev-tools/blob/6bf72ba71785202fe2d972a4b564a6fbaeb5db0e/WHATS_NEW.md)
 - [What is Foundry IQ?](https://learn.microsoft.com/azure/foundry/agents/concepts/what-is-foundry-iq)
 - [Agentic retrieval overview](https://learn.microsoft.com/azure/search/agentic-retrieval-overview)
 - [Evaluate your AI agents](https://learn.microsoft.com/azure/foundry/observability/how-to/evaluate-agent)

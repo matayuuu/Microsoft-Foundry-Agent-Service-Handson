@@ -3,7 +3,7 @@
 # Microsoft Foundry Agent Service Hands-on
 
 This workshop builds a synthetic Contoso travel and expense assistant with Prompt Agents,
-Foundry IQ, Toolbox, evaluation, optimization, Hosted Agents, and observability.
+Foundry IQ, Toolbox and Skills, evaluation, optimization, Hosted Agents, and observability.
 The step-by-step labs are written in Japanese.
 
 ![Workshop architecture](docs/images/workshop-architecture.svg)
@@ -30,7 +30,7 @@ See [participant prerequisites](docs/participant/prerequisites.md) for the check
 | [Lab 2](labs/02-prompt-agent.md) | Create a Prompt Agent | 10 min |
 | [Lab 3](labs/03-rag-foundry-iq.md) | Azure AI Search and Foundry IQ | 35 min |
 | — | Break | 10 min |
-| [Lab 4](labs/04-tools-toolbox.md) | Travel Ops API Toolbox | 30 min |
+| [Lab 4](labs/04-tools-toolbox.md) | Create Toolbox and Skills in the Portal | 30 min |
 | [Lab 5](labs/05-evaluation.md) | Portal agent evaluation | 15 min |
 | [Lab 6](labs/06-optimization.md) | Agent Optimizer | 20 min |
 | [Lab 7](labs/07-hosted-multi-agent.md) | Agent Framework Hosted Agent | 40 min |

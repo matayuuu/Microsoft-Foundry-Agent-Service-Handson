@@ -37,6 +37,13 @@ Run:
 ./scripts/destroy.sh
 ```
 
+Before running it, detach the Lab 4 Toolbox from the Prompt Agent, delete
+`contoso-travel-toolbox`, then delete the unreferenced `travel-estimation` and
+`preapproval-simulation` Skills in the Portal. The existing cleanup script does not
+automate those Portal-created objects; if the delete UI is unavailable, have the
+instructor confirm their SDK deletion first. Do not delete Skills used by another
+Toolbox. See [Lab 8](../labs/08-observability-cleanup.md).
+
 The script must:
 
 1. Read `.workshop/context.json`, or the pre-Terraform

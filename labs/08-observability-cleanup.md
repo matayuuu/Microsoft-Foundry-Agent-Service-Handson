@@ -48,6 +48,18 @@ Trace には prompt、response、tool の引数が保存されます。実デー
 
 ## 4. Cleanup を実行する
 
+Lab 4 で作成したものは、まず Portal で次の順に片付けます。
+対象はこのハンズオン用 project 内のものだけです。
+
+1. Prompt Agent の Tools から workshop Toolbox の接続を外します。
+2. **Build > Tools** で `contoso-travel-toolbox` を削除します。
+3. 他の Toolbox が参照していないことを確認して、`travel-estimation` と
+   `preapproval-simulation` の Skills を削除します。
+
+Skill の参照を残したまま先に Skill を削除しません。削除 UI が利用できない場合は講師へ
+連絡し、SDK での削除を確認してから進みます。既存 `destroy.sh` はこれらの専用削除を
+自動化していないため、Portal で作成した Skill が削除済みとは表示だけで判断しません。
+
 repository root の terminal で実行します。
 
 ```bash

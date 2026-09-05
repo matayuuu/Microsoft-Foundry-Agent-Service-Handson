@@ -5,7 +5,7 @@ module under test is loaded directly from its file path via importlib,
 matching tests/unit/test_validate_environment.py. No live Travel Ops API,
 Azure credential, or azure-ai-projects network call happens in this file:
 ``fetch_openapi_spec`` is exercised with a stubbed ``httpx.get`` and
-``get_existing_default_tools``/the SDK client are simple fakes.
+``get_existing_default_version``/the SDK client are simple fakes.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from types import ModuleType, SimpleNamespace
 
 import httpx
 import pytest
-from azure.ai.projects.models import WebSearchToolboxTool
+from azure.ai.projects.models import ToolboxPolicies, ToolboxSkillReference, WebSearchToolboxTool
 from azure.core.exceptions import ResourceNotFoundError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -350,7 +350,7 @@ def test_fetch_openapi_spec_rejects_non_openapi_document(monkeypatch: pytest.Mon
 
 
 # ---------------------------------------------------------------------------
-# get_existing_default_tools
+# get_existing_default_version
 # ---------------------------------------------------------------------------
 
 
@@ -361,8 +361,13 @@ class _FakeToolbox:
 
 
 class _FakeToolboxVersion:
-    def __init__(self, tools: list) -> None:
+    def __init__(self, tools: list, version: str = "3") -> None:
         self.tools = tools
+        self.version = version
+        self.skills = []
+        self.policies = None
+        self.metadata = {}
+        self.description = "Toolbox configured in the Portal."
 
 
 class _FakeToolboxesOperations:
@@ -371,6 +376,8 @@ class _FakeToolboxesOperations:
         self._tools = tools
         self.created: list[tuple[str, list, str]] = []
         self.updated: list[tuple[str, str]] = []
+        self.snapshot = _FakeToolboxVersion(tools, toolbox.default_version if toolbox else "1")
+        self.created_settings: dict = {}
 
     def get(self, name: str) -> _FakeToolbox:
         if self._toolbox is None:
@@ -378,10 +385,13 @@ class _FakeToolboxesOperations:
         return self._toolbox
 
     def get_version(self, name: str, version: str) -> _FakeToolboxVersion:
-        return _FakeToolboxVersion(self._tools)
+        return self.snapshot
 
-    def create_version(self, name: str, *, tools: list, description: str) -> _FakeToolbox:
+    def create_version(
+        self, name: str, *, tools: list, description: str, **settings: object
+    ) -> _FakeToolbox:
         self.created.append((name, tools, description))
+        self.created_settings = settings
         return _FakeToolbox(default_version="2")
 
     def update(self, name: str, *, default_version: str) -> None:
@@ -393,25 +403,25 @@ class _FakeClient:
         self.toolboxes = _FakeToolboxesOperations(toolbox, tools)
 
 
-def test_get_existing_default_tools_returns_none_when_toolbox_absent() -> None:
+def test_get_existing_default_version_returns_none_when_toolbox_absent() -> None:
     client = _FakeClient(toolbox=None, tools=[])
 
-    assert create_toolbox.get_existing_default_tools(client, "contoso-travel-toolbox") is None
+    assert create_toolbox.get_existing_default_version(client, "contoso-travel-toolbox") is None
 
 
-def test_get_existing_default_tools_returns_version_and_tools() -> None:
+def test_get_existing_default_version_returns_complete_snapshot() -> None:
     auth = create_toolbox.OpenApiAnonymousAuthDetails()
     tool = create_toolbox.build_openapi_tool(
         tool_name="travel_ops_api", spec=SAMPLE_SPEC, auth=auth
     )
     client = _FakeClient(toolbox=_FakeToolbox(default_version="3"), tools=[tool])
 
-    result = create_toolbox.get_existing_default_tools(client, "contoso-travel-toolbox")
+    result = create_toolbox.get_existing_default_version(client, "contoso-travel-toolbox")
 
     assert result is not None
-    version, tools = result
-    assert version == "3"
-    assert tools == [tool]
+    assert result.version == "3"
+    assert result.tools == [tool]
+    assert result is client.toolboxes.snapshot
 
 
 def test_ensure_toolbox_creates_first_version_without_extra_publish() -> None:
@@ -453,6 +463,41 @@ def test_ensure_toolbox_reuses_unchanged_default_version() -> None:
     assert result["action"] == "unchanged"
     assert result["default_version"] == "3"
     assert client.toolboxes.created == []
+
+
+@pytest.mark.parametrize("publish", [True, False])
+def test_ensure_toolbox_preserves_ui_skills_and_policies_on_update(publish: bool) -> None:
+    desired = create_toolbox.build_openapi_tool(
+        tool_name="travel_ops_api",
+        spec=SAMPLE_SPEC,
+        auth=create_toolbox.OpenApiAnonymousAuthDetails(),
+    )
+    other_tool = WebSearchToolboxTool(name="existing")
+    client = _FakeClient(toolbox=_FakeToolbox(default_version="3"), tools=[other_tool])
+    snapshot = client.toolboxes.snapshot
+    snapshot.skills = [ToolboxSkillReference(name="travel-estimation", version="2")]
+    snapshot.policies = ToolboxPolicies(rai_config={"rai_policy_name": "existing-guardrail"})
+    snapshot.metadata = {"owner": "workshop"}
+
+    result = create_toolbox.ensure_toolbox(
+        client,
+        endpoint="https://project.example",
+        toolbox_name="contoso-travel-toolbox",
+        desired_tool=desired,
+        publish=publish,
+    )
+
+    assert client.toolboxes.created[0][1] == [other_tool, desired]
+    assert client.toolboxes.created[0][2] == snapshot.description
+    assert client.toolboxes.created_settings == {
+        "skills": snapshot.skills,
+        "policies": snapshot.policies,
+        "metadata": snapshot.metadata,
+    }
+    assert snapshot.tools == [other_tool]
+    assert snapshot.skills[0].version == "2"
+    assert result["default_version"] == ("2" if publish else "3")
+    assert client.toolboxes.updated == ([("contoso-travel-toolbox", "2")] if publish else [])
 
 
 def test_build_toolbox_connection_payload_uses_project_managed_identity() -> None:

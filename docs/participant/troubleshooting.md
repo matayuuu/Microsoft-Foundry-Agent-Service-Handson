@@ -74,7 +74,53 @@ setup を再実行し、data bootstrap を更新します。
 `contoso-travel-approval` index で `url` field が retrievable かを管理者へ
 確認してもらいます。
 
+## Toolbox Portal
+
+### Toolbox、OpenAPI、Skill の追加画面が見つからない
+
+[Lab 4](../../labs/04-tools-toolbox.md) のスクリーンショットと比較します。
+対象は Web の Foundry (new) Portal です。**Build > Tools > Create toolbox** の
+**Included > + Add** に **Add tool** と **Add skill** があります。
+OpenAPI は **Select a tool > Custom > OpenAPI tool**、
+Skill は **Select a skill > Configured > Add skill > Upload skill** です。
+
+古い教材の「Portal 非対応」は 2026-09-05 の画面には当てはまりません。
+ただし UI の展開時期や権限に差があるため、項目がない場合は講師へ画面を共有してください。
+Toolbox の SDK Notebook は補助用で、Skills の作成・利用まで代替するものではありません。
+
+### OpenAPI の server がない／接続先が違う
+
+`/openapi.json` をそのまま貼るのではなく、
+`.venv/bin/python scripts/prepare_toolbox_assets.py` を実行し、
+`.workshop/toolbox/travel-ops.openapi.json` を使います。
+自分の context の API endpoint が `servers` に設定されます。
+JSON 全体を貼り付け、code fence は含めません。
+
+### Browser のアップロードでファイルが見えない
+
+Codespace と手元の PC は別のファイルシステムです。VS Code Explorer の **Download** で
+ZIP または各 `SKILL.md` を手元へ保存してからアップロードします。
+ZIP は `SKILL.md` が直下にある、生成済みのものを使ってください。
+
+### Toolbox は公開できたが Agent から接続できない
+
+Toolbox への認証は Entra ID/RBAC です。OpenAPI mock の **Anonymous** と混同しません。
+UI の keyless 接続が利用できない場合は、公開後に
+`.venv/bin/python scripts/connect_toolbox.py` を実行します。
+新しい Toolbox は作らず、既存の Knowledge を保持して接続だけを追加します。
+403 が続く場合は project と呼び出し identity の Foundry User 権限を講師へ確認します。
+
+### Skill を追加したのに手順が反映されない
+
+Toolbox の公開済み version に Skill が含まれること、参照先 Skill の version、
+利用クライアントの MCP Resources／Skill provider 対応を確認します。
+新しい会話または再接続で読み込み記録を確認し、API の成功だけを Skill の成功としません。
+既存の Lab 7 workflow は Skill provider を含みません。
+Skill を Agent の instructions にコピーする代替は、Toolbox 経由の利用とは区別してください。
+
 ## Toolbox Notebook
+
+以下は任意の SDK 学習・補助経路だけのトラブルシューティングです。
 
 ### `Python (Foundry Workshop)` kernel がない
 
