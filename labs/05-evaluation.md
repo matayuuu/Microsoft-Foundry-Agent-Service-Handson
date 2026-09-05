@@ -5,6 +5,13 @@
 Microsoft Foundry Portal で、setup 済みの合成 test data を使い
 `contoso-travel-assistant` を end-to-end で評価します。Lab 本編では Python を使いません。
 
+ここまでは質問を 1 件ずつ送って回答を見てきました。評価では、**用意した質問集を
+まとめて実行し、同じ採点基準で回答と tool の使い方を確認**します。
+評価の対象は、Lab 4 までで作った Agent です。
+
+回答する Agent と、回答を採点するモデルは別の役割です。このハンズオンでは
+Agent に `gpt-5.6-luna`、設定可能な LLM judge（採点役）に `gpt-5.5` を使います。
+
 > [!WARNING]
 > Agent invocation と LLM evaluator には料金が発生します。
 > この Lab では 7 件の合成データに限定します。
@@ -27,8 +34,8 @@ Microsoft Foundry Portal で、setup 済みの合成 test data を使い
 この dataset は setup が `data/eval/live_subset.jsonl` から登録した架空データです。
 通常は schema が一致するため **Field mapping** は自動で完了します。画面が開いた場合だけ、
 dataset の `query` を `query` に割り当てて **Next** を選択します。
-Portal の **Synthetic generation** preview は、2026-09-01 の keyless 構成では空の
-item schema を作る場合があるため、本編では使いません。
+本編では **Synthetic generation** で新しいデータを生成せず、
+setup が登録した同じ 7 件を使います。
 
 ## 3. Agent の入力を確認する
 
@@ -76,6 +83,8 @@ Evaluator を増やすほど実行時間と料金が増えます。この Lab �
 - Fail の row で evaluator の reason を確認できる
 
 Fail は異常ではありません。改善点を見つけることが評価の目的です。
+スコアだけでなく reason を読み、少なくとも 1 件は質問・回答・採点理由を見比べて、
+自分の判断と一致するか確認します。モデルの採点も常に正しいとは限りません。
 次の Lab では同じ dataset と、setup 済みの **Contoso Travel Rubric** を使います。
 
 操作ラベルは 2026-09-01 時点の Foundry (new) を基準にしています。詳細は

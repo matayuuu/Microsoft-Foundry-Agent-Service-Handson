@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -191,6 +192,27 @@ def test_readme_architecture_assets_exist() -> None:
     assert element_ids.isdisjoint({"subscription", "evaluation", "monitoring"})
 
 
+def test_learning_flow_source_and_rendered_labels_agree() -> None:
+    source = REPO_ROOT / "docs" / "diagrams" / "workshop-learning-flow.excalidraw"
+    rendered = REPO_ROOT / "docs" / "images" / "workshop-learning-flow.svg"
+    diagram = json.loads(source.read_text(encoding="utf-8"))
+    svg = ET.parse(rendered).getroot()
+    namespace = {"svg": "http://www.w3.org/2000/svg"}
+    svg_labels = {
+        node.attrib["id"]: " ".join("".join(node.itertext()).split())
+        for node in svg.findall(".//svg:text", namespace)
+    }
+
+    assert diagram["type"] == "excalidraw"
+    for element in diagram["elements"]:
+        if element["type"] == "text" and not element.get("isDeleted", False):
+            assert element["width"] > 0 and element["height"] > 0
+            assert element["strokeColor"] == "#000000"
+            assert svg_labels[element["id"]] == " ".join(element["text"].split())
+    assert "会話する" not in svg_labels["lab2-prompt-text"]
+    assert "には接続しない" in svg_labels["lab7-independent-note-text"]
+
+
 def test_portal_labs_use_setup_prepared_evaluation_assets() -> None:
     setup = (REPO_ROOT / "scripts" / "setup.sh").read_text(encoding="utf-8")
     evaluation = (LABS_DIR / "05-evaluation.md").read_text(encoding="utf-8")
@@ -200,6 +222,20 @@ def test_portal_labs_use_setup_prepared_evaluation_assets() -> None:
     assert "contoso-travel-eval-live-subset" in evaluation
     assert "contoso-travel-eval-live-subset" in optimization
     assert "Contoso Travel Rubric" in optimization
+
+
+def test_core_labs_share_luna_for_retrieval_and_gpt55_for_evaluation() -> None:
+    retrieval = (LABS_DIR / "03-rag-foundry-iq.md").read_text(encoding="utf-8")
+    evaluation = (LABS_DIR / "05-evaluation.md").read_text(encoding="utf-8")
+    optimization = (LABS_DIR / "06-optimization.md").read_text(encoding="utf-8")
+
+    assert "knowledge_model: .primary_model_deployment_name.value" in retrieval
+    assert "optimizer_model_deployment_name" not in retrieval
+    assert "gpt-5.6-luna" in retrieval
+    assert "gpt-5.5" in evaluation
+    assert "evaluation_model: .optimizer_model_deployment_name.value" in optimization
+    assert "optimization_model: .optimizer_model_deployment_name.value" in optimization
+    assert "gpt-5.5" in optimization
 
 
 def test_toolbox_lab_uses_portal_for_openapi_and_skills() -> None:

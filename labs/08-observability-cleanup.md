@@ -5,6 +5,10 @@
 Prompt Agent と Hosted Agent の trace を確認し、ハンズオンで作成した Azure resources
 を削除します。
 
+Trace は、**1 回の依頼がどの順番で処理されたかをたどる記録**です。
+回答だけでは分からない検索・tool 呼び出し・各 agent の処理を確認します。
+確認が終わったら、費用が発生し続けないようにリソースを片付けます。
+
 ## 1. Trace を開く
 
 1. Microsoft Foundry Portal で **Build > Agents** を開きます。

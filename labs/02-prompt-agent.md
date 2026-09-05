@@ -5,6 +5,16 @@
 Microsoft Foundry Portal で、後続 Lab の knowledge と tool を接続する Prompt Agent
 `contoso-travel-assistant` を作成します。
 
+Prompt Agent は、**モデルと指示文を組み合わせたアシスタント**です。この Lab では
+「何をする担当か」を設定します。社内規程を調べる機能は Lab 3、費用を計算する機能は
+Lab 4 で追加します。
+
+## 始める前に
+
+Lab 1 の setup が完了し、自分の Foundry project を開いていることを確認します。
+以後、同じ `contoso-travel-assistant` を編集して機能を追加します。
+Lab ごとに別の Agent を作る必要はありません。
+
 ## 使用する値
 
 ```bash
@@ -29,6 +39,11 @@ jq -r '
    | Name | `contoso-travel-assistant` |
    | Model | `primary_model_deployment_name` の値 |
 
+通常、Model に選ぶ deployment 名は **`gpt-5.6-luna`** です。
+モデルカタログから別のモデルをデプロイするのではなく、Lab 1 で作成済みの
+deployment を選びます。名前が見つからない場合は、対象 project と setup の完了を
+確認してください。
+
 ## 2. Instructions を設定する
 
 **Instructions** に次を貼り付けます。
@@ -45,6 +60,9 @@ Travel Ops tool の都市名には、Tokyo、Osaka、New York のような英語
 ```
 
 **Save** を選択します。
+
+Instructions は **Agent が毎回守る役割・回答方針**で、利用者がその都度送る質問とは
+別です。コードブロックの本文だけをコピーし、囲みのバッククォートは貼り付けません。
 
 ## 完了チェック
 

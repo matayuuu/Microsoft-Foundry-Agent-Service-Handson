@@ -55,7 +55,8 @@ Agent の **Knowledge > Add > Foundry IQ** に戻ります。
 ### Foundry IQ の model を選べない
 
 Portal の model picker が対応する deployment を選びます。このハンズオンでは
-`.workshop/context.json` の `optimizer_model_deployment_name` を使います。
+`.workshop/context.json` の `primary_model_deployment_name` を使います。
+通常は `gpt-5.6-luna` です。Optimizer 用の `gpt-5.5` と取り違えないでください。
 
 ## Citation link
 
@@ -84,8 +85,7 @@ setup を再実行し、data bootstrap を更新します。
 OpenAPI は **Select a tool > Custom > OpenAPI tool**、
 Skill は **Select a skill > Configured > Add skill > Upload skill** です。
 
-古い教材の「Portal 非対応」は 2026-09-05 の画面には当てはまりません。
-ただし UI の展開時期や権限に差があるため、項目がない場合は講師へ画面を共有してください。
+項目がない場合は、対象 project と権限を確認し、講師へ画面を共有してください。
 Toolbox の SDK Notebook は補助用で、Skills の作成・利用まで代替するものではありません。
 
 ### OpenAPI の server がない／接続先が違う
@@ -156,7 +156,7 @@ Lab 1 の preflight 出力とともに管理者へ連絡します。
 
 ### Synthetic data を生成できない
 
-Portal preview で `Unable to create data source configuration from item schema` が表示される場合が
+`Unable to create data source configuration from item schema` が表示される場合が
 あります。Lab 5 は **Existing dataset** の `contoso-travel-eval-live-subset` を使ってください。
 一覧に無い場合は Lab 1 の setup を同じ引数で再実行します。
 
@@ -169,7 +169,14 @@ submit しないでください。
 
 `.workshop/context.json` の `optimizer_model_deployment_name` の値を選んでいるか確認します。
 Criteria は built-in evaluator ではなく **Contoso Travel Rubric** を選択します。
-Agent Optimizer は preview のため、service error の場合は run を増やさず講師へ連絡します。
+Service error の場合は run を増やさず講師へ連絡します。
+
+### 評価モデルと Agent のモデルが違う
+
+この教材では意図した設定です。回答する Agent と Foundry IQ は `gpt-5.6-luna`、
+回答を採点する LLM judge と改善案を作る Optimizer は `gpt-5.5` を使います。
+Lab 6 の **Evaluation model** と **Optimization model** は、どちらも
+`optimizer_model_deployment_name` の値を選択します。
 
 ## Hosted Agent
 

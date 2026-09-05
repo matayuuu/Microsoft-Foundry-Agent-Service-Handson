@@ -5,12 +5,16 @@
 利用条件と承認手続きを分けた 2 つの規程 index を使い、取得できた根拠の範囲と
 回答品質を比較します。
 
-1. **Azure AI Search tool**: 利用条件の index だけを直接検索
-2. **Foundry IQ knowledge base**: 質問を分解し、2 つの source を横断検索
+1. **Azure AI Search tool**: 利用条件をまとめた検索用データ（index）だけを直接検索
+2. **Foundry IQ knowledge base**: 質問を分解し、利用条件と承認手続きの 2 つの検索先
+   （source）を横断検索
+
+たとえば「ビジネスクラスに乗れるか」と「誰にどの順番で承認してもらうか」は、
+別の規程に書かれています。同じ質問を 2 つの検索方法で試し、**回答の根拠が増えること**
+を確認します。文書を検索して回答の根拠にする仕組みを RAG と呼びます。
 
 > [!WARNING]
-> Microsoft Foundry Portal から作成する Foundry IQ の agentic retrieval は preview です。
-> 実行ごとに Search と query-planning model の料金が発生します。
+> 検索とモデルの呼び出しには料金が発生します。教材の合成データと質問例を使います。
 
 ## 使用する値
 
@@ -22,7 +26,7 @@ jq -r '
       search_connection: "contoso-travel-search",
       direct_search_index: "contoso-travel-policy",
       approval_search_index: "contoso-travel-approval",
-      knowledge_model: .optimizer_model_deployment_name.value
+      knowledge_model: .primary_model_deployment_name.value
     }
 ' .workshop/context.json
 ```
@@ -95,7 +99,7 @@ Search service のトップ URL が開く場合は
    | 項目 | 値 |
    |---|---|
    | Name | `contoso-travel-knowledge-lab` |
-   | Chat completions model | `optimizer_model_deployment_name` の値 |
+   | Chat completions model | `primary_model_deployment_name` の値（通常 `gpt-5.6-luna`） |
    | Retrieval reasoning effort | **Medium** |
    | Output mode | **Extractive data** |
 
@@ -121,17 +125,15 @@ Search service のトップ URL が開く場合は
 8. **Save knowledge base** を選択します。
 9. 一覧で `contoso-travel-knowledge-lab` の Status が **Active** になるまで待ちます。
 
-`primary` の `gpt-4.1` は Prompt Agent では利用できますが、2026-09-01 時点の
-Portal の knowledge-base model picker では対象外です。この Lab では Portal が
-サポートする `optimizer` の `gpt-5` deployment を使います。
+この Lab は Prompt Agent と同じ **`gpt-5.6-luna`** deployment を使います。
+Agent では「最終回答を作る」、knowledge base では「どこをどう検索するか考える」
+という異なる役割で使われます。Foundry IQ 用に別のモデルをデプロイする必要はありません。
 **Extractive data** を選ぶことで、knowledge base は取得した原文を返し、最終回答は
 Prompt Agent が作成します。
 
-**Medium** は初回結果を semantic classifier で評価し、不十分な場合だけ query plan を
-修正して最大 1 回再検索します。初回で十分と判定された場合は再検索されないため、
-2 回目の検索が Activity に無くても失敗ではありません。この Lab の再現性は再検索の
-発生有無ではなく、物理的に分けた 2 source から 4 項目の根拠を取得できたかで判定します。
-Low より latency と model/Search の token 使用量が増える点にも注意してください。
+**Medium** では検索結果が不十分な場合に追加の検索を行います。
+追加検索が Activity に表示されなくても、それだけで失敗とは限りません。
+この Lab では「2 つの source から、必要な 4 項目の根拠を取得できたか」を確認します。
 
 ## 4. Knowledge base を agent に接続する
 

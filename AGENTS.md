@@ -45,7 +45,9 @@ not make Terraform and SDK scripts manage the same object.
 - Treat Terraform state as sensitive. Never commit it or print computed credentials.
 - All sample content must remain synthetic and must not contain personal or customer
   data.
-- Keep preview/retirement, billing, and data-boundary warnings visible in the labs.
+- Keep actionable billing, authentication, data-boundary, simulation, and cleanup
+  guidance visible in the labs. Omit generic preview disclaimers from the
+  participant path; retain actual UI labels, API versions, and operational limits.
 
 ## Setup commands
 

@@ -5,6 +5,10 @@
 Microsoft Foundry **Portal の UI** で、Travel Ops API と操作手順の Skills を
 `contoso-travel-toolbox` にまとめて公開します。Notebook は本編では使いません。
 
+Lab 3 では「規程を調べる」機能を追加しました。この Lab では「日当を照会する」
+「費用を計算する」機能を追加します。Tool は実行する機能、Skill はその使い方を説明した
+手順書、Toolbox は両方をまとめて Agent に渡す入れ物です。
+
 | 要素 | 役割 |
 |---|---|
 | Foundry IQ | 規程と根拠を調べる。Lab 3 の Knowledge をそのまま残す |
@@ -14,7 +18,6 @@ Microsoft Foundry **Portal の UI** で、Travel Ops API と操作手順の Skil
 | Toolbox | 実行機能と操作手順を一緒に配布する。Agent ごとの複製を避ける |
 
 > [!WARNING]
-> Skills と Toolbox 経由の Skills 配布は **preview** です。画面・対応クライアントは変わります。
 > Skill は操作手順であり、認可や強制的な承認制御の代わりではありません。
 > モデル・API の利用には料金が発生し、外部 tool へ送るデータは Foundry の境界外で
 > 処理されます。このラボでは合成データだけを使い、実際の予約・承認は行いません。
@@ -155,6 +158,13 @@ Activity / trace で API の呼び出しを開きます。
 - `createPreapproval` は呼ばれない
 
 **Skill の登録成功と、Agent がその Skill を読み込んだことは別です。**
+本編では、Toolbox に 2 つの Skills を登録・公開できたことと、Agent が API を呼べることを
+必須の到達点にします。Skill の読み込み記録がない場合は「登録・公開済み／利用は未確認」
+と記録して次へ進めます。API が動いただけで Skill も読み込まれたとは判断しません。
+
+<details>
+<summary>Skill の読み込みをさらに確認する場合</summary>
+
 Skills は `tools/list` の API tool ではなく、MCP の `resources/list` / `resources/read`
 で公開される resources です。利用側に対応する Skill provider が必要です。
 Toolbox の選択だけで Prompt Agent が自動利用すると断定しないでください。
@@ -176,6 +186,8 @@ Toolbox の選択だけで Prompt Agent が自動利用すると断定しない�
 | 「大阪の2026-09-10の日当と宿泊上限を教えて」 | `getPerDiem` を選び、承認処理は呼ばない |
 | 「東京から大阪へ2026-09-10〜11、1名、economy。事前承認をシミュレーションして」 | `createPreapproval` を使い、`simulated_` の意味と免責を説明する |
 
+</details>
+
 ## 完了チェック
 
 - Portal で Toolbox を公開できた
@@ -191,14 +203,8 @@ OpenAPI の更新時に既存 Skills・他の tools・guardrail を保持しま�
 Skill 自体のアップロードは上の Portal 手順で行います。
 UI の作成操作を体験する前に Notebook で Toolbox を作る必要はありません。
 
-画面と項目名は **2026-09-05 に共有された Foundry (new) Portal の画面**を基準にしています。
-以前の教材は Portal 非対応を前提にしていましたが、現在の画面には
-Toolbox 作成・OpenAPI 追加・Skill アップロードがあるため、UI を本編にしました。
-公式ドキュメントの対応表と差がある場合は、講師と実際の UI を確認してください。
-
 公式仕様: [Toolbox](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/toolbox) /
-[Skills (preview)](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/skills)
-（参照日: 2026-09-05）。
+[Skills](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/skills)。
 困った場合は [Toolbox のトラブルシューティング](../docs/participant/troubleshooting.md#toolbox-portal)
 を参照してください。
 

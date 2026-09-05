@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1840" viewBox="0 0 1280 1840" role="img" aria-labelledby="diagram-title diagram-description">
+  <title id="diagram-title">出張・経費アシスタントを学ぶ</title>
+  <desc id="diagram-description">Lab 0 と Lab 1 で共通の準備を行う。左は Lab 2 の Prompt Agent に Lab 3 の Knowledge、Lab 4 の Tool と Skill を加え、Lab 5 で評価し、Lab 6 で指示文の候補を比較する学習順。右は独立した Lab 7。Notebook で policy_agent、planner_agent、reviewer_agent の順に実行し、同じ 3 担当のコードを Hosted Agent として配置する。前の Foundry IQ、Toolbox、Travel Ops API には接続しない。Lab 8 で実行履歴を確認して片付ける。実際の予約・承認・精算は行わない。</desc>
+  <defs>
+    <marker id="blue-arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#0078D4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="purple-arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#5C2D91" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      text { fill: #000000; font-family: "Segoe UI", "Yu Gothic", Meiryo, "Noto Sans JP", sans-serif; }
+      .outline { fill: none; stroke-width: 2; }
+      .card { stroke-width: 2; }
+      .edge { fill: none; stroke-width: 2; stroke-linecap: round; }
+    </style>
+  </defs>
+  <rect width="1280" height="1840" fill="#ffffff"/>
+  <text id="learning-title" x="40" y="90" font-size="36">出張・経費アシスタントを学ぶ</text>
+  <text id="learning-intro" x="40" y="174" font-size="20">左は Prompt Agent の拡張。右は独立したコード演習。</text>
+
+  <rect id="shared-preparation" class="card" x="40" y="220" width="1200" height="120" rx="16" stroke="#1e1e1e" fill="#F3F2F1"/>
+  <text id="shared-preparation-text" x="640" font-size="18" text-anchor="middle">
+    <tspan x="640" y="265">Lab 0 → Lab 1｜共通の準備</tspan>
+    <tspan x="640" y="310">Codespaces を開く → 既存 RG 内に Azure 環境を準備</tspan>
+  </text>
+
+  <rect id="prompt-learning-container" class="outline" x="40" y="400" width="560" height="1120" rx="16" stroke="#0078D4"/>
+  <text id="prompt-learning-title" x="320" y="457" font-size="22" text-anchor="middle">Lab 2–6｜同じ Agent を育てる</text>
+  <text id="prompt-learning-surface" x="320" y="524" font-size="20" text-anchor="middle">主に Foundry Portal で操作</text>
+
+  <rect id="lab2-prompt" class="card" x="80" y="580" width="480" height="140" rx="16" stroke="#0078D4" fill="#CFE4FA"/>
+  <text id="lab2-prompt-text" x="320" font-size="20" text-anchor="middle">
+    <tspan x="320" y="634">Lab 2｜Prompt Agent</tspan>
+    <tspan x="320" y="684">役割と回答方針を保存する</tspan>
+  </text>
+  <rect id="lab3-knowledge" class="card" x="80" y="760" width="480" height="140" rx="16" stroke="#0078D4" fill="#CFE4FA"/>
+  <text id="lab3-knowledge-text" x="320" font-size="20" text-anchor="middle">
+    <tspan x="320" y="814">Lab 3｜Knowledge / Foundry IQ</tspan>
+    <tspan x="320" y="864">規程を調べ、根拠を示す</tspan>
+  </text>
+  <rect id="lab4-toolbox" class="card" x="80" y="940" width="480" height="140" rx="16" stroke="#0078D4" fill="#CFE4FA"/>
+  <text id="lab4-toolbox-text" x="320" font-size="20" text-anchor="middle">
+    <tspan x="320" y="994">Lab 4｜Tool / Skill / Toolbox</tspan>
+    <tspan x="320" y="1044">API で計算し、内訳を説明する</tspan>
+  </text>
+  <rect id="lab5-evaluation" class="card" x="80" y="1120" width="480" height="140" rx="16" stroke="#0078D4" fill="#CFE4FA"/>
+  <text id="lab5-evaluation-text" x="320" font-size="20" text-anchor="middle">
+    <tspan x="320" y="1174">Lab 5｜Evaluation</tspan>
+    <tspan x="320" y="1224">同じ質問集で回答を点検する</tspan>
+  </text>
+  <rect id="lab6-optimizer" class="card" x="80" y="1300" width="480" height="140" rx="16" stroke="#0078D4" fill="#CFE4FA"/>
+  <text id="lab6-optimizer-text" x="320" font-size="20" text-anchor="middle">
+    <tspan x="320" y="1354">Lab 6｜Optimizer</tspan>
+    <tspan x="320" y="1404">指示文の候補を比較して判断する</tspan>
+  </text>
+  <path id="lab2-to-lab3" class="edge" data-from="lab2-prompt" data-to="lab3-knowledge" d="M 320 730 L 320 750" stroke="#0078D4" marker-end="url(#blue-arrowhead)"/>
+  <path id="lab3-to-lab4" class="edge" data-from="lab3-knowledge" data-to="lab4-toolbox" d="M 320 910 L 320 930" stroke="#0078D4" marker-end="url(#blue-arrowhead)"/>
+  <path id="lab4-to-lab5" class="edge" data-from="lab4-toolbox" data-to="lab5-evaluation" d="M 320 1090 L 320 1110" stroke="#0078D4" marker-end="url(#blue-arrowhead)"/>
+  <path id="lab5-to-lab6" class="edge" data-from="lab5-evaluation" data-to="lab6-optimizer" d="M 320 1270 L 320 1290" stroke="#0078D4" marker-end="url(#blue-arrowhead)"/>
+
+  <rect id="hosted-learning-container" class="outline" x="680" y="400" width="560" height="1120" rx="16" stroke="#5C2D91"/>
+  <text id="hosted-learning-title" x="960" y="457" font-size="22" text-anchor="middle">Lab 7｜別のアシスタントを作る</text>
+  <text id="hosted-learning-surface" x="960" y="524" font-size="20" text-anchor="middle">Codespace の Notebook で順に実行</text>
+
+  <rect id="lab7-policy" class="card" x="720" y="580" width="480" height="140" rx="16" stroke="#5C2D91" fill="#E8DAEF"/>
+  <text id="lab7-policy-text" x="960" font-size="20" text-anchor="middle">
+    <tspan x="960" y="634">policy_agent</tspan>
+    <tspan x="960" y="684">規程を確認する担当</tspan>
+  </text>
+  <rect id="lab7-planner" class="card" x="720" y="760" width="480" height="140" rx="16" stroke="#5C2D91" fill="#E8DAEF"/>
+  <text id="lab7-planner-text" x="960" font-size="20" text-anchor="middle">
+    <tspan x="960" y="814">planner_agent</tspan>
+    <tspan x="960" y="864">出張案を作る担当</tspan>
+  </text>
+  <rect id="lab7-reviewer" class="card" x="720" y="940" width="480" height="140" rx="16" stroke="#5C2D91" fill="#E8DAEF"/>
+  <text id="lab7-reviewer-text" x="960" font-size="20" text-anchor="middle">
+    <tspan x="960" y="994">reviewer_agent</tspan>
+    <tspan x="960" y="1044">内容を見直し、最終回答を返す</tspan>
+  </text>
+  <rect id="lab7-hosted" class="card" x="720" y="1120" width="480" height="140" rx="16" stroke="#5C2D91" fill="#E8DAEF"/>
+  <text id="lab7-hosted-text" x="960" font-size="20" text-anchor="middle">
+    <tspan x="960" y="1174">Hosted Agent｜Terminal → Portal</tspan>
+    <tspan x="960" y="1224">同じ 3 担当のコードを配置・確認</tspan>
+  </text>
+  <path id="policy-to-planner" class="edge" data-from="lab7-policy" data-to="lab7-planner" d="M 960 730 L 960 750" stroke="#5C2D91" marker-end="url(#purple-arrowhead)"/>
+  <path id="planner-to-reviewer" class="edge" data-from="lab7-planner" data-to="lab7-reviewer" d="M 960 910 L 960 930" stroke="#5C2D91" marker-end="url(#purple-arrowhead)"/>
+  <path id="workflow-to-hosted" class="edge" data-from="lab7-reviewer" data-to="lab7-hosted" d="M 960 1090 L 960 1110" stroke="#5C2D91" marker-end="url(#purple-arrowhead)"/>
+  <rect id="lab7-independent-note" class="outline" x="720" y="1300" width="480" height="180" rx="16" stroke="#5C2D91" stroke-dasharray="8 6"/>
+  <text id="lab7-independent-note-text" x="960" font-size="18" text-anchor="middle">
+    <tspan x="960" y="1350">独立したシミュレーション</tspan>
+    <tspan x="960" y="1395">前の Foundry IQ / Toolbox / API</tspan>
+    <tspan x="960" y="1440">には接続しない</tspan>
+  </text>
+
+  <rect id="shared-cleanup" class="card" x="40" y="1580" width="1200" height="180" rx="16" stroke="#107C10" fill="#DFF6DD"/>
+  <text id="shared-cleanup-text" x="640" font-size="22" text-anchor="middle">
+    <tspan x="640" y="1652">Lab 8｜実行履歴の確認と cleanup</tspan>
+    <tspan x="640" y="1707">演習のリソースを片付ける（既存 RG は残す）</tspan>
+  </text>
+  <text id="learning-footer" x="40" y="1810" font-size="18">学習の順序を示す図です。実際の予約・承認・精算は行いません。</text>
+</svg>

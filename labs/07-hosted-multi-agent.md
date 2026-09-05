@@ -6,6 +6,11 @@ Microsoft Agent Framework のエージェントを Notebook 上で作り、seque
 として接続します。実物のグラフと各 agent の途中回答を確認し、入力を変えてテストした後、
 同じ構成の source を Hosted Agent として Microsoft Foundry に deploy します。
 
+この Lab は、Lab 2〜6 の Prompt Agent を作り直す演習ではありません。
+「規程を確認する担当」「案を作る担当」「内容を見直す担当」をコードで順番につなぐ、
+別のアシスタントを作ります。自分で書いたコードを Foundry 上で動かすのが
+**Hosted Agent** です。
+
 ```text
 policy_agent -> planner_agent -> reviewer_agent
 ```
@@ -20,8 +25,8 @@ instructions で指示し、Notebook 上で回答に含まれているか確認�
 
 > [!WARNING]
 > 標準の依頼と追加テスト 2 件で合計 9 回のエージェント呼び出しがあり、モデル利用料金が
-> 発生します。再実行にも料金がかかります。Hosted Agent / source remote build の
-> プレビュー制約と実行料金にも注意してください。Notebook の Run All は deploy しません。
+> 発生します。再実行、Hosted Agent の稼働、source remote build にも料金がかかります。
+> Notebook の Run All は deploy しません。
 
 ## 1. Notebook で作成・可視化・テストする
 
@@ -30,6 +35,12 @@ instructions で指示し、Notebook 上で回答に含まれているか確認�
    を開きます。
 2. 右上の kernel picker で **Python (Foundry Hosted Agent)** を選択します。
 3. 説明を読み、上から 1 cell ずつ実行します。
+
+**Kernel** は Notebook のコードを実行する Python 環境です。
+この Lab では `Python (Foundry Workshop)` ではなく、
+**Python (Foundry Hosted Agent)** を選びます。
+各コード cell の左側の実行ボタン、または **Shift+Enter** で実行し、
+処理中の表示が消えて出力が現れてから次へ進みます。エラーの cell を飛ばして進めません。
 
 Notebook は次の順に進みます。agent 作成と workflow 構築だけでは推論は始まりません。
 
