@@ -56,8 +56,8 @@ Core infrastructure in the participant resource group:
 
 - Microsoft Foundry account (`AIServices`) with project management enabled
 - Microsoft Foundry project
-- `gpt-5.6-luna` deployment for Prompt/Hosted Agent inference and Foundry IQ query planning
-- `gpt-5.5` deployment for configurable LLM evaluation judges and Agent Optimizer
+- `gpt-5.6-luna` deployment for Prompt/Hosted Agent inference
+- `gpt-5.5` deployment for Foundry IQ query planning, configurable LLM evaluation judges, and Agent Optimizer
 - `text-embedding-3-small`, deployed as `embedding`, for the seeded vector indexes
 - Azure AI Search Basic, one replica and one partition
 - Log Analytics and workspace-based Application Insights
@@ -68,16 +68,24 @@ administrator preflight verifies them before participants start.
 
 There are exactly three deployments. `primary_model_deployment_name` still exposes
 `gpt-5.6-luna`; `optimizer_model_deployment_name` exposes `gpt-5.5`; the embedding output
-remains unchanged. Foundry IQ shares the primary deployment, not the optimizer.
+remains unchanged. Foundry IQ shares the optimizer deployment, not the primary.
 Evaluation still invokes the Luna-backed target agent, while configurable judges use
 GPT-5.5. Service-managed safety evaluators do not receive a judge deployment override.
 The two chat model versions have no Terraform defaults: preflight discovers each
 version and quota `usageName` from the same required-SKU catalog entry.
 
-Initial capacities are 40/20/40K TPM, respectively, subject to live preflight evidence.
-Shared uses are counted once per deployment, not once per lab. Verify that the current
-Portal uses a [Search API compatible with Luna knowledge-base query planning](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base);
-model catalog availability alone does not prove picker/API compatibility.
+Default capacities are 40/100/40K TPM, respectively, subject to live preflight evidence.
+The shared GPT-5.5 allocation was raised after throttling at 20 during a Portal
+evaluation. This allocates GlobalStandard throughput within existing quota; it does
+not raise the subscription quota limit or set a fixed token-spend bill. Actual usage
+remains billable, and 100 units does not guarantee zero HTTP 429 responses.
+Shared uses are counted once per deployment, not once per lab. In the new Portal
+checked on 2026-09-06, the knowledge-base Chat completions model picker offered the
+deployed GPT-5.5 but not Luna, including with Medium retrieval effort. The workshop
+uses that available GPT-5.5 deployment for query planning while keeping agents on Luna.
+Model catalog availability alone does not prove picker/API compatibility; compare the
+[Search model/API requirements](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
+with the actual Portal picker.
 
 ## Authentication and authorization
 

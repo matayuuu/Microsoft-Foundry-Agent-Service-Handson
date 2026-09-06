@@ -242,7 +242,7 @@ def test_chat_model_version_has_no_default(role: str) -> None:
     ("role", "model", "deployment", "capacity"),
     [
         ("primary", "gpt-5.6-luna", "gpt-5.6-luna", 40),
-        ("optimizer", "gpt-5.5", "gpt-5.5", 20),
+        ("optimizer", "gpt-5.5", "gpt-5.5", 100),
         ("embedding", "text-embedding-3-small", "embedding", 40),
     ],
 )

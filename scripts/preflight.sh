@@ -130,7 +130,7 @@ declare -A REQUIRED_MODEL_SKU=(
 )
 declare -A REQUIRED_MODEL_CAPACITY_K=(
   ["gpt-5.6-luna"]="40"
-  ["gpt-5.5"]="20"
+  ["gpt-5.5"]="100"
   ["text-embedding-3-small"]="40"
 )
 

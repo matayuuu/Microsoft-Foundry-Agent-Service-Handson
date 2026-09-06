@@ -13,11 +13,15 @@
      `Microsoft.Search`、`Microsoft.Insights`、`Microsoft.OperationalInsights`、
      `Microsoft.App`）がすべての対象 region
      （`eastus2`、`swedencentral`）で `Registered` であること。
-  2. 想定参加者・チーム数に対して `gpt-5.6-luna`（40K TPM/team）、`gpt-5.5`（20K TPM/team）、
+  2. 想定参加者・チーム数に対して `gpt-5.6-luna`（40K TPM/team）、`gpt-5.5`（100K TPM/team）、
      `text-embedding-3-small`（40K TPM/team）の model quota/capacity が両 region の
      少なくとも一方で足りていること。
-     Luna は Agent と Foundry IQ、GPT-5.5 は LLM judge と Optimizer で共有します。
+     Luna は Prompt/Hosted Agent、GPT-5.5 は Foundry IQ の検索計画・LLM judge・Optimizer で共有します。
      合計 3 deployment を用途ごとに重複計上せず、初期容量で同時実行をリハーサルします。
+     GPT-5.5 は 20 units での評価中に HTTP 429 が発生したため、既定を 100 に変更しました。
+     これは既存 quota 内での GlobalStandard throughput の割り当てであり、
+     subscription quota 上限の引き上げや、固定額のトークン料金の購入ではありません。
+     実際の利用には課金され、100 でも 429 がなくなる保証はないため、実環境で再確認します。
   3. 未登録の provider がある場合のみ `--apply` を実行してもらう（quota・policy・
      resource group・role assignment は一切変更しない設計です）。
 - 各参加者（または参加チーム）に対して、既存 resource group を 1 つずつ用意し、
@@ -28,9 +32,11 @@
 
 - 自分用の resource group で `./scripts/preflight.sh` → `./scripts/setup.sh` を通し、
   `.workshop/context.json` が生成されることを確認します。
-- Luna の Foundry IQ 対応は、model catalog だけでなく現在の Portal の Search API と
-  picker で確認します。Agent・Foundry IQ は `primary_model_deployment_name`、
-  設定可能な judge・Optimizer の両モデル選択は `optimizer_model_deployment_name` を使います。
+- 2026-09-06 に確認した new Portal の knowledge-base model picker は、Medium でも
+  配置済みの GPT-5.5 のみを表示し、Luna は表示しませんでした。Agent は
+  `primary_model_deployment_name`（Luna）、Foundry IQ・設定可能な judge・Optimizer の
+  両モデル選択は `optimizer_model_deployment_name`（GPT-5.5）を使います。
+  Model catalog と Portal picker の対応は同一視せず、当日もそれぞれ確認します。
   サービス管理の Violence などには judge を指定しません。
 - Lab 5（評価）・Lab 6（Optimizer）・Lab 7（Hosted Agent デプロイ）を一度通しで
   実行し、リモートビルドや preview 機能の待ち時間の当日の目安を体感しておきます。

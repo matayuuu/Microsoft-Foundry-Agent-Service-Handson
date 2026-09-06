@@ -53,11 +53,11 @@ assignment. It reports, per region (`eastus2` and `swedencentral`):
    **aggregate** requirement for all participants/teams the event will run at once (see
    `--participant-count` below), not just one environment's worth:
    - `gpt-5.6-luna`, deployed as `gpt-5.6-luna` — SKU `GlobalStandard`, initial required
-     headroom **40K TPM per environment**. Shared by Prompt/Hosted Agent inference and
-     Foundry IQ query planning (`primary_model_deployment_name`).
+     headroom **40K TPM per environment**. Shared by Prompt/Hosted Agent inference
+     (`primary_model_deployment_name`).
    - `gpt-5.5`, deployed as `gpt-5.5` — SKU `GlobalStandard`, initial required headroom
-     **20K TPM per environment**. Shared by configurable LLM evaluation judges and
-     Agent Optimizer (`optimizer_model_deployment_name`). Both chat model names are
+     **100K TPM per environment**. Shared by Foundry IQ query planning, configurable LLM
+     evaluation judges, and Agent Optimizer (`optimizer_model_deployment_name`). Both chat model names are
      fixed workshop requirements; their **versions are discovered**, not guessed.
      There is no fallback to a different model family.
    - `text-embedding-3-small` — SKU `GlobalStandard`, required headroom **40K TPM per
@@ -111,20 +111,37 @@ environment:
 
 This multiplies each model's per-environment required capacity by `<n>` (for example,
 `gpt-5.6-luna`'s 40K TPM per environment becomes a 480K TPM aggregate requirement for 12
-participants) and reports the exact `per-environment capacity * participant-count =
+participants, while `gpt-5.5` requires 100K * 12 = 1,200K TPM) and reports the exact
+`per-environment capacity * participant-count =
 required aggregate capacity` arithmetic alongside the discovered headroom for every
 model/region check, plus the participant count itself in the JSON/Markdown report
 header — never a single opaque number. `--participant-count` must be a positive
 integer; the script exits `1` before making any Azure call if it is not.
 
 Do not double-count a shared deployment for each lab: the environment has exactly
-three deployments. Luna capacity is shared by agents and Foundry IQ; GPT-5.5 capacity
-is shared by judges and optimization. Evaluation also calls the Luna target agent.
-Rehearse concurrency and check live quota before approving these initial capacities.
-Confirm that the current Portal uses a
-[Search API supporting Luna knowledge bases](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
-and exposes the required model in each picker. Catalog/quota availability does not
-prove Portal compatibility. Stop and investigate missing support; do not add a fourth
+three deployments. Luna capacity is shared by Prompt/Hosted Agents; GPT-5.5 capacity
+is shared by Foundry IQ query planning, judges, and optimization. Evaluation also calls
+the Luna target agent. The default allocation is **40/100/40 capacity units** for
+Luna/GPT-5.5/embedding. Rehearse concurrency and check live quota before approving it.
+The shared GPT-5.5 default was increased after the 20-unit deployment throttled a
+seven-row Portal evaluation; see [the runtime finding and follow-up checks](troubleshooting.md#http-429-or-foundry-iq-timeouts-despite-available-subscription-quota).
+
+GlobalStandard capacity allocates deployment throughput from existing subscription
+model/SKU quota. It does **not** increase that subscription quota limit, buy a fixed
+token-spend allowance, or create a provisioned-throughput reservation. Model usage is
+still billed by actual consumption; higher throughput can allow more billable calls.
+100 units is not a guarantee of zero HTTP 429 responses. Check the deployed `rateLimits`
+and rehearse the combined query-planning/evaluation/optimization load.
+
+Terraform capacity variables remain overridable. Both preflight scripts check the
+shipped **40/100/40** defaults; organizers who intentionally override capacity must
+align those expected allocations with the Terraform inputs and revalidate.
+The new Portal knowledge-base Chat completions model picker checked on 2026-09-06
+offered the deployed GPT-5.5 but not Luna, even with Medium retrieval effort; the Agent
+picker offered Luna. Follow these separate roles and confirm each picker before the
+event. Catalog/quota availability and
+[Search API support](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
+do not alone prove Portal compatibility. Stop and investigate missing support; do not add a fourth
 deployment, change providers/quota automatically, or silently choose another model.
 
 ## Applying the fix

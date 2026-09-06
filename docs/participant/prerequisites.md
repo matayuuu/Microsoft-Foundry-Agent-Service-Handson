@@ -11,10 +11,7 @@ Azure 環境を実際に作るのは [Lab 1](../../labs/01-setup.md) です。
 - その resource group に対する **Owner** role
 - Azure に sign-in できる account
 
-**Subscription** は Azure の契約・課金の単位、**resource group（RG）** は
-その中のリソースをまとめる入れ物です。今回は管理者が準備した RG の中だけで作業します。
-**Owner** はその RG 内でリソースと必要なアクセス権を管理できる権限です。
-参加者が自分で権限を増やすことはしません。
+管理者から割り当てられた RG 内だけで作業します。参加者が自分で権限を増やすことはしません。
 
 ## 手元の PC と Codespace を区別する
 
@@ -27,7 +24,7 @@ Azure 環境を実際に作るのは [Lab 1](../../labs/01-setup.md) です。
 |---|---|
 | 手元の PC | ブラウザーで GitHub / Foundry を開く。Lab 4 などで必要なアップロード素材をダウンロードして保存する |
 | ブラウザーの Codespace | VS Code の Explorer で教材を開き、Terminal でコマンドを実行する。Lab 7 の Notebook もここで開く |
-| 別タブの Foundry Portal | Agent の設定、会話、評価、実行履歴の確認を行う。**Foundry (new)** の **English UI** を使う |
+| 別タブの Foundry Portal | **Foundry (new)** で Agent の設定、会話、評価、実行履歴の確認を行う |
 
 **本編の `bash` コマンドはすべて Codespace の Terminal で実行します。**
 PC の PowerShell / Terminal や Azure Cloud Shell と混ぜないでください。
@@ -39,11 +36,8 @@ PC の PowerShell / Terminal や Azure Cloud Shell と混ぜないでくださ�
 1. 講師が指定した GitHub repository と branch をブラウザーで開きます。
 2. ファイル一覧の上の **Code**、続けて **Codespaces** を選択します。
 
-![1: Code、2: Codespaces を選択する。画像の branch は撮影用の例](../images/lab00-codespaces-menu.png)
-
 3. 初回は **Create a codespace on …**（画像では右上の **＋**）を選択します。
    `…` が講師に指定された branch であることを確認してください。
-   画像の branch 名に変更する必要はありません。
 
 ![Codespaces パネル右上の ＋ が新しい Codespace の作成ボタン](../images/lab00-create-codespace.png)
 
@@ -57,50 +51,20 @@ PC の PowerShell / Terminal や Azure Cloud Shell と混ぜないでくださ�
 確かめて **Trust Folder & Continue**（フォルダーを信頼して続行）を選択します。
 無関係なフォルダーまでまとめて信頼する設定にはしません。
 
-### 2. 表示言語とテーマを教材に合わせる
-
-教材の画面は **English・ダークモード**です。すでに同じ表示なら変更は不要です。
-
-1. **Ctrl+Shift+P**（macOS は **Cmd+Shift+P**）で Command Palette を開きます。
-2. `Configure Display Language` と入力し、同名の項目を選択します。
-   日本語表示では「表示言語を構成する」と表示されます。
-
-![Command Palette に Configure Display Language を入力して選択する](../images/lab00-display-language-command.png)
-
-3. **English (en)** を選択します。`Current` は、すでに選択されているという意味です。
-   **Reload** の確認が表示された場合は選択し、VS Code が再表示されるまで待ちます。
-
-![表示言語の English を選択する。Current の場合は変更済み](../images/lab00-display-language-english.png)
-
-4. もう一度 Command Palette を開き、`Preferences: Color Theme` を選択します。
-5. **Dark Modern** を選択します。
-
-![Color Theme の一覧で Dark Modern を選択する](../images/lab00-dark-theme.png)
-
-Command Palette は VS Code の操作を探す欄です。Azure のコマンドを実行する
-**Terminal とは別の場所**なので、`az login` などはここへ入力しません。
-
-### 3. Explorer と Terminal を確認する
+### 2. Explorer と Terminal を確認する
 
 1. 左側のファイルのアイコンから **Explorer** を開きます。
    `README.md` と `labs`、`scripts`、`notebooks` のフォルダーがあることを確認します。
    ここが教材の **repository root**（最上位フォルダー）です。
 
-![Explorer の 1: labs、2: notebooks、3: scripts、4: README.md](../images/lab00-explorer.png)
-
 2. **Ctrl+Shift+P**（macOS は **Cmd+Shift+P**）で Command Palette を開き、
    `Terminal: Create New Terminal` と入力します。
 3. 名前に括弧や `Editor Area` が付かない、**Terminal: Create New Terminal** を選択します。
 
-![1: Terminal: Create New Terminal を入力し、2: 同名の項目を選択する](../images/lab00-new-terminal.png)
-
 4. 開いた画面下部の **Terminal** が、Lab のコマンドを貼り付ける場所です。
-   `README.md` や Notebook の編集欄にコマンドを貼り付けないでください。
-   特に指示がなければ、Terminal は repository root のまま使います。
+   特に指示がなければ repository root で実行します。Notebook は Lab 7 で開きます。
 
-Notebook は Explorer で `.ipynb` ファイルを開く形式です。
-必要なファイルと実行環境（kernel）の選択は Lab 7 で案内するため、
-今は実行しなくて構いません。
+教材の画像は英語・ダークモードです。表示設定は進行の必須条件ではなく、必要に応じて講師がフォローします。
 
 Portal にファイルをアップロードするときの選択画面は、**手元の PC** を参照します。
 Codespace のファイルが見えないのは正常です。Lab 4 の手順に従って Explorer から

@@ -39,13 +39,19 @@ the repository root `AGENTS.md` for full ownership boundaries.
     non-preview version for these resource types as of the 2026-08-21
     retrieval date recorded in `foundry_account.tf`).
 - **Model deployments are variable-driven, not guessed.** Three deployments
-  (`gpt-5.6-luna` = agents and Foundry IQ, `gpt-5.5` = LLM judges and Optimizer,
+  (`gpt-5.6-luna` = Prompt/Hosted Agents, `gpt-5.5` = Foundry IQ, LLM judges, and Optimizer,
   `embedding` = text-embedding-3-small) have overridable
   model-name/version/sku/capacity variables; deployment names are fixed.
   `primary_model_version` and `optimizer_model_version` intentionally have no
   defaults: `scripts/preflight.sh` must discover each version and quota `usageName`
   from the same required-SKU entry returned by `az cognitiveservices model list`.
-  Initial capacities are 40/20/40K TPM, checked against live regional headroom.
+  Default capacities are 40/100/40K TPM, checked against live regional headroom.
+  The shared GPT-5.5 allocation is 100 after throttling at 20 during a Portal
+  evaluation. This is GlobalStandard deployment throughput drawn from existing
+  quota, not a subscription quota increase or fixed token-spend commitment.
+  Consumption remains billable, and 100 does not guarantee zero HTTP 429 responses.
+  Capacity overrides still use the existing Terraform variables; the preflight
+  expectations must match any intentionally overridden allocation.
   The output keys `primary_model_deployment_name`, `optimizer_model_deployment_name`,
   and `embedding_model_deployment_name` remain unchanged; no extra deployment/output
   is needed for the shared uses.
@@ -104,8 +110,9 @@ value.
   navigate manually.
 - Exact Luna/GPT-5.5 versions are intentionally not hardcoded. Both must be
   resolved by `scripts/preflight.sh` against the live subscription/region.
-  Model catalog/quota checks do not prove Portal picker support; Luna knowledge
-  bases require a compatible current Search API.
+  Model catalog/quota checks do not prove Portal picker support. In the new Portal
+  checked on 2026-09-06, the knowledge-base Chat completions model picker offered
+  the deployed GPT-5.5 but not Luna, so query planning uses the optimizer deployment.
 - Renaming old `primary`/`optimizer` deployments can replace resources.
   Review the plan and update saved consumers; retain state and cleanup inputs
   until cleanup succeeds. Recovery uses the exact current deployment IDs.

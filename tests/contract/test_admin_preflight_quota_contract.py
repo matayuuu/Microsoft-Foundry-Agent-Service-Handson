@@ -11,7 +11,7 @@ report `limit`/`currentValue` in thousands of TPM).
 They assert the behavior this hardening pass requires:
 
 * `--participant-count` defaults to 1 and multiplies each model's
-  per-environment required capacity (gpt-5.6-luna 40K, gpt-5.5 20K,
+  per-environment required capacity (gpt-5.6-luna 40K, gpt-5.5 100K,
   text-embedding-3-small 40K) by the participant count to get the
   AGGREGATE requirement the whole event needs from a single region's quota
   pool -- not just one environment's worth.
@@ -206,12 +206,14 @@ MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
 ]
 
 
-def _usage_fixture_with_headroom(headroom_k: float) -> list[dict]:
-    # Same headroom on every bucket so a single participant-count sweep can
-    # cleanly cross from "sufficient for 1" to "insufficient for N".
+def _usage_fixture_with_headroom(
+    headroom_k: float, *, optimizer_headroom_k: float | None = None
+) -> list[dict]:
+    if optimizer_headroom_k is None:
+        optimizer_headroom_k = headroom_k
     return [
         _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
-        _usage_entry(GPT5_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
+        _usage_entry(GPT5_GLOBALSTANDARD_USAGE, limit=optimizer_headroom_k, current=0.0),
         _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
     ]
 
@@ -261,7 +263,7 @@ def _report(result: subprocess.CompletedProcess[str]) -> dict:
 def test_defaults_participant_count_to_one_and_reports_it(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    # Headroom of 40K is exactly sufficient for the primary model's 40K single-
+    # Headroom of 100K is exactly sufficient for the optimizer's 100K single-
     # environment requirement, but would fail for any count > 1.
     result = _run_admin_preflight(
         fake_az_bin,
@@ -270,13 +272,13 @@ def test_defaults_participant_count_to_one_and_reports_it(
         {
             "FAKE_MODELS_EASTUS2": _write_json(tmp_path, "models-e.json", FULL_MODELS_FIXTURE),
             "FAKE_USAGE_EASTUS2": _write_json(
-                tmp_path, "usage-e.json", _usage_fixture_with_headroom(40.0)
+                tmp_path, "usage-e.json", _usage_fixture_with_headroom(100.0)
             ),
             "FAKE_MODELS_SWEDENCENTRAL": _write_json(
                 tmp_path, "models-s.json", FULL_MODELS_FIXTURE
             ),
             "FAKE_USAGE_SWEDENCENTRAL": _write_json(
-                tmp_path, "usage-s.json", _usage_fixture_with_headroom(40.0)
+                tmp_path, "usage-s.json", _usage_fixture_with_headroom(100.0)
             ),
         },
     )
@@ -295,26 +297,27 @@ def test_defaults_participant_count_to_one_and_reports_it(
         "text-embedding-3-small",
     }
     assert len(model_checks) == 6  # Three deployments, each checked in two regions.
+    assert all(c["status"] == "pass" for c in model_checks)
     optimizer_check = next(
         c for c in model_checks if c["name"] == f"model-sku:{OPTIMIZER_MODEL}/eastus2"
     )
-    assert "20K * 1 participant(s) = 20K" in optimizer_check["detail"]
+    assert "100K * 1 participant(s) = 100K" in optimizer_check["detail"]
 
 
 def test_aggregate_capacity_scales_with_participant_count(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
     # Headroom of 90K covers 2 participants' worth of primary (2*40=80) but
-    # not 3 (3*40=120) -- proves the multiplication, not just a fixed
-    # single-environment comparison.
+    # not 3 (3*40=120). Optimizer headroom of 250K likewise covers 2*100,
+    # not 3*100 -- proves both requirements scale with participant count.
     env = {
         "FAKE_MODELS_EASTUS2": _write_json(tmp_path, "models-e.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_EASTUS2": _write_json(
-            tmp_path, "usage-e.json", _usage_fixture_with_headroom(90.0)
+            tmp_path, "usage-e.json", _usage_fixture_with_headroom(90.0, optimizer_headroom_k=250.0)
         ),
         "FAKE_MODELS_SWEDENCENTRAL": _write_json(tmp_path, "models-s.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_SWEDENCENTRAL": _write_json(
-            tmp_path, "usage-s.json", _usage_fixture_with_headroom(90.0)
+            tmp_path, "usage-s.json", _usage_fixture_with_headroom(90.0, optimizer_headroom_k=250.0)
         ),
     }
 
@@ -329,6 +332,11 @@ def test_aggregate_capacity_scales_with_participant_count(
     )
     assert gpt41_2["status"] == "pass"
     assert "40K * 2 participant(s) = 80K" in gpt41_2["detail"]
+    optimizer_2 = next(
+        c for c in report_2["checks"] if c["name"] == f"model-sku:{OPTIMIZER_MODEL}/eastus2"
+    )
+    assert optimizer_2["status"] == "pass"
+    assert "100K * 2 participant(s) = 200K" in optimizer_2["detail"]
 
     report_3 = _report(
         _run_admin_preflight(
@@ -342,6 +350,12 @@ def test_aggregate_capacity_scales_with_participant_count(
     assert gpt41_3["status"] == "warn"
     assert "40K * 3 participant(s) = 120K" in gpt41_3["detail"]
     assert "BELOW" in gpt41_3["detail"]
+    optimizer_3 = next(
+        c for c in report_3["checks"] if c["name"] == f"model-sku:{OPTIMIZER_MODEL}/eastus2"
+    )
+    assert optimizer_3["status"] == "warn"
+    assert "100K * 3 participant(s) = 300K" in optimizer_3["detail"]
+    assert "BELOW" in optimizer_3["detail"]
 
 
 def test_rejects_non_positive_participant_count_before_any_azure_call(
@@ -370,11 +384,11 @@ def test_markdown_report_shows_participant_count(fake_az_bin: Path, tmp_path: Pa
     env = {
         "FAKE_MODELS_EASTUS2": _write_json(tmp_path, "models-e.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_EASTUS2": _write_json(
-            tmp_path, "usage-e.json", _usage_fixture_with_headroom(200.0)
+            tmp_path, "usage-e.json", _usage_fixture_with_headroom(400.0)
         ),
         "FAKE_MODELS_SWEDENCENTRAL": _write_json(tmp_path, "models-s.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_SWEDENCENTRAL": _write_json(
-            tmp_path, "usage-s.json", _usage_fixture_with_headroom(200.0)
+            tmp_path, "usage-s.json", _usage_fixture_with_headroom(400.0)
         ),
     }
     result = _run_admin_preflight(

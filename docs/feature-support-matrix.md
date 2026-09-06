@@ -36,8 +36,8 @@ web Portal; do not interpret a missing Portal column as proof that the UI is una
 | Area | Requirement |
 |---|---|
 | Region | East US 2; Sweden Central is the first documented fallback |
-| Prompt/Hosted Agent and Foundry IQ query planning | Shared `gpt-5.6-luna` deployment; `primary_model_deployment_name` |
-| Configurable LLM judges / Agent Optimizer | Shared `gpt-5.5` deployment; `optimizer_model_deployment_name` |
+| Prompt/Hosted Agent | Shared `gpt-5.6-luna` deployment; `primary_model_deployment_name` |
+| Foundry IQ query planning / configurable LLM judges / Agent Optimizer | Shared `gpt-5.5` deployment; `optimizer_model_deployment_name` |
 | Embeddings | `text-embedding-3-small`, deployment `embedding` |
 | Search | Azure AI Search Basic or higher |
 | Identity | Participant is Owner on the existing RG; Foundry roles are assigned in that RG |
@@ -46,11 +46,13 @@ web Portal; do not interpret a missing Portal column as proof that the UI is una
 
 ## Important status notes
 
-- Model-role references were checked on **2026-09-06**. The core creates exactly three
+- Model roles were checked in the new Portal on **2026-09-06**. The core creates exactly three
   deployments; chat versions and same-SKU quota evidence are discovered by preflight,
-  not pinned or inferred from model names. Luna's Foundry IQ support also requires a
-  compatible current Portal Search API; verify the actual picker before the event.
-- GPT-5.5 is used for the rubric/configurable LLM judges and for both Optimizer model
+  not pinned or inferred from model names. The knowledge-base Chat completions model
+  picker offered the deployed GPT-5.5, not Luna, even with Medium retrieval effort.
+  The Agent picker offered Luna and agent inference succeeded. These are observations
+  of the checked Portal, not a universal claim about every Search API's model support.
+- GPT-5.5 is used for Foundry IQ query planning, the rubric/configurable LLM judges, and both Optimizer model
   selections. Service-managed evaluators such as Violence keep their own model.
 - Foundry Tool Catalog and Toolboxes are generally available, but individual tools can
   be preview.

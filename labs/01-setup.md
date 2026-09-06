@@ -84,48 +84,27 @@ curl -s "https://$(jq -r '.terraform_outputs.travel_api_fqdn.value' \
 
 1. Codespace は閉じず、別のタブで [Microsoft Foundry](https://ai.azure.com) を開きます。
 2. **Sign in** が表示された場合は、`az login` と同じ Azure account でサインインします。
-3. ホーム画面の右上にある歯車（**AI Foundry settings**）を開きます。
-   以下では英語表示のラベルを使います。日本語では「AI Foundry の設定」です。
+3. 画面上部に **New Foundry**（新しい Foundry）の切り替えがある場合はオンにします。
+   すでに新しい画面を開いている場合は、そのまま自分の project を確認します。
 
-![ホーム画面の 1: New Foundry 切り替え、2: 設定の歯車。まず 2 で表示を揃える](../docs/images/lab01-portal-header.png)
+![画面上部の New Foundry をオンにする](../docs/images/lab01-new-foundry-toggle.png)
 
-## 6. English・ダークモードに揃える
+## 6. 自分の project を選択する
 
-すでに同じ表示なら、この設定変更は不要です。
+1. **Select a project to continue**（プロジェクトを選択して続行）の選択欄を開きます。
+2. 手順 4 に表示された **account と project の組み合わせ**を選択します。
+   一覧の **resource** が自分の account 名と一致することを確認してください。
+3. **Let's go**（出発進行）を選択します。
+4. 初回の案内画面が表示されたら **Close**（閉じる）で閉じます。
 
-1. **Themes** で **Dark** のタイルを選択します。
-2. **Language** のドロップダウンを開きます。
-
-![設定パネルの 1: Dark、2: Language](../docs/images/lab01-language-settings.png)
-
-3. **English** を選択します。**Regional format** はそのままで構いません。
-
-![Language の一覧から English を選択する](../docs/images/lab01-language-english.png)
-
-4. 言語を変更した場合は **Apply**（適用）を選択します。
-   表示が変わらない場合は、ブラウザーを再読み込みしてください。
-
-![English の選択後に 2: 適用を押す。日本語の画面でも位置は同じ](../docs/images/lab01-language-apply.png)
-
-5. メニューが英語になり、背景が暗くなったことを確認して、設定パネルを閉じます。
-
-## 7. 自分の project を選択する
-
-1. ホーム画面の上部に **New Foundry** の切り替えがある場合はオンにします。
-2. Project の選択画面で、手順 4 に表示された **account と project の組み合わせ**を
-   選択します。同じ `contoso-travel` という名前の project が複数ある場合も、
-   他の参加者の account を選ばないでください。
-3. 自分の project の画面を開き、次の Lab で使う **Build > Agents** を確認します。
-
-選択するのは「自分の既存 project」です。この画面で新しい project やモデルを
-追加作成する必要はありません。見つからないときは、サインインした account、
-directory、setup の完了結果を確認してください。
+setup 済みの project を使います。見つからない場合は account、directory、
+setup の完了結果を確認してください。
 
 ## 完了チェック
 
 - `preflight.sh` が `pass`、Travel Ops API の応答が `ok` になった
 - `.workshop/context.json` が作られ、自分の account / project 名を確認できた
-- Foundry (new) で自分の project を開き、英語・ダークモードで操作できる
+- Foundry (new) で自分の project を開ける
 
 ## 次の Lab
 

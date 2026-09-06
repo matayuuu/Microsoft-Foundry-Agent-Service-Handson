@@ -12,7 +12,7 @@
 # the AGGREGATE headroom the whole event needs: each participant/team gets
 # their own resource group and therefore their own set of model
 # deployments, so N participants running concurrently need N times the
-# per-environment TPM capacity (gpt-5.6-luna 40K, gpt-5.5 20K, text-embedding-3-
+# per-environment TPM capacity (gpt-5.6-luna 40K, gpt-5.5 100K, text-embedding-3-
 # small 40K) in the SAME region/quota pool, not just enough for one
 # environment.
 #
@@ -170,7 +170,7 @@ declare -A REQUIRED_MODEL_SKU=(
 )
 declare -A REQUIRED_MODEL_CAPACITY_K=(
   ["gpt-5.6-luna"]="40"
-  ["gpt-5.5"]="20"
+  ["gpt-5.5"]="100"
   ["text-embedding-3-small"]="40"
 )
 

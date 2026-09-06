@@ -1,8 +1,8 @@
 # Model deployments on the Foundry AIServices account.
 #
 # Three variable-driven deployments (see variables.tf for the rationale):
-#   1. primary   -> gpt-5.6-luna             (Prompt/Hosted Agent + Foundry IQ)
-#   2. optimizer -> gpt-5.5                  (LLM judges + Agent Optimizer)
+#   1. primary   -> gpt-5.6-luna             (Prompt/Hosted Agent)
+#   2. optimizer -> gpt-5.5                  (Foundry IQ + LLM judges + Agent Optimizer)
 #   3. embedding -> text-embedding-3-small    (Azure AI Search / Foundry IQ vectors)
 #
 # scripts/preflight.sh must confirm the chosen name/version/sku/capacity are

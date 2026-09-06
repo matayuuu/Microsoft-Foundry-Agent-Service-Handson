@@ -42,8 +42,8 @@ API が返す費用内訳と合計を確認します。これは**学ぶ内容�
   で実行します。
 
 モデルは合計 **3 deployment**（モデルを呼び出すための配置単位）です。
-Prompt / Hosted Agent と Foundry IQ は **Luna（`gpt-5.6-luna`）** を共有し、
-評価の採点役と Optimizer は **`gpt-5.5`** を共有します。
+Prompt / Hosted Agent は **Luna（`gpt-5.6-luna`）** を共有し、
+Foundry IQ の検索計画・設定可能な評価の採点役・Optimizer は **`gpt-5.5`** を共有します。
 文書検索用の **`text-embedding-3-small`** は文章を検索用の数値に変換します。
 選択する名前と役割は [Lab 0](labs/00-overview.md) で確認します。
 

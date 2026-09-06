@@ -31,19 +31,49 @@ Never tell participants to proceed against a subscription with confirmed insuffi
 capacity — `terraform apply` will fail late, mid-workshop, with a much worse
 participant experience than catching it here first.
 
-Luna is shared by Prompt/Hosted Agents and Foundry IQ; GPT-5.5 is shared by
-configurable LLM judges and Optimizer. Check each deployment's own same-SKU
-`usageName` evidence, using initial capacities 40/20/40K TPM respectively.
+Luna is shared by Prompt/Hosted Agents; GPT-5.5 is shared by Foundry IQ query planning,
+configurable LLM judges, and Optimizer. Check each deployment's own same-SKU
+`usageName` evidence, using default capacities 40/100/40K TPM respectively.
 Do not infer a quota bucket from a model name or substitute an old model version.
+
+## HTTP 429 or Foundry IQ timeouts despite available subscription quota
+
+Subscription quota headroom and a deployment's allocated throughput are different.
+During a 2026-09-06 rehearsal, a seven-row Portal evaluation produced 36 HTTP 429
+responses between 01:37 and 01:42 UTC with the shared GPT-5.5 deployment at 20 capacity
+units. ARM reported `rateLimits` of 20 requests/60 seconds and 20,000 tokens/60 seconds;
+Foundry IQ retrieval also reached its 90-second timeout.
+
+The default `optimizer_model_capacity` is now **100**, shared by Foundry IQ query
+planning, configurable LLM judges, and Optimizer. Luna and embedding remain at 40.
+This allocates more deployment throughput within existing GlobalStandard model/SKU
+quota; it does not raise the subscription quota limit or purchase a fixed token-spend
+bill. Actual model consumption is still chargeable, and other Azure service charges
+remain. Higher throughput can permit more consumption.
+
+For an existing environment, review the Terraform plan and any explicit capacity
+override before applying: an old tfvars or `-var` override of 20 still wins over the
+new default. Confirm the resulting deployment capacity and actual `rateLimits`, then
+repeat a controlled evaluation after the previous run is terminal. 100 units does
+not mathematically guarantee zero 429s: request bursts, token volume, and service-side
+limits still matter. Reduce overlapping workloads and honor retry guidance if
+throttling persists; do not blindly resubmit a running chargeable evaluation.
 
 ## A model appears in the catalog but not in the Portal picker
 
 Catalog availability, quota, and feature/API support are separate checks. Confirm the
-selected project and deployment names in `.workshop/context.json`. Foundry IQ uses
-`primary_model_deployment_name` (`gpt-5.6-luna`), and the current Portal must use a
-[compatible Search API](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base).
-Evaluation and both Optimizer model selections use `optimizer_model_deployment_name`
-(`gpt-5.5`); service-managed evaluators do not expose a configurable judge.
+selected project and deployment names in `.workshop/context.json`. Prompt/Hosted
+Agents use `primary_model_deployment_name` (`gpt-5.6-luna`). Foundry IQ, configurable
+LLM evaluation judges, and both Optimizer model selections use
+`optimizer_model_deployment_name` (`gpt-5.5`); service-managed evaluators do not expose
+a configurable judge.
+
+In the new Portal checked on 2026-09-06, the knowledge-base Chat completions model
+picker offered the deployed GPT-5.5 but not Luna, even after choosing Medium. The Agent
+picker offered Luna and agent inference succeeded. Use GPT-5.5 for the knowledge base;
+do not change the Agent to match it. A model's availability through a
+[Search API](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
+does not guarantee that the current Portal exposes it.
 If the required picker/API is unavailable, stop and record the blocker rather than
 adding another deployment or silently switching models.
 

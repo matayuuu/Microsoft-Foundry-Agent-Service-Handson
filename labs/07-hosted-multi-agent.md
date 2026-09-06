@@ -6,10 +6,7 @@ Microsoft Agent Framework のエージェントを Notebook 上で作り、seque
 として接続します。実物のグラフと各 agent の途中回答を確認し、入力を変えてテストした後、
 同じ構成の source を Hosted Agent として Microsoft Foundry に deploy します。
 
-この Lab は、Lab 2〜6 の Prompt Agent を作り直す演習ではありません。
-「規程を確認する担当」「案を作る担当」「内容を見直す担当」をコードで順番につなぐ、
-別のアシスタントを作ります。自分で書いたコードを Foundry 上で動かすのが
-**Hosted Agent** です。
+Lab 2〜6 とは別のアシスタントを、規程確認・計画・レビューの 3 担当で構成します。
 
 ```text
 policy_agent -> planner_agent -> reviewer_agent
@@ -33,25 +30,24 @@ instructions で指示し、Notebook 上で回答に含まれているか確認�
 1. VS Code Explorer で
    [`notebooks/07-hosted-agent.ipynb`](../notebooks/07-hosted-agent.ipynb)
    を開きます。
-2. 右上の kernel picker で **Python (Foundry Hosted Agent)** を選択します。
-3. 説明を読み、上から 1 cell ずつ実行します。
 
-**Kernel** は Notebook のコードを実行する Python 環境です。
-この Lab では `Python (Foundry Workshop)` ではなく、
-**Python (Foundry Hosted Agent)** を選びます。
-各コード cell の左側の実行ボタン、または **Shift+Enter** で実行し、
-処理中の表示が消えて出力が現れてから次へ進みます。エラーの cell を飛ばして進めません。
+2. Notebook の本文と toolbar が表示されるまで待ち、右上の **Select Kernel** を選択します。
+   すでに kernel 名が出ている場合は、その選択欄を開きます。
+3. kernel の種類を選ぶ画面では **Jupyter Kernel...** を選択します。
+4. **Python (Foundry Hosted Agent)** を選びます。
+   パスが `src/hosted-agent/.venv/bin/python` であることも確認してください。
+   **Recommended** と表示されても、root の **Python (Foundry Workshop)** は選びません。
+
+![Hosted Agent 用の名前と src/hosted-agent 内の Python を確認する](../docs/images/lab07-hosted-kernel.png)
+
+5. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばして進めません。
 
 Notebook は次の順に進みます。agent 作成と workflow 構築だけでは推論は始まりません。
 
-1. `.workshop/context.json` から endpoint と model を取得
-2. `chat_client.as_agent()` で 3 agent を作り、それぞれの instructions を読む
-3. `SequentialBuilder` に 3 agent を実行順に並べる
-4. `WorkflowViz` とローカルの Graphviz で、構築した workflow を Notebook 内に描画
-5. 開始イベント・policy / planner の途中回答・reviewer の最終回答を分けて表示
-6. 入力不足と海外 business のケースで、期待する振る舞いと回答を比較
-7. Azure を呼ばない contract test で順序・会話の引き継ぎ・source との一致を確認
-8. Notebook の cell と `workflow.py` / `main.py` の対応を確認して deploy へ進む
+1. `chat_client.as_agent()` で 3 agent を作り、instructions を確認
+2. `SequentialBuilder` で接続し、`WorkflowViz` と Graphviz で構造を可視化
+3. 途中回答を観察し、標準・入力不足・海外 business の依頼を比較
+4. Contract test と `workflow.py` / `main.py` との対応を確認
 
 以前作った Codespace に Graphviz がない場合は、Terminal で次を実行し、
 可視化 cell を再実行します。グラフは外部サービスへ送信しません。
@@ -115,20 +111,25 @@ Docker、ACR、追加の sign-in は不要です。
 2. `contoso-travel-hosted-planner` を選択します。
 3. **Details** を開き、**Status** が **Running**、
    **Responses protocol** が **Active** であることを確認します。
-4. **Playground** に戻り、次を送ります。
+   再デプロイした場合は、Version の選択欄が最新のデプロイ結果と一致することも確認します。
+
+![Details で Running と Responses protocol の Active を確認する](../docs/images/lab07-hosted-status.png)
+
+4. **Playground** に戻り、次を入力します。前の会話が残っていれば **New chat** を選びます。
 
 ```text
 2026年9月10日から11日まで、東京から大阪へ1名で社内レビューに行きます。
 座席クラスは economy です。規程確認と概算を作ってください。
 ```
 
+5. **Send** を押し、応答が最後まで返るのを待ちます。
+
 ## 完了チェック
 
 - 応答が最後まで返る
-- 最終回答が reviewer によって整理されている
+- 規程確認・概算・次のアクションが整理され、金額が Notebook の簡略規程に沿っている
+- 航空券が「要見積もり」で、小計に含まれていない
 - 実際の予約・承認ではないことが明記される
-
-![Hosted Agent の Playground](../docs/images/lab07-hosted-agent-playground.png)
 
 初回は Hosted Agent の起動に時間がかかります。**Log stream** が動いている間は再送しません。
 

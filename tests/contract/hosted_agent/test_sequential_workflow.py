@@ -67,6 +67,25 @@ def test_final_reviewer_is_instructed_to_include_simulation_notice() -> None:
     assert SIMULATION_NOTICE in REVIEWER_RESPONSE
 
 
+def test_reviewer_final_sentence_instruction_points_only_to_the_notice() -> None:
+    final_instruction = REVIEWER_AGENT_INSTRUCTIONS.rsplit("\n\n", 1)[-1]
+    assert final_instruction == (
+        f"回答の末尾には、以下の固定文をそのまま一度だけ付けてください。\n{SIMULATION_NOTICE}"
+    )
+    assert REVIEWER_AGENT_INSTRUCTIONS.count(SIMULATION_NOTICE) == 1
+
+
+def test_every_agent_receives_the_same_authoritative_workshop_policy() -> None:
+    from workflow import PLANNER_AGENT_INSTRUCTIONS, POLICY_AGENT_INSTRUCTIONS, WORKSHOP_POLICY
+
+    for instructions in (
+        POLICY_AGENT_INSTRUCTIONS,
+        PLANNER_AGENT_INSTRUCTIONS,
+        REVIEWER_AGENT_INSTRUCTIONS,
+    ):
+        assert instructions.count(WORKSHOP_POLICY) == 1
+
+
 def test_workflow_as_agent_streams_only_the_final_review(
     chat_client: ScriptedChatClient,
 ) -> None:

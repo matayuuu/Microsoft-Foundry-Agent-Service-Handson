@@ -407,11 +407,11 @@ if [[ -z "${RESOLVED_LOCATION}" || "${RESOLVED_LOCATION}" == "null" ]]; then
   exit 2
 fi
 if [[ -z "${OPTIMIZER_MODEL_VERSION}" || "${OPTIMIZER_MODEL_VERSION}" == "null" ]]; then
-  echo "${SCRIPT_NAME}: preflight could not discover an available optimizer/evaluation (gpt-5.5) model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
+  echo "${SCRIPT_NAME}: preflight could not discover an available optimizer/query/evaluation (gpt-5.5) model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
   exit 2
 fi
 if [[ -z "${PRIMARY_MODEL_VERSION}" || "${PRIMARY_MODEL_VERSION}" == "null" ]]; then
-  echo "${SCRIPT_NAME}: preflight could not discover an available primary/query (gpt-5.6-luna) model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
+  echo "${SCRIPT_NAME}: preflight could not discover an available primary agent (gpt-5.6-luna) model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
   exit 2
 fi
 if [[ -z "${EMBEDDING_MODEL_VERSION}" || "${EMBEDDING_MODEL_VERSION}" == "null" ]]; then

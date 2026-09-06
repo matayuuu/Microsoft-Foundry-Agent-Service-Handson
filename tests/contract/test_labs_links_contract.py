@@ -224,14 +224,14 @@ def test_portal_labs_use_setup_prepared_evaluation_assets() -> None:
     assert "Contoso Travel Rubric" in optimization
 
 
-def test_core_labs_share_luna_for_retrieval_and_gpt55_for_evaluation() -> None:
+def test_core_labs_use_gpt55_for_iq_planning_evaluation_and_optimization() -> None:
     retrieval = (LABS_DIR / "03-rag-foundry-iq.md").read_text(encoding="utf-8")
     evaluation = (LABS_DIR / "05-evaluation.md").read_text(encoding="utf-8")
     optimization = (LABS_DIR / "06-optimization.md").read_text(encoding="utf-8")
 
-    assert "knowledge_model: .primary_model_deployment_name.value" in retrieval
-    assert "optimizer_model_deployment_name" not in retrieval
-    assert "gpt-5.6-luna" in retrieval
+    assert "knowledge_model: .optimizer_model_deployment_name.value" in retrieval
+    assert "knowledge_model: .primary_model_deployment_name.value" not in retrieval
+    assert "gpt-5.5" in retrieval
     assert "gpt-5.5" in evaluation
     assert "evaluation_model: .optimizer_model_deployment_name.value" in optimization
     assert "optimization_model: .optimizer_model_deployment_name.value" in optimization
@@ -257,6 +257,79 @@ def test_toolbox_lab_uses_portal_for_openapi_and_skills() -> None:
     ):
         assert step in lab
     assert "Notebook は本編では使いません" in lab
+
+
+def test_beginner_path_handles_observed_portal_defaults() -> None:
+    prompt = (LABS_DIR / "02-prompt-agent.md").read_text(encoding="utf-8")
+    toolbox = (LABS_DIR / "04-tools-toolbox.md").read_text(encoding="utf-8")
+    optimization = (LABS_DIR / "06-optimization.md").read_text(encoding="utf-8")
+    hosted = (LABS_DIR / "07-hosted-multi-agent.md").read_text(encoding="utf-8")
+
+    assert "Web search" in prompt and "Remove" in prompt
+    for default_tool in ("web_search", "code_interpreter", "FoundryMCPServerpreview"):
+        assert default_tool in toolbox
+    assert "Select dataset and criteria" in optimization
+    assert "Generate data" in optimization
+    assert "Jupyter Kernel..." in hosted
+    assert "src/hosted-agent/.venv/bin/python" in hosted
+    assert "Recommended" in hosted
+
+
+def test_hosted_notebook_keeps_practical_notices_without_preview_disclaimer() -> None:
+    notebook = json.loads(
+        (REPO_ROOT / "notebooks" / "07-hosted-agent.ipynb").read_text(encoding="utf-8")
+    )
+    introduction = "".join(notebook["cells"][0]["source"])
+
+    assert "プレビューの制約" not in introduction
+    assert "架空のデータだけ" in introduction
+    assert "モデル利用料金" in introduction
+    assert "別途の実行料金" in introduction
+    assert "Run All ではデプロイしません" in introduction
+
+
+def test_overview_and_setup_omit_instructor_led_basics() -> None:
+    overview = (LABS_DIR / "00-overview.md").read_text(encoding="utf-8")
+    setup = (LABS_DIR / "01-setup.md").read_text(encoding="utf-8")
+    for heading in ("最初に知っておく言葉", "操作面の使い分け", "モデルと自分の環境の値"):
+        assert heading not in overview
+    assert "新しい画面を English・ダークモードに揃える" not in setup
+    project_selection = setup.split("## 6.", 1)[1].split("## 完了チェック", 1)[0]
+    assert "![" not in project_selection
+
+
+def test_prompt_creation_uses_one_entry_image_and_one_final_save() -> None:
+    prompt = (LABS_DIR / "02-prompt-agent.md").read_text(encoding="utf-8")
+    creation = prompt.split("## 1.", 1)[1].split("## 2.", 1)[0]
+    assert creation.count("![") == 1
+    assert "lab02-agent-list.png" in creation
+    assert prompt.count("**Save**") == 1
+    assert "まとめて保存" in prompt
+    assert "囲みのバッククォート" not in prompt
+
+
+def test_core_labs_do_not_show_answer_screenshots_or_numbered_image_captions() -> None:
+    excluded_images = {
+        "lab03-direct-answer.png",
+        "lab03-direct-comparison.png",
+        "lab03-iq-answer.png",
+        "lab03-iq-sources.png",
+        "lab04-estimate-result.png",
+        "lab04-estimate-output.png",
+        "lab05-evaluation-results.png",
+        "lab05-read-reason.png",
+        "lab06-optimizer-results.png",
+        "lab06-view-changes.png",
+        "lab06-rubric-reason.png",
+        "lab07-hosted-agent-playground.png",
+        "lab08-reviewer-output.png",
+    }
+    for source in OWNED_FILES:
+        if source.parent != LABS_DIR:
+            continue
+        text = source.read_text(encoding="utf-8")
+        assert not re.search(r"!\[[^\]]*\d+[:\uff1a]", text)
+        assert all(image not in text for image in excluded_images)
 
 
 # ---------------------------------------------------------------------------

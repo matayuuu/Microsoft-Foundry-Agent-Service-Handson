@@ -37,12 +37,11 @@ Run:
 ./scripts/destroy.sh
 ```
 
-Before running it, detach the Lab 4 Toolbox from the Prompt Agent, delete
-`contoso-travel-toolbox`, then delete the unreferenced `travel-estimation` and
-`preapproval-simulation` Skills in the Portal. The existing cleanup script does not
-automate those Portal-created objects; if the delete UI is unavailable, have the
-instructor confirm their SDK deletion first. Do not delete Skills used by another
-Toolbox. See [Lab 8](../labs/08-observability-cleanup.md).
+Review the target resources and approve deletion. This removes the workshop's
+Foundry project / account along with the other Terraform-managed resources, but
+preserves the resource group. See [Lab 8](../labs/08-observability-cleanup.md).
+If deletion fails because of Toolbox or Skill references, follow
+[participant cleanup troubleshooting](participant/troubleshooting.md#cleanup).
 
 The script must:
 
@@ -50,7 +49,7 @@ The script must:
    `.workshop/terraform-inputs.json` recovery file when setup stopped early, and
    confirm the selected subscription and RG.
 2. Delete the workshop Hosted Agent and its versions through the Foundry SDK.
-3. Delete SDK-managed Toolbox objects when the API supports deterministic deletion.
+3. Run optional data-plane cleanup helpers when present; report missing helpers.
 4. Run `terraform destroy` against the existing state.
 5. Verify no tagged workshop resources remain in the RG.
 6. Preserve the RG itself.
