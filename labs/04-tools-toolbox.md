@@ -61,7 +61,7 @@ Contoso Travel Ops API and reusable skills for estimates and preapproval simulat
 `web_search`、`code_interpreter`、`FoundryMCPServerpreview` がある場合、それぞれの
 右端の **Actions** から **Remove** を選択してください。
 
-![この演習では使わない初期 tool の Actions を開く](../docs/images/lab04-default-tools.png)
+![自動追加されている場合は、この3つの tool を外す](../docs/images/lab04-default-tools.png)
 
 これらが最初から入っていなければ削除操作は不要です。
 この演習では **Guardrail** は既定のままにします。組織で必須の設定がある場合は従い、
