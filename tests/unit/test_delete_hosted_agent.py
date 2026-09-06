@@ -14,10 +14,12 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from unittest.mock import MagicMock, Mock
 
+import httpx
 import pytest
-from azure.core.exceptions import ResourceNotFoundError
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError, ServiceRequestError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEPLOY_MODULE_PATH = REPO_ROOT / "scripts" / "deploy_hosted_agent.py"
@@ -234,3 +236,123 @@ def test_main_missing_context_file_is_idempotent_success(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["action"] == "not_found"
+
+
+@pytest.mark.parametrize(
+    ("status", "payload", "expected"),
+    [
+        (200, {"name": "aif-fixture"}, False),
+        (404, {"error": {"code": "ResourceNotFound"}}, True),
+        (404, {"error": {"code": "ResourceGroupNotFound"}}, True),
+    ],
+)
+def test_account_absence_requires_an_authoritative_arm_response(
+    status: int, payload: dict, expected: bool
+) -> None:
+    context = {"terraform_outputs": {"ai_services_account_name": {"value": "aif-fixture"}}}
+    credential = Mock()
+    credential.get_token.return_value = SimpleNamespace(token="fixture-token")
+    request = Mock(
+        return_value=httpx.Response(
+            status, json=payload, request=httpx.Request("GET", "https://management.azure.com")
+        )
+    )
+
+    assert (
+        delete_hosted_agent.account_is_absent(
+            context,
+            subscription_id="sub-id",
+            resource_group_name="rg-fixture",
+            credential=credential,
+            request=request,
+        )
+        is expected
+    )
+    url = request.call_args.args[0]
+    assert "/subscriptions/sub-id/resourceGroups/rg-fixture/" in url
+    assert "/Microsoft.CognitiveServices/accounts/aif-fixture?" in url
+    assert request.call_args.kwargs["timeout"] == 30.0
+
+
+@pytest.mark.parametrize("status", [401, 403, 404, 500])
+def test_arm_errors_do_not_imply_account_absence(status: int) -> None:
+    context = {"terraform_outputs": {"ai_services_account_name": {"value": "aif-fixture"}}}
+    credential = Mock()
+    credential.get_token.return_value = SimpleNamespace(token="fixture-token")
+    request = Mock(
+        return_value=httpx.Response(
+            status,
+            json={"error": {"code": "UnknownError"}},
+            request=httpx.Request("GET", "https://management.azure.com"),
+        )
+    )
+
+    with pytest.raises(delete_hosted_agent.WorkshopContextError, match="could not confirm"):
+        delete_hosted_agent.account_is_absent(
+            context,
+            subscription_id="sub-id",
+            resource_group_name="rg-fixture",
+            credential=credential,
+            request=request,
+        )
+
+
+@pytest.mark.parametrize(
+    ("network_error", "account_absent", "expected_exit"),
+    [(True, True, 0), (True, False, 1), (False, True, 1)],
+)
+def test_main_never_treats_dns_or_auth_failure_alone_as_success(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    network_error: bool,
+    account_absent: bool,
+    expected_exit: int,
+) -> None:
+    context_file = tmp_path / "context.json"
+    context_file.write_text(
+        json.dumps(
+            {
+                "subscription_id": "sub-id",
+                "resource_group_name": "rg-fixture",
+                "terraform_outputs": {
+                    "foundry_project_endpoint": {"value": "https://aif-fixture.example/project"}
+                },
+            }
+        )
+    )
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.agents.get.side_effect = (
+        ServiceRequestError("DNS lookup failed")
+        if network_error
+        else HttpResponseError("Forbidden", status_code=403)
+    )
+    probe = Mock(return_value=account_absent)
+    monkeypatch.setattr(delete_hosted_agent, "AIProjectClient", Mock(return_value=client))
+    monkeypatch.setattr(delete_hosted_agent, "build_credential", Mock(return_value=Mock()))
+    monkeypatch.setattr(delete_hosted_agent, "account_is_absent", probe)
+
+    result = delete_hosted_agent.main(
+        [
+            "--subscription",
+            "sub-id",
+            "--resource-group",
+            "rg-fixture",
+            "--context",
+            str(context_file),
+            "--output",
+            "json",
+        ]
+    )
+
+    assert result == expected_exit
+    if network_error:
+        probe.assert_called_once()
+    else:
+        probe.assert_not_called()
+    if expected_exit == 0:
+        assert json.loads(capsys.readouterr().out)["action"] == "not_found"
+    else:
+        assert context_file.exists()
+        assert capsys.readouterr().err

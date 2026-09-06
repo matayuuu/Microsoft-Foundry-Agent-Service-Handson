@@ -220,11 +220,8 @@ for script_name in "${OPTIONAL_CLEANUP_SCRIPTS[@]}"; do
     fi
     "${PYTHON_BIN}" "${script_path}" --subscription "${SUBSCRIPTION_ID}" --resource-group "${RESOURCE_GROUP_NAME}"
   else
-    echo "    SKIPPED: ${script_name} does not exist in scripts/ yet (owned by another workstream)." \
-         " If Hosted Agent versions or similar SDK-managed objects were created during this workshop," \
-         " they must be deleted manually via the Foundry portal/SDK before -- or independently of --" \
-         " terraform destroy, otherwise 'terraform destroy' may fail to remove the parent Foundry" \
-         " account/project while they still reference it." >&2
+    echo "    SKIPPED: optional helper ${script_name} is not available; continuing with the remaining cleanup steps." >&2
+    echo "    If Azure reports an object-reference error, see docs/participant/troubleshooting.md#cleanup." >&2
   fi
 done
 
@@ -299,7 +296,8 @@ verify_no_remnants() {
 }
 
 VERIFY_STATUS=0
-verify_no_remnants || VERIFY_STATUS=$?
+# ARM's resource list can briefly lag behind successful deletion.
+retry 6 10 verify_no_remnants || VERIFY_STATUS=$?
 if [[ ${VERIFY_STATUS} -ne 0 ]]; then
   exit "${VERIFY_STATUS}"
 fi

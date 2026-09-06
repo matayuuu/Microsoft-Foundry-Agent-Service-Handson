@@ -24,7 +24,10 @@ Idempotency: if the agent does not exist, this exits 0 and reports
 ``action: "not_found"`` -- a second/duplicate ``destroy.sh`` run (or a
 workshop environment that never got as far as Lab 7) must not fail. Any other
 error (auth, network, permission) is a real failure and is surfaced with a
-non-zero exit and a message on stderr, never silently swallowed.
+non-zero exit and a message on stderr, never silently swallowed. If the project
+endpoint is unreachable after its account was deleted, account absence must
+first be confirmed through Azure Resource Manager; a DNS failure alone is not
+evidence of successful cleanup.
 
 Design, mirroring scripts/deploy_hosted_agent.py: the delete
 orchestration (list versions, delete each, then delete the agent) is a single
@@ -42,24 +45,70 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import quote
 
 # Make the sibling `lib` package (and deploy_hosted_agent.py's shared
 # constant) importable regardless of current working directory (scripts/ is
 # intentionally not an installed Python package).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import httpx
 from azure.ai.projects import AIProjectClient
-from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
-from deploy_hosted_agent import DEFAULT_HOSTED_AGENT_NAME
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError, ServiceRequestError
+from deploy_hosted_agent import ARM_TOKEN_SCOPE, DEFAULT_HOSTED_AGENT_NAME
 from lib.workshop_context import (
     DEFAULT_CONTEXT_PATH,
     WorkshopContextError,
     build_credential,
     load_context,
     project_endpoint,
+    terraform_output,
 )
+
+ACCOUNT_API_VERSION = "2026-05-01"
+
+
+def account_is_absent(
+    context: dict[str, Any],
+    *,
+    subscription_id: str,
+    resource_group_name: str,
+    credential: Any,
+    request: Callable[..., httpx.Response] = httpx.get,
+) -> bool:
+    """Confirm account absence independently of its data-plane DNS endpoint."""
+    name = terraform_output(context, "ai_services_account_name")
+    url = (
+        "https://management.azure.com/subscriptions/"
+        f"{quote(subscription_id, safe='')}/resourceGroups/{quote(resource_group_name, safe='')}"
+        f"/providers/Microsoft.CognitiveServices/accounts/{quote(name, safe='')}"
+        f"?api-version={ACCOUNT_API_VERSION}"
+    )
+    token = credential.get_token(ARM_TOKEN_SCOPE)
+    try:
+        response = request(url, headers={"Authorization": f"Bearer {token.token}"}, timeout=30.0)
+        if response.status_code == 200:
+            return False
+        if response.status_code == 404:
+            payload = response.json()
+            error = payload.get("error", {}) if isinstance(payload, dict) else {}
+            if isinstance(error, dict) and error.get("code") in {
+                "ResourceNotFound",
+                "ResourceGroupNotFound",
+            }:
+                return True
+        response.raise_for_status()
+    except (httpx.HTTPError, ValueError) as exc:
+        raise WorkshopContextError(
+            "could not confirm Foundry account absence through Azure Resource Manager; "
+            "leaving cleanup incomplete."
+        ) from exc
+    raise WorkshopContextError(
+        f"unexpected ARM account response ({response.status_code}); leaving cleanup incomplete."
+    )
 
 
 class _AgentsClientLike(Protocol):
@@ -231,6 +280,31 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with AIProjectClient(endpoint=endpoint, credential=credential) as client:
             result = delete_agent_and_versions(client.agents, args.agent_name)
+    except ServiceRequestError as exc:
+        try:
+            absent = account_is_absent(
+                context,
+                subscription_id=args.subscription,
+                resource_group_name=args.resource_group,
+                credential=credential,
+            )
+        except (WorkshopContextError, HttpResponseError, ServiceRequestError) as check_error:
+            print(f"delete_hosted_agent.py: {check_error}", file=sys.stderr)
+            return 1
+        if not absent:
+            print(
+                f"delete_hosted_agent.py: Foundry account exists but its endpoint is "
+                f"unreachable: {exc}",
+                file=sys.stderr,
+            )
+            return 1
+        result = {
+            "agent_name": args.agent_name,
+            "action": "not_found",
+            "deleted_versions": [],
+            "agent_deleted": False,
+            "note": "Foundry account absence confirmed through Azure Resource Manager.",
+        }
     except HttpResponseError as exc:
         print(f"delete_hosted_agent.py: Foundry API error deleting agent: {exc}", file=sys.stderr)
         return 1

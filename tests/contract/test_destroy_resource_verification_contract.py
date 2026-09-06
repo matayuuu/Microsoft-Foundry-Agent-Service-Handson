@@ -73,11 +73,19 @@ SUBSCRIPTION_ID = "33333333-3333-3333-3333-333333333333"
 FAKE_TOOLS_PREAMBLE = r"""
 az() {
   if [[ "$1 $2" == "resource list" ]]; then
+    local count
+    count="$(cat "${REPO_ROOT}/resource-list-calls")"
+    count=$((count + 1))
+    printf '%s\n' "${count}" > "${REPO_ROOT}/resource-list-calls"
     case "${FAKE_AZ_RESOURCE_LIST_MODE:-empty}" in
       empty)
         echo "[]"
         ;;
-      remnants)
+      remnants|eventually-empty)
+        if [[ "${FAKE_AZ_RESOURCE_LIST_MODE}" == "eventually-empty" && ${count} -gt 1 ]]; then
+          echo "[]"
+          return 0
+        fi
         cat <<'JSON'
 [
   {
@@ -88,7 +96,11 @@ az() {
 ]
 JSON
         ;;
-      call-fails)
+      call-fails|transient-error)
+        if [[ "${FAKE_AZ_RESOURCE_LIST_MODE}" == "transient-error" && ${count} -gt 1 ]]; then
+          echo "[]"
+          return 0
+        fi
         echo "fake-az: simulated transient failure" >&2
         return 1
         ;;
@@ -101,6 +113,10 @@ JSON
   fi
   echo "fake-az: unexpected/unhandled invocation, refusing to silently succeed: az $*" >&2
   return 1
+}
+
+sleep() {
+  printf '%s\n' "$1" >> "${REPO_ROOT}/verification-sleeps"
 }
 
 terraform() {
@@ -167,6 +183,7 @@ def fixture_repo(tmp_path: Path) -> Path:
         json.dumps(recovery_context), encoding="utf-8"
     )
     (workshop_dir / ".env").write_text("FOO=bar\n", encoding="utf-8")
+    (repo_root / "resource-list-calls").write_text("0\n", encoding="utf-8")
 
     return repo_root
 
@@ -209,6 +226,8 @@ def test_remaining_resources_fail_and_preserve_all_local_state(fixture_repo: Pat
     assert (workshop_dir / "terraform-inputs.json").exists()
     assert (infra_dir / "terraform.tfstate").exists()
     assert (infra_dir / "terraform.tfstate.backup").exists()
+    assert (fixture_repo / "resource-list-calls").read_text().strip() == "6"
+    assert (fixture_repo / "verification-sleeps").read_text().splitlines() == ["10"] * 5
 
 
 def test_resource_list_call_failure_fails_safe_and_preserves_all_local_state(
@@ -224,6 +243,21 @@ def test_resource_list_call_failure_fails_safe_and_preserves_all_local_state(
     assert (workshop_dir / "terraform-inputs.json").exists()
     assert (infra_dir / "terraform.tfstate").exists()
     assert (infra_dir / "terraform.tfstate.backup").exists()
+    assert (fixture_repo / "resource-list-calls").read_text().strip() == "6"
+
+
+@pytest.mark.parametrize("mode", ["eventually-empty", "transient-error"])
+def test_verification_retries_until_a_confirmed_empty_listing(
+    fixture_repo: Path, mode: str
+) -> None:
+    result = _run_destroy(fixture_repo, mode)
+
+    assert result.returncode == 0, result.stderr
+    assert (fixture_repo / "resource-list-calls").read_text().strip() == "2"
+    assert (fixture_repo / "verification-sleeps").read_text().splitlines() == ["10"]
+    assert not (fixture_repo / ".workshop" / "context.json").exists()
+    assert not (fixture_repo / "infra" / "terraform.tfstate").exists()
+    assert not (fixture_repo / "infra" / "terraform.tfstate.backup").exists()
 
 
 def test_recovery_inputs_destroy_partial_setup_without_complete_context(

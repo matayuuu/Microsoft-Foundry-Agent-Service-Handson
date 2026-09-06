@@ -263,6 +263,8 @@ deploy command の出力を講師へ渡してください。
 ```
 
 Terraform state と `.workshop/` は cleanup 完了の確認に必要です。手動で削除しないでください。
+削除直後の一覧反映には時間差があるため、スクリプトは残存確認を有限回繰り返します。
+途中で失敗して context が残っていれば、Foundry account の削除後でも同じ command で再開できます。
 
 ### Toolbox / Skill の参照が原因で削除できない
 
