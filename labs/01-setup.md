@@ -35,7 +35,7 @@ az account show --query "{subscriptionId:id, user:user.name}" -o table
 ```
 
 `overall_status` が `pass` なら次へ進みます。`fail` の場合は setup を実行せず、
-[トラブルシューティング](../docs/participant/troubleshooting.md#preflight--setup)を確認してください。
+[トラブルシューティング](../docs/participant/troubleshooting.md#事前確認とセットアップ)を確認してください。
 
 ## 3. 環境を構築する
 

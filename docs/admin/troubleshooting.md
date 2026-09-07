@@ -5,8 +5,6 @@
 参加者が `scripts/setup.sh` の実行中にこれらの問題に遭遇した場合、参加者自身では解決できません。
 管理者によるサブスクリプション全体への操作、または Azure サポートへの問い合わせが必要です。
 
-<a id="admin-preflightsh-reports-a-resource-provider-as-notregistered"></a>
-
 ## リソースプロバイダーが `NotRegistered` と表示される
 
 `./scripts/admin-preflight.sh --subscription "<id>" --apply` を実行して登録します。
@@ -15,8 +13,6 @@
 
 サブスクリプション全体に **Contributor** または同等の権限を持つアカウントを使ってください。
 リソースグループ（RG）だけの **Owner** ロールでは、プロバイダーを登録できません。
-
-<a id="admin-preflightsh-reports-insufficient-model-quotacapacity"></a>
 
 ## モデルのクォータ・容量が不足している
 
@@ -35,8 +31,6 @@ Luna は Prompt / Hosted Agent、GPT-5.5 は Foundry IQ のクエリ計画・設
 Optimizer で共有します。Luna / GPT-5.5 / 埋め込みの既定の必要容量は、それぞれ **40 / 100 / 40K TPM** です。
 各デプロイの同じ SKU に対応する `usageName` を根拠に確認してください。
 モデル名からクォータの区分を推測したり、古いモデルバージョンに置き換えたりしないでください。
-
-<a id="http-429-or-foundry-iq-timeouts-despite-available-subscription-quota"></a>
 
 ## クォータに余裕があるのに HTTP 429 や Foundry IQ のタイムアウトが発生する
 
@@ -63,8 +57,6 @@ Foundry IQ のクエリ計画・設定可能な LLM 評価用モデル・Optimiz
 スロットリングが続く場合は同時実行を減らし、再試行の案内に従ってください。
 **課金対象の評価が実行中のまま、むやみに再実行しないでください。**
 
-<a id="a-model-appears-in-the-catalog-but-not-in-the-portal-picker"></a>
-
 ## カタログにあるモデルが Portal の選択欄に表示されない
 
 カタログでの利用可否、クォータ、機能・API の対応状況は別々に確認する必要があります。
@@ -87,8 +79,6 @@ GPT-5.5 は表示されましたが、Luna は検索の労力を **Medium** に�
 必要な選択欄や API が利用できない場合は作業を止め、阻害要因を記録してください。
 別のデプロイを追加したり、無断でモデルを切り替えたりしないでください。
 
-<a id="updating-an-environment-with-old-deployment-names"></a>
-
 ## 古いデプロイ名の環境を更新する
 
 `primary` / `optimizer` を `gpt-5.6-luna` / `gpt-5.5` に変更すると、
@@ -98,8 +88,6 @@ Terraform の実行計画を確認し、変更後は保存済みのエージェ�
 状態の復旧では、現在のデプロイ ID と完全に一致するものだけをインポートします。
 不一致を回避するために状態ファイルを削除しないでください。
 クリーンアップが成功するまで元の入力値と状態ファイルを保持し、**既存のリソースグループは削除しないでください。**
-
-<a id="azure-ai-search-reports-insufficientresourcesavailable"></a>
 
 ## Azure AI Search で `InsufficientResourcesAvailable` が発生する
 
@@ -121,8 +109,6 @@ Azure AI Search の空き容量はリージョンの実際の稼働状況に左�
 
 所有者を示すタグが異なるためインポートを拒否された場合は、強制インポートや削除をせず、
 まず名前の衝突を調査してください。
-
-<a id="admin-preflightsh-reports-an-azure-policy-that-may-deny-required-resource-types"></a>
 
 ## 必要なリソースを拒否する可能性のある Azure Policy が報告される
 
@@ -146,8 +132,6 @@ Codespaces からの初期データ投入が失敗する事象がありました
 Azure AI Search に直接登録します。教材を更新して `setup.sh` を再実行し、
 古い Storage リソースを Terraform 経由で削除してください。
 
-<a id="a-participants-preflightsh-fails-even-though-admin-preflightsh-passed"></a>
-
 ## 管理者の事前確認は通るのに、参加者の `preflight.sh` が失敗する
 
 `scripts/preflight.sh` は参加者とリソースグループを対象に、
@@ -158,8 +142,6 @@ Azure AI Search に直接登録します。教材を更新して `setup.sh` を�
 - `az login` でサインインしたアカウントが、**Owner** を付与した本人のものか。別アカウントやサービスプリンシパルではないか。
 - プロバイダー登録とクォータの確認を、既定リージョンだけでなく、参加者が `--location` で指定した **同じリージョン**で行ったか。
 
-<a id="terraform-apply-fails-with-an-authorization-error-inside-the-resource-group"></a>
-
 ## RG 内の操作なのに `terraform apply` が認可エラーで失敗する
 
 Terraform は指定 RG の外やサブスクリプション全体への操作を行わないため、
@@ -169,11 +151,9 @@ Terraform は指定 RG の外やサブスクリプション全体への操作を
 - RG に付与した **Owner** ロールがまだ反映されていない。Entra のロール反映には数分かかる場合があります。少し待ってから、再実行しても安全な `scripts/setup.sh` を実行してください。
 - ロールの割り当て先が RG 自体ではなく、配下のリソースなど別の範囲になっている。
 
-<a id="cleanup-destroysh-reports-resources-still-present-after-terraform-destroy"></a>
-
 ## `terraform destroy` 後もリソースが残っていると報告される
 
-削除の順序は[料金とクリーンアップ](../costs-and-cleanup.md#cleanup-order)を参照してください。
+削除の順序は[料金とクリーンアップ](../costs-and-cleanup.md#クリーンアップの順序)を参照してください。
 `terraform destroy` が成功したと報告されても、ハンズオン用タグの付いた Azure リソースが RG 内に残っている場合は、
 **`.workshop/` の状態ファイルを削除せず**、`scripts/destroy.sh` を再実行してください。
 既存の状態ファイルを使った Terraform の削除処理は、安全に再実行できます。
@@ -202,8 +182,6 @@ Terraform を介さずに手動で削除すると、ローカルの状態と実�
   --embedding-model-version "<version>" \
   --auto-approve
 ```
-
-<a id="see-also"></a>
 
 ## 関連資料
 

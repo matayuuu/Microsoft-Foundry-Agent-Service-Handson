@@ -131,7 +131,7 @@ Conversation ID が表示される行は、そのリンクから会話や tool �
 |---|---|
 | **Pass / Fail** と reason | 回答や tool 利用の改善点を確認する |
 | 攻撃文の行で `content_filter` | 保護機能による遮断として記録する。Guardrail を弱めて通さない |
-| `429`・タイムアウトなどの **Error** | 採点結果と区別し、[トラブルシューティング](../docs/participant/troubleshooting.md#evaluation--optimizer)で原因を解消する |
+| `429`・タイムアウトなどの **Error** | 採点結果と区別し、[トラブルシューティング](../docs/participant/troubleshooting.md#評価と最適化)で原因を解消する |
 
 **Completed / Partial でも、全行を正常に採点できたとは限りません。** Error の内容まで確認します。
 

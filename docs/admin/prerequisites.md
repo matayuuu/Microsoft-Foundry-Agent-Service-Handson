@@ -124,7 +124,7 @@ Luna は Prompt / Hosted Agent、GPT-5.5 は Foundry IQ のクエリ計画・評
 既定の容量単位は Luna / GPT-5.5 / 埋め込みの順に **40 / 100 / 40** です。
 開催前に同時実行のリハーサルと最新のクォータ確認を行ってください。
 GPT-5.5 は20単位で7行の Portal 評価を実行した際にスロットリングが発生したため、既定値を増やしています。
-詳細は[実行時の事象と追加の確認事項](troubleshooting.md#http-429-or-foundry-iq-timeouts-despite-available-subscription-quota)を参照してください。
+詳細は[実行時の事象と追加の確認事項](troubleshooting.md#クォータに余裕があるのに-http-429-や-foundry-iq-のタイムアウトが発生する)を参照してください。
 
 `GlobalStandard` の容量は、既存のサブスクリプションのモデル・SKU 別クォータから
 デプロイの処理量を割り当てるものです。**クォータ上限の引き上げ、定額のトークン利用枠の購入、

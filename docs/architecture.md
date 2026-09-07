@@ -1,158 +1,161 @@
-# Architecture
+# アーキテクチャ
 
-## Goal
+## 目標
 
-The workshop must be repeatable from a GitHub Codespace by a participant who can run
-`az login` and is Owner only on an existing Azure resource group. Subscription-level
-preparation is deliberately separated from participant setup.
+このハンズオンは、`az login` を実行でき、既存の Azure リソースグループに対してのみ
+Owner 権限を持つ参加者が、GitHub Codespace から繰り返し実施できる構成とします。
+サブスクリプションレベルの事前準備は、参加者によるセットアップと明確に分離しています。
 
-The core path is intentionally a **Basic Agent Setup**. Azure AI Search is provisioned
-for workshop knowledge, but Agent Service state remains platform-managed. This avoids
-Cosmos DB, capability hosts, ACR, and private networking in the limited workshop slot.
+必須の手順では、意図的に **Basic Agent Setup** を採用しています。ハンズオンの
+ナレッジ用に Azure AI Search をプロビジョニングしますが、Agent Service の状態は
+引き続きプラットフォームが管理します。これにより、限られたハンズオン時間内に
+Cosmos DB、capability host、ACR、プライベートネットワークを扱わずに済みます。
 
-## Runtime view
+## 実行時の構成
 
 ```mermaid
 flowchart LR
-    browser[Participant browser] --> portal[Microsoft Foundry portal]
+    browser[参加者のブラウザー] --> portal[Microsoft Foundry ポータル]
     browser --> codespace[GitHub Codespaces]
-    codespace -->|az login| azure[Azure control and data planes]
-    codespace -->|Terraform| foundry[Foundry account and project]
+    codespace -->|az login| azure[Azure コントロールプレーンとデータプレーン]
+    codespace -->|Terraform| foundry[Foundry アカウントとプロジェクト]
     codespace -->|Terraform| search[Azure AI Search]
     codespace -->|Terraform| monitor[Application Insights]
     codespace -->|Terraform| api[Travel Ops API]
-    codespace -->|Python bootstrap| search
+    codespace -->|Python による初期データ投入| search
     portal --> prompt[Prompt Agent]
-    prompt --> iq[Foundry IQ knowledge base]
+    prompt --> iq[Foundry IQ ナレッジベース]
     iq --> search
     prompt --> toolbox[Toolbox]
     toolbox --> api
-    codespace -->|Python SDK source deploy| hosted[Hosted Agent]
+    codespace -->|Python SDK によるソースデプロイ| hosted[Hosted Agent]
     prompt --> monitor
     hosted --> monitor
 ```
 
-## Resource ownership
+## リソースの管理責任
 
-| Object | Owner | Lifecycle |
+| 対象 | 管理主体 | ライフサイクル |
 |---|---|---|
-| Existing resource group | Workshop administrator | Never created or deleted by this repository |
-| Foundry account/project and model deployments | Terraform | `setup.sh` / `destroy.sh` |
+| 既存のリソースグループ | ハンズオン管理者 | このリポジトリでは作成も削除もしない |
+| Foundry アカウント / プロジェクトとモデルのデプロイ | Terraform | `setup.sh` / `destroy.sh` |
 | Search, Application Insights, Container Apps | Terraform | `setup.sh` / `destroy.sh` |
-| Search index documents | Bootstrap adapter | Idempotent upsert after Terraform |
-| Prompt Agent and Foundry IQ knowledge base | Participant in portal | Deleted with the parent project |
-| Toolbox versions | Participant in portal; optional SDK adapter | Created in Lab 4; SDK edits preserve Skills and guardrails |
-| Travel Ops Skills | Participant in portal | Upload synthetic `data/skills/` content in Lab 4; remove references before deleting Skills |
-| Synthetic evaluation dataset and rubric | Setup adapter | Idempotently prepared for Portal Labs 5 and 6 |
-| Evaluation runs | Participant in portal | Created in Lab 5; deleted with the parent project |
-| Hosted Agent and immutable versions | Python SDK wrapper | Created in Lab 7; deleted before Terraform |
-| Hosted Agent runtime telemetry role | Hosted Agent deploy adapter | Resource-scoped grant after the runtime identity exists |
+| Search インデックス内のドキュメント | 初期データ投入アダプター | Terraform の実行後に、繰り返しても結果が変わらない追加・更新（upsert）を実行 |
+| Prompt Agent と Foundry IQ ナレッジベース | 参加者がポータルで管理 | 親プロジェクトとともに削除 |
+| Toolbox のバージョン | 参加者がポータルで管理。任意で SDK アダプターを使用 | Lab 4 で作成。SDK による編集では既存の Skills とガードレールを保持 |
+| Travel Ops Skills | 参加者がポータルで管理 | Lab 4 で `data/skills/` 内の合成コンテンツをアップロード。Skills を削除する前に参照を解除 |
+| 合成の評価データセットと評価基準（ルーブリック） | セットアップアダプター | ポータルで実施する Lab 5 と Lab 6 に向けて冪等に準備 |
+| 評価実行 | 参加者がポータルで管理 | Lab 5 で作成。親プロジェクトとともに削除 |
+| Hosted Agent と変更不可のバージョン | Python SDK ラッパー | Lab 7 で作成。Terraform による削除の前に削除 |
+| Hosted Agent ランタイムのテレメトリ用ロール | Hosted Agent デプロイアダプター | ランタイム ID の作成後にリソーススコープで付与 |
 
-Terraform and SDK wrappers must not manage the same object.
+Terraform と SDK ラッパーが同じオブジェクトを管理してはいけません。
 
-## Resource set
+## リソース構成
 
-Core infrastructure in the participant resource group:
+参加者のリソースグループ内に作成する必須のインフラストラクチャは次のとおりです。
 
-- Microsoft Foundry account (`AIServices`) with project management enabled
-- Microsoft Foundry project
-- `gpt-5.6-luna` deployment for Prompt/Hosted Agent inference
-- `gpt-5.5` deployment for Foundry IQ query planning, configurable LLM evaluation judges, and Agent Optimizer
-- `text-embedding-3-small`, deployed as `embedding`, for the seeded vector indexes
-- Azure AI Search Basic, one replica and one partition
-- Log Analytics and workspace-based Application Insights
-- Container Apps consumption environment and scale-to-zero Travel Ops API
+- プロジェクト管理を有効にした Microsoft Foundry アカウント（`AIServices`）
+- Microsoft Foundry プロジェクト
+- Prompt Agent / Hosted Agent の推論用の `gpt-5.6-luna` デプロイ
+- Foundry IQ のクエリ計画、設定可能な LLM 評価用モデル、Agent Optimizer 用の `gpt-5.5` デプロイ
+- 初期データを投入するベクトルインデックス用に、`embedding` という名前でデプロイする `text-embedding-3-small`
+- Azure AI Search Basic（レプリカ 1、パーティション 1）
+- Log Analytics とワークスペースベースの Application Insights
+- Container Apps の従量課金環境と、ゼロまでスケールできる Travel Ops API
 
-The exact model version, deployment SKU, and capacity are inputs. The subscription
-administrator preflight verifies them before participants start.
+正確なモデルバージョン、デプロイ SKU、容量は入力値として指定します。
+参加者の開始前に、サブスクリプション管理者向けの事前チェックでこれらを検証します。
 
-There are exactly three deployments. `primary_model_deployment_name` still exposes
-`gpt-5.6-luna`; `optimizer_model_deployment_name` exposes `gpt-5.5`; the embedding output
-remains unchanged. Foundry IQ shares the optimizer deployment, not the primary.
-Evaluation still invokes the Luna-backed target agent, while configurable judges use
-GPT-5.5. Service-managed safety evaluators do not receive a judge deployment override.
-The two chat model versions have no Terraform defaults: preflight discovers each
-version and quota `usageName` from the same required-SKU catalog entry.
+デプロイ数は厳密に 3 つです。`primary_model_deployment_name` は引き続き
+`gpt-5.6-luna` を、`optimizer_model_deployment_name` は `gpt-5.5` を示し、
+埋め込みモデルの出力値は変更しません。Foundry IQ はプライマリではなく、
+Optimizer 用のデプロイを共有します。評価では引き続き Luna を使用する対象エージェントを
+呼び出し、設定可能な評価用モデルには GPT-5.5 を使用します。サービスが管理する
+安全性評価器には、判定モデルのデプロイを上書きする設定を渡しません。
+2 つのチャットモデルのバージョンには Terraform の既定値を設けていません。
+事前チェックで、各モデルのバージョンとクォータの `usageName` を、
+それぞれ同一の必須 SKU カタログエントリから取得します。
 
-Default capacities are 40/100/40K TPM, respectively, subject to live preflight evidence.
-The shared GPT-5.5 allocation was raised after throttling at 20 during a Portal
-evaluation. This allocates GlobalStandard throughput within existing quota; it does
-not raise the subscription quota limit or set a fixed token-spend bill. Actual usage
-remains billable, and 100 units does not guarantee zero HTTP 429 responses.
-Shared uses are counted once per deployment, not once per lab. In the new Portal
-checked on 2026-09-06, the knowledge-base Chat completions model picker offered the
-deployed GPT-5.5 but not Luna, including with Medium retrieval effort. The workshop
-uses that available GPT-5.5 deployment for query planning while keeping agents on Luna.
-Model catalog availability alone does not prove picker/API compatibility; compare the
-[Search model/API requirements](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
-with the actual Portal picker.
+既定の容量はそれぞれ 40/100/40K TPM ですが、実環境の事前チェック結果に従います。
+共有する GPT-5.5 の割り当ては、ポータルでの評価中に 20 でスロットリングが発生したため
+引き上げました。これは既存のクォータ内で GlobalStandard のスループットを割り当てるものであり、
+サブスクリプションのクォータ上限を引き上げたり、トークン利用料を固定額にしたりするものではありません。
+実際の使用量には引き続き課金され、100 単位でも HTTP 429 応答が発生しない保証はありません。
+共有用途の容量は、ラボごとではなくデプロイごとに 1 回だけ計上します。
+2026-09-06 に確認した新しいポータルでは、ナレッジベースの Chat completions モデル選択欄に
+デプロイ済みの GPT-5.5 が表示されましたが、Luna は表示されませんでした。
+検索の労力が **Medium** の場合も同様です。このハンズオンでは、エージェントには
+Luna を使用したまま、クエリ計画には選択可能な GPT-5.5 のデプロイを使用します。
+モデルカタログに掲載されているだけでは、選択 UI や API との互換性は確認できません。
+[Search のモデルと API の要件](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
+を実際のポータルの選択欄と照合してください。
 
-## Authentication and authorization
+## 認証と認可
 
-The participant authenticates interactively with Azure CLI. Terraform and Python use
-the same cached Entra identity through `DefaultAzureCredential`.
+参加者は Azure CLI で対話的に認証します。Terraform と Python は
+`DefaultAzureCredential` を通じて、同じキャッシュ済み Entra ID を使用します。
 
-- No client secrets or service-principal credentials are required.
-- Local/shared keys are disabled where supported.
-- The participant receives Foundry and data-plane roles inside the existing resource
-  group through Terraform.
-- The project, Search, and Hosted Agent runtime identities receive only the
-  resource-scoped roles needed for model, data, and trace access.
-- Terraform state can contain provider-computed credentials and is treated as
-  sensitive even when runtime access is keyless.
+- クライアントシークレットやサービスプリンシパルの資格情報は不要です。
+- 対応しているサービスでは、ローカルキーと共有キーを無効にします。
+- Terraform を通じて、既存のリソースグループ内で参加者に Foundry とデータプレーンのロールを付与します。
+- プロジェクト、Search、Hosted Agent ランタイムの ID には、モデル、データ、
+  トレースへのアクセスに必要なリソーススコープのロールのみを付与します。
+- Terraform の状態ファイルにはプロバイダーが生成した資格情報が含まれる可能性があるため、
+  実行時のアクセスがキーレスであっても機密情報として扱います。
 
-## Control-plane and data-plane split
+## コントロールプレーンとデータプレーンの分離
 
-AzureRM is used for stable Azure resources. AzAPI is used for the current Foundry
-account/project/deployment/connection resource shapes when AzureRM does not expose the
-required contract. Terraform provider auto-registration is disabled because a resource
-group Owner cannot register resource providers.
+安定した Azure リソースには AzureRM を使用します。現在の Foundry のアカウント、
+プロジェクト、デプロイ、接続のリソース形式について、AzureRM が必要な API 契約に対応していない場合は
+AzAPI を使用します。リソースグループの Owner はリソースプロバイダーを登録できないため、
+Terraform プロバイダーの自動登録は無効にしています。
 
-Data-plane operations remain in typed Python adapters:
+データプレーン操作は、型付きの Python アダプターで実施します。
 
-- load synthetic source documents directly into Azure AI Search
-- generate embeddings
-- create/update the semantic vector indexes
-- merge-or-upload indexed chunks
-- export live OpenAPI and Skill ZIPs for Portal upload without remote writes
-- optionally update Toolbox tools or connect an existing Toolbox when UI is unavailable
-- create optional automated evaluation runs
-- prepare the synthetic evaluation dataset and rubric used by the Portal
-- deploy/delete Hosted Agent versions from source and grant their dynamic runtime
-  identities trace-ingestion access
+- 合成のソースドキュメントを Azure AI Search に直接読み込む
+- 埋め込みを生成する
+- セマンティックベクトルインデックスを作成・更新する
+- インデックス化したチャンクを追加・更新する（`merge-or-upload`）
+- リモートへの書き込みを行わず、ポータルへのアップロード用に稼働中の API の OpenAPI 定義と Skill ZIP をエクスポートする
+- UI が利用できない場合に、任意で Toolbox のツールを更新するか、既存の Toolbox を接続する
+- 任意の自動評価実行を作成する
+- ポータルで使用する合成の評価データセットとルーブリックを準備する
+- ソースから Hosted Agent のバージョンをデプロイ・削除し、動的に作成されるランタイム ID にトレース取り込み権限を付与する
 
-Pure configuration, chunking, validation, and policy logic is kept independent from
-Azure clients so tests run without Azure access.
+構成、チャンク分割、検証、ポリシーに関する純粋なロジックは Azure クライアントから独立させ、
+Azure にアクセスせずにテストを実行できるようにしています。
 
-Lab 4 separates API execution from behavioral guidance: the Toolbox includes the
-Travel Ops OpenAPI tool plus `travel-estimation` and `preapproval-simulation` Skills.
-Foundry IQ remains the policy knowledge source, and Skills do not duplicate rate tables.
-Skills are MCP resources, not ordinary API tools or authorization controls. Consumers
-need a compatible Skill provider; neither a successful API call nor registration in
-the Portal proves a Skill was loaded. The Lab 7 workflow remains independent of this
-preview runtime integration.
+Lab 4 では、API の実行と動作の指針を分離します。Toolbox には Travel Ops OpenAPI ツールに加え、
+`travel-estimation` と `preapproval-simulation` の Skills を含めます。
+ポリシーに関するナレッジの参照元は引き続き Foundry IQ とし、Skills に料金表を重複して持たせません。
+Skills は MCP リソースであり、通常の API ツールや認可制御ではありません。
+利用するクライアントには、互換性のある Skill プロバイダーが必要です。
+API 呼び出しの成功やポータルへの登録だけでは、Skill が読み込まれたことを証明できません。
+Lab 7 のワークフローは、このプレビュー版のランタイム統合には依存しません。
 
-## Network posture
+## ネットワークの方針
 
-The workshop uses public service endpoints protected by Entra ID/RBAC. It does not
-configure VNet injection, private endpoints, private DNS, customer-managed keys, or
-network-isolated evaluation. These are production design topics, not hidden defaults.
+このハンズオンでは、Entra ID/RBAC で保護されたパブリックなサービスエンドポイントを使用します。
+VNet インジェクション、プライベートエンドポイント、プライベート DNS、カスタマーマネージドキー、
+ネットワーク分離された評価は構成しません。これらは本番環境の設計で検討する項目であり、
+暗黙に有効になる既定の設定ではありません。
 
-## Failure boundaries
+## 障害時の処理範囲
 
-1. `admin-preflight.sh` reports subscription blockers before the event.
-2. `preflight.sh` fails before Terraform when identity, RG, provider, region, quota
-   evidence, or policy is missing.
-3. Terraform failure leaves state for a safe retry.
-4. Bootstrap uses upsert semantics and validates the final index.
-5. Hosted remote build polls to a bounded terminal status and exposes build failure
-   details.
-6. Cleanup removes data-plane children before their Terraform-managed parent and only
-   deletes local state after Azure cleanup succeeds.
+1. `admin-preflight.sh` は、開催前にサブスクリプションに関する阻害要因を報告します。
+2. ID、リソースグループ、プロバイダー、リージョン、クォータの確認情報、ポリシーのいずれかが
+   不足している場合、`preflight.sh` は Terraform の実行前に失敗します。
+3. Terraform が失敗した場合は、安全に再試行できるよう状態ファイルを残します。
+4. 初期データ投入には upsert を使用し、最終的なインデックスを検証します。
+5. Hosted Agent のリモートビルドは、制限時間内で終了状態になるまでポーリングし、
+   ビルド失敗の詳細を表示します。
+6. クリーンアップでは、Terraform が管理する親リソースより先にデータプレーンの子オブジェクトを削除し、
+   Azure 側のクリーンアップが成功した後にのみローカルの状態ファイルを削除します。
 
-## Maintainability checks
+## 保守性の確認項目
 
-- Business rules in the mock API and Hosted workflow are testable without HTTP or Azure.
-- Preview API shapes are isolated behind adapters and contract tests.
-- Generated resource values have one source of truth: `.workshop/context.json`.
-- Optional Fabric IQ, Work IQ, A2A, ACR, and CI/CD material cannot alter the core setup.
+- モック API と Hosted Agent ワークフローの業務ルールは、HTTP や Azure を使わずにテストできます。
+- プレビュー API の形式は、アダプターと契約テストで分離します。
+- 生成されたリソースの値は、`.workshop/context.json` を唯一の正とします。
+- 任意の Fabric IQ、Work IQ、A2A、ACR、CI/CD の教材で、必須のセットアップを変更してはいけません。

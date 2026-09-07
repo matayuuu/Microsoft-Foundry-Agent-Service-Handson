@@ -1,72 +1,74 @@
-# Costs and cleanup
+# 料金とクリーンアップ
 
-## Cost posture
+## 料金の考え方
 
-The workshop favors small, short-lived, scale-to-zero resources, but it is not free.
-Always review current Azure pricing in the target region before an event.
+このハンズオンでは、小規模で短期間のみ使用し、可能な場合はゼロまでスケールできるリソースを
+優先しますが、無料ではありません。開催前に必ず、対象リージョンの最新の Azure 料金を確認してください。
 
-Main cost drivers:
+主な課金対象は次のとおりです。
 
-- Azure AI Search Basic is billed while the service exists.
-- Model inference, embeddings, evaluation judges, and Agent Optimizer are token billed.
-- Web Search and Code Interpreter have charges separate from model tokens.
-- Agentic retrieval can bill Search retrieval tokens and model query-planning tokens.
-- Container Apps scales to zero, but requests and supporting Log Analytics ingestion
-  can incur charges.
-- Application Insights and Log Analytics charge for retained telemetry above included
-  allowances.
+- Azure AI Search Basic は、サービスが存在する間、課金されます。
+- モデルの推論、埋め込み、評価判定モデル、Agent Optimizer はトークン単位で課金されます。
+- Web Search と Code Interpreter には、モデルのトークンとは別に料金が発生します。
+- エージェント型検索では、Search の検索トークンとモデルのクエリ計画トークンに課金される場合があります。
+- Container Apps はゼロまでスケールできますが、リクエストや関連する Log Analytics への
+  データ取り込みには料金が発生する場合があります。
+- Application Insights と Log Analytics では、含まれる利用枠を超えて保持するテレメトリに課金されます。
 
-The administrator preflight calculates required model capacity from participant/team
-count. It does not estimate currency because prices and regional offers change.
+管理者向けの事前チェックでは、参加者数・チーム数から必要なモデル容量を計算します。
+料金やリージョンごとの提供条件は変わるため、金額の見積もりは行いません。
 
-## Cost controls
+## 料金を抑える方法
 
-- Use a dedicated resource group per participant or team.
-- Use Search Basic with one replica and one partition.
-- Keep the Travel Ops API at minimum replicas zero.
-- Use a small live evaluation subset and a small Optimizer candidate count.
-- Keep Agentic Retrieval reasoning at `low` for the core lab.
-- Use only the requests shown in the labs.
-- Run cleanup immediately after the event.
+- 参加者またはチームごとに専用のリソースグループを使用します。
+- Search Basic をレプリカ 1、パーティション 1 で使用します。
+- Travel Ops API の最小レプリカ数は 0 のままにします。
+- 実際に実行する評価データのサブセットと、Optimizer の候補数を少なくします。
+- 本編では、エージェント型検索の推論レベルを `low` に保ちます。
+- ラボに記載されているリクエストのみを使用します。
+- 開催終了後、すぐにクリーンアップを実行します。
 
-## Cleanup order
+## クリーンアップの順序
 
-Run:
+次のコマンドを実行します。
 
 ```bash
 ./scripts/destroy.sh
 ```
 
-Review the target resources and approve deletion. This removes the workshop's
-Foundry project / account along with the other Terraform-managed resources, but
-preserves the resource group. See [Lab 8](../labs/08-observability-cleanup.md).
-If deletion fails because of Toolbox or Skill references, follow
-[participant cleanup troubleshooting](participant/troubleshooting.md#cleanup).
+対象リソースを確認し、削除を承認します。ハンズオン用の Foundry プロジェクト / アカウントと
+その他の Terraform 管理リソースを削除しますが、リソースグループは残します。
+[Lab 8](../labs/08-observability-cleanup.md) を参照してください。
+Toolbox または Skill の参照が原因で削除に失敗した場合は、
+[参加者向けのクリーンアップのトラブルシューティング](participant/troubleshooting.md#クリーンアップ)
+に従ってください。
 
-The script must:
+スクリプトは、次の順序で処理する必要があります。
 
-1. Read `.workshop/context.json`, or the pre-Terraform
-   `.workshop/terraform-inputs.json` recovery file when setup stopped early, and
-   confirm the selected subscription and RG.
-2. Delete the workshop Hosted Agent and its versions through the Foundry SDK.
-3. Run optional data-plane cleanup helpers when present; report missing helpers.
-4. Run `terraform destroy` against the existing state.
-5. Verify no tagged workshop resources remain in the RG.
-6. Preserve the RG itself.
-7. Remove local context and state only after successful verification.
+1. `.workshop/context.json` を読み込み、選択したサブスクリプションとリソースグループを確認します。
+   セットアップが早い段階で停止した場合は、Terraform 実行前に作成された復旧用ファイル
+   `.workshop/terraform-inputs.json` を読み込みます。
+2. Foundry SDK を通じて、ハンズオン用の Hosted Agent とそのバージョンを削除します。
+3. 任意のデータプレーンのクリーンアップヘルパーが存在する場合は実行し、存在しない場合はその旨を報告します。
+4. 既存の状態ファイルを使用して `terraform destroy` を実行します。
+5. ハンズオン用のタグが付いたリソースが、リソースグループ内に残っていないことを確認します。
+6. リソースグループ自体は残します。
+7. 検証に成功した後にのみ、ローカルのコンテキストと状態ファイルを削除します。
 
-If cleanup fails, do not delete Terraform state. Follow
-[administrator troubleshooting](admin/troubleshooting.md) with the exact resource and
-operation reported by the script. `setup.sh` writes
-`.workshop/terraform-inputs.json` before Terraform can create resources, so
-`destroy.sh` can normally recover a partial setup without arguments. Explicit inputs
-remain available if both setup context files are unavailable.
+クリーンアップが失敗した場合、Terraform の状態ファイルを削除しないでください。
+スクリプトが報告した正確なリソースと操作を確認し、
+[管理者向けのトラブルシューティング](admin/troubleshooting.md) に従ってください。
+`setup.sh` は、Terraform がリソースを作成できるようになる前に
+`.workshop/terraform-inputs.json` を書き込むため、通常は `destroy.sh` を引数なしで実行して、
+途中まで進んだセットアップから復旧できます。セットアップのコンテキストファイルが
+両方とも利用できない場合は、入力値を明示的に指定することもできます。
 
-## State handling
+## 状態ファイルの取り扱い
 
-Local Terraform state is the default because not every participant can access a shared
-state account. It is stored only in the persistent Codespaces workspace, ignored by
-Git, and treated as sensitive. Do not delete the Codespace before cleanup.
+すべての参加者が状態ファイル共有用のストレージアカウントにアクセスできるとは限らないため、
+既定ではローカルの Terraform 状態ファイルを使用します。状態ファイルは永続的な Codespaces
+ワークスペース内にのみ保存し、Git の管理対象から除外して、機密情報として扱います。
+クリーンアップ前に Codespace を削除しないでください。
 
-Organizers can opt into the Azure Blob backend example when they can provision a state
-account and grant each participant data-plane access.
+主催者が状態ファイル用のストレージアカウントをプロビジョニングし、各参加者にデータプレーンの
+アクセス権限を付与できる場合は、Azure Blob バックエンドのサンプルを選択できます。

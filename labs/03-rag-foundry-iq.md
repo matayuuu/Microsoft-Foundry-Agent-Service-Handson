@@ -70,7 +70,7 @@ service 名が表示されるため、`search_service_name` と見比べてく�
 
 回答の金額と引用を確認し、[日当・食事規程](../data/policies/04-per-diem-meals.md)と見比べます。
 Search service のトップ URL が開く場合は
-[citation のトラブルシューティング](../docs/participant/troubleshooting.md#citation-link)
+[引用のトラブルシューティング](../docs/participant/troubleshooting.md#引用リンク)
 を確認してください。
 
 この確認後、もう一度 **New chat** を選び、複数 source の根拠が必要な

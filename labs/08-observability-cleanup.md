@@ -86,7 +86,7 @@ repository root の terminal で実行します。
 - Cleanup 成功後に `.workshop/` の生成 context が削除される
 
 失敗した場合は Terraform state や `.workshop/` を手動で消さず、
-[cleanup troubleshooting](../docs/participant/troubleshooting.md#cleanup)を確認して
+[クリーンアップのトラブルシューティング](../docs/participant/troubleshooting.md#クリーンアップ)を確認して
 同じ command を再実行してください。
 
 ## 5. Codespace を停止する

@@ -263,7 +263,7 @@ UI の作成操作を体験する前に Notebook で Toolbox を作る必要は�
 
 公式仕様: [Toolbox](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/toolbox) /
 [Skills](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/skills)。
-困った場合は [Toolbox のトラブルシューティング](../docs/participant/troubleshooting.md#toolbox-portal)
+困った場合は [Toolbox のトラブルシューティング](../docs/participant/troubleshooting.md#portal-での-toolbox-操作)
 を参照してください。
 
 ## 次の Lab

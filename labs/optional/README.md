@@ -4,7 +4,7 @@
 選択（optional）教材です。追加のライセンス、追加の Azure/Microsoft 365/Fabric テナント権限、
 または preview 機能の管理者設定が必要になるため、本編の参加者体験からは意図的に切り離されて
 います（[README の「Core と optional の境界」](../../README.md#core-と-optional-の境界)、
-[architecture.md の「Resource ownership」](../../docs/architecture.md#resource-ownership)
+[アーキテクチャの「リソースの管理責任」](../../docs/architecture.md#リソースの管理責任)
 を参照）。
 
 > [!IMPORTANT]
