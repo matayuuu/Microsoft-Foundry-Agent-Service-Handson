@@ -39,7 +39,7 @@ jobs:
           cache: pip
           cache-dependency-path: src/hosted-agent/requirements.txt
       - name: Install Hosted Agent dependencies
-        run: python -m pip install -r src/hosted-agent/requirements.txt pytest ruff
+        run: python -m pip install -r src/hosted-agent/requirements.txt pytest ruff ipykernel
       - name: Test Hosted Agent
         run: python -m pytest tests/unit/hosted_agent tests/contract/hosted_agent -q
       - name: Lint Hosted Agent
