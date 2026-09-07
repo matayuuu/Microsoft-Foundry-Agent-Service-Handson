@@ -1,195 +1,192 @@
-# Administrator prerequisites
+# 管理者向け前提条件
 
-This page is for the **subscription administrator** who prepares the Azure subscription
-before the workshop event. Participants do not need subscription-level permissions and
-must not perform any of the steps described here; see
-[participant prerequisites](../participant/prerequisites.md) for what they need instead.
+ハンズオン前に Azure 環境を準備する **サブスクリプション管理者向け**の手順です。
+参加者はこのページの操作を行わず、[参加者向け前提条件](../participant/prerequisites.md)を確認してください。
+参加者にサブスクリプション全体の権限は不要です。
 
-## Why a separate administrator step exists
+## 管理者による事前準備が必要な理由
 
-Registering resource providers, verifying regional model quota/capacity, and reviewing
-Azure Policy are subscription-scope operations. A participant who is Owner only on an
-existing resource group cannot perform them. `scripts/admin-preflight.sh` is the tool
-that performs (or, by default, only reports) these subscription-scope checks, so that
-`scripts/preflight.sh` and `scripts/setup.sh` — run later by each participant — never
-need subscription-level permissions themselves.
+リソースプロバイダーの登録、リージョンごとのモデルのクォータ・容量確認、
+Azure Policy の確認には、サブスクリプション全体に対する権限が必要です。
+既存リソースグループの **Owner** ロールだけでは実施できません。
 
-## What you need
+管理者は `scripts/admin-preflight.sh` で事前確認を行います。既定では確認結果の報告だけを行い、
+設定は変更しません。これにより、参加者が実行する `scripts/preflight.sh` と
+`scripts/setup.sh` にサブスクリプション全体の権限を持たせずに済みます。
 
-- Azure CLI (`az`) signed in (`az login`) with an identity that has at least
-  **Reader** at the subscription scope, so the read-only checks can run.
-- To also register missing resource providers (`--apply`), the identity additionally
-  needs a role that can perform
-  `Microsoft.Support/register/action` / provider-registration actions at the
-  subscription scope (for example, **Contributor** or the built-in
-  **Azure Resource Manager Provider Registration** capability many subscriptions grant
-  to administrators). This workshop does not grant or assume any specific role name —
-  confirm your own tenant's convention.
-- Network access to `management.azure.com`.
-- The target region(s): default `eastus2`, fallback `swedencentral`. Both are always
-  checked so participants can fail over without a second administrator pass.
+## 必要なもの
 
-## What `admin-preflight.sh` checks
+- Azure CLI（`az`）でサインイン済みのアカウント（`az login`）。読み取り専用の確認には、
+  サブスクリプション全体に対する **Reader** 以上の権限が必要です。
+- 未登録のリソースプロバイダーも登録する場合（`--apply`）は、
+  サブスクリプション全体に対して `Microsoft.Support/register/action` などの
+  プロバイダー登録操作を実行できる権限が必要です。**Contributor** ロールや
+  **Azure Resource Manager Provider Registration** の権限が例に挙げられます。
+  教材では特定のロール名の付与や保有を前提としないため、テナントの運用ルールを確認してください。
+- `management.azure.com` へのネットワーク接続。
+- 対象リージョンの確認。既定は `eastus2`、代替は `swedencentral` です。
+  参加者が切り替える際に管理者の再確認が不要になるよう、常に両方を確認します。
 
-Run from the repository root:
+## 事前確認スクリプトの実行
+
+リポジトリの最上位フォルダーで実行します。
 
 ```bash
 ./scripts/admin-preflight.sh --subscription "<subscription-id>" [--location eastus2]
 ```
 
-By default this is **strictly read-only**. It never creates or deletes a resource
-group, never changes subscription quota or Azure Policy, and never writes a role
-assignment. It reports, per region (`eastus2` and `swedencentral`):
+既定では **読み取り専用**です。リソースグループの作成・削除、クォータや Azure Policy の変更、
+ロールの割り当ては行いません。`eastus2` と `swedencentral` を対象に、以下を報告します。
 
-1. **Resource provider registration state** for the five providers this workshop
-   depends on:
-   - `Microsoft.CognitiveServices` (Foundry/Azure AI Services accounts)
-   - `Microsoft.Search` (Azure AI Search)
-   - `Microsoft.Insights` (Application Insights)
-   - `Microsoft.OperationalInsights` (Log Analytics)
-   - `Microsoft.App` (Container Apps, for the Travel Ops API)
-2. **Model quota/capacity** for the three model deployments the workshop creates, each
-   checked against the exact SKU/usage bucket Terraform will request, and against the
-   **aggregate** requirement for all participants/teams the event will run at once (see
-   `--participant-count` below), not just one environment's worth:
-   - `gpt-5.6-luna`, deployed as `gpt-5.6-luna` — SKU `GlobalStandard`, initial required
-     headroom **40K TPM per environment**. Shared by Prompt/Hosted Agent inference
-     (`primary_model_deployment_name`).
-   - `gpt-5.5`, deployed as `gpt-5.5` — SKU `GlobalStandard`, initial required headroom
-     **100K TPM per environment**. Shared by Foundry IQ query planning, configurable LLM
-     evaluation judges, and Agent Optimizer (`optimizer_model_deployment_name`). Both chat model names are
-     fixed workshop requirements; their **versions are discovered**, not guessed.
-     There is no fallback to a different model family.
-   - `text-embedding-3-small` — SKU `GlobalStandard`, required headroom **40K TPM per
-     environment**. The vector index embedding model, deployed as `embedding`.
-   - For each model/region pair the script reads the model's own
-     `model.skus[].usageName` (never guessed or string-built from the model name —
-     usageName spelling is inconsistent across model families, for example a
-     hyphen-less `...gpt4.1` bucket versus a hyphenated `...gpt-5` bucket) and looks
-     up that exact bucket in `az cognitiveservices usage list --location <region>`.
-     The Markdown/JSON report shows, per model/region: the resolved model
-     version(s), the required SKU, the resolved `usageName`, the per-environment
-     capacity, the `--participant-count`-scaled aggregate requirement, and the
-     headroom/limit/current-usage numbers used to decide pass/warn — so you can see
-     the evidence, not just a verdict.
-     Version and `usageName` must come from the **same** catalog entry supporting the
-     required SKU; neither chat model has a Terraform version default.
-   - The report always states the discovered/available capacity explicitly. If the
-     script cannot resolve the required SKU on a model, cannot find that
-     `usageName` bucket in the usage-list output, or the `az cognitiveservices
-     usage list` call itself fails, it reports that as an **unknown/failed check**
-     (`warn`), never as an implicit pass — never assume unqueried capacity is
-     sufficient. (`scripts/preflight.sh`, run later by each participant, applies the
-     same SKU/usageName evidence but **fails hard** — rather than warns — on any
-     unknown or insufficient headroom, since a participant cannot proceed without a
-     usable region.)
-3. **Azure Policy** effects that could block the workshop's resource types (best
-   effort; Azure Policy evaluation is not exhaustively enumerable via a preflight
-   script, so absence of a reported denial is not a guarantee — see
-   [troubleshooting](troubleshooting.md)).
-4. Resource group existence and each participant's **Owner** role are checked by
-   the participant-facing `scripts/preflight.sh --resource-group <name>`. The
-   administrator must create/assign those RGs before distributing the
-   admin-preflight report; `admin-preflight.sh` itself is subscription-scoped and
-   intentionally has no `--resource-group` option.
+### リソースプロバイダーの登録状態
 
-The report is emitted as JSON by default; pass `--format markdown` for a
-human-readable version, and `--output <file>` to write it to a file instead of
-stdout.
+教材で使う5つのプロバイダーを確認します。
 
-### Checking quota for more than one participant/team
+| プロバイダー | 用途 |
+| --- | --- |
+| `Microsoft.CognitiveServices` | Foundry / Azure AI Services アカウント |
+| `Microsoft.Search` | Azure AI Search |
+| `Microsoft.Insights` | Application Insights |
+| `Microsoft.OperationalInsights` | Log Analytics |
+| `Microsoft.App` | Travel Ops API 用の Container Apps |
 
-Each participant or team runs the workshop in their own resource group and gets their
-own set of model deployments, but every environment in the same region draws from the
-**same subscription-level quota pool**. Pass `--participant-count <n>` (default `1`) to
-verify the region can actually support the whole event at once, not just a single
-environment:
+### モデルのクォータ・容量
+
+Terraform が要求する SKU と使用量の区分に対して、**同時に利用する全参加者・チーム分の空き容量**
+があるか確認します。対象は次の3つのデプロイで、SKU はすべて `GlobalStandard` です。
+TPM は1分あたりのトークン数を表します。
+
+| モデル | デプロイ名 | 1環境あたりの必要な空き容量 | 用途 |
+| --- | --- | --- | --- |
+| `gpt-5.6-luna` | `gpt-5.6-luna` | **40K TPM** | Prompt / Hosted Agent の推論（`primary_model_deployment_name`） |
+| `gpt-5.5` | `gpt-5.5` | **100K TPM** | Foundry IQ のクエリ計画、設定可能な LLM 評価用モデル、Agent Optimizer（`optimizer_model_deployment_name`） |
+| `text-embedding-3-small` | `embedding` | **40K TPM** | ベクトルインデックス用の埋め込み |
+
+2つのチャットモデル名は教材の固定要件です。**バージョンはカタログから取得**し、推測や別のモデル系列への切り替えは行いません。
+Terraform にもチャットモデルのバージョンの既定値はありません。
+
+スクリプトはモデル・リージョンごとに `model.skus[].usageName` を取得し、
+`az cognitiveservices usage list --location <region>` の同じ使用量区分と照合します。
+`usageName` の表記はモデル系列によって異なるため（例：`...gpt4.1` と `...gpt-5`）、
+モデル名から推測・組み立てはしません。バージョンと `usageName` は、
+必要な SKU に対応する **同じカタログ項目**から取得する必要があります。
+
+Markdown / JSON のレポートには、モデル・リージョンごとに以下の判定根拠が表示されます。
+
+- 取得したモデルのバージョン、必要な SKU、`usageName`
+- 1環境あたりの容量と、`--participant-count` を掛けた全環境分の必要容量
+- 判定に使った空き容量・上限・現在の使用量
+
+必要な SKU や `usageName` が見つからない場合、または使用量の取得に失敗した場合は、
+**確認不能・失敗（`warn`）**として報告します。未確認の容量を十分とみなすことはありません。
+参加者向けの `scripts/preflight.sh` も同じ根拠で判定しますが、
+空き容量が不明・不足の場合は、警告ではなく **エラーで停止**します。
+
+### Azure Policy とリソースグループ
+
+Azure Policy によって教材のリソースがブロックされないか、可能な範囲で確認します。
+ただし、事前確認スクリプトだけではすべてのポリシー評価を網羅できません。
+拒否が報告されなくても、作成できる保証にはなりません。
+詳細は[トラブルシューティング](troubleshooting.md)を参照してください。
+
+リソースグループの存在と参加者の **Owner** ロールは、
+参加者向けの `scripts/preflight.sh --resource-group <name>` で確認します。
+管理者はレポートを配布する前に、各リソースグループの作成・割り当てを済ませてください。
+`admin-preflight.sh` はサブスクリプション全体を対象とするため、`--resource-group` オプションはありません。
+
+### レポートの出力
+
+既定の出力形式は JSON です。読みやすい形式にするには `--format markdown`、
+標準出力ではなくファイルに保存するには `--output <file>` を指定します。
+
+## 複数の参加者・チーム分のクォータを確認する
+
+参加者・チームごとに専用のリソースグループとモデルをデプロイしますが、
+同じリージョンの環境は **サブスクリプション共通のクォータ**を使います。
+`--participant-count <n>`（既定値 `1`）で、同時に使う環境数を指定してください。
 
 ```bash
 ./scripts/admin-preflight.sh --subscription "<subscription-id>" --participant-count 12
 ```
 
-This multiplies each model's per-environment required capacity by `<n>` (for example,
-`gpt-5.6-luna`'s 40K TPM per environment becomes a 480K TPM aggregate requirement for 12
-participants, while `gpt-5.5` requires 100K * 12 = 1,200K TPM) and reports the exact
-`per-environment capacity * participant-count =
-required aggregate capacity` arithmetic alongside the discovered headroom for every
-model/region check, plus the participant count itself in the JSON/Markdown report
-header — never a single opaque number. `--participant-count` must be a positive
-integer; the script exits `1` before making any Azure call if it is not.
+各モデルの1環境あたりの必要容量に `<n>` を掛けて確認します。
+たとえば12環境では、`gpt-5.6-luna` は **40K × 12 = 480K TPM**、
+`gpt-5.5` は **100K × 12 = 1,200K TPM** が必要です。
+レポートには環境数に加え、モデル・リージョンごとの計算式と取得した空き容量を表示します。
+`--participant-count` は正の整数で指定してください。不正な値の場合は Azure を呼び出す前に終了コード `1` で停止します。
 
-Do not double-count a shared deployment for each lab: the environment has exactly
-three deployments. Luna capacity is shared by Prompt/Hosted Agents; GPT-5.5 capacity
-is shared by Foundry IQ query planning, judges, and optimization. Evaluation also calls
-the Luna target agent. The default allocation is **40/100/40 capacity units** for
-Luna/GPT-5.5/embedding. Rehearse concurrency and check live quota before approving it.
-The shared GPT-5.5 default was increased after the 20-unit deployment throttled a
-seven-row Portal evaluation; see [the runtime finding and follow-up checks](troubleshooting.md#http-429-or-foundry-iq-timeouts-despite-available-subscription-quota).
+### 容量配分と料金の注意
 
-GlobalStandard capacity allocates deployment throughput from existing subscription
-model/SKU quota. It does **not** increase that subscription quota limit, buy a fixed
-token-spend allowance, or create a provisioned-throughput reservation. Model usage is
-still billed by actual consumption; higher throughput can allow more billable calls.
-100 units is not a guarantee of zero HTTP 429 responses. Check the deployed `rateLimits`
-and rehearse the combined query-planning/evaluation/optimization load.
+1環境のデプロイは3つだけです。同じデプロイを Lab ごとに重複して数えないでください。
+Luna は Prompt / Hosted Agent、GPT-5.5 は Foundry IQ のクエリ計画・評価・最適化で共有します。
+評価では評価対象の Luna エージェントも呼び出します。
 
-Terraform capacity variables remain overridable. Both preflight scripts check the
-shipped **40/100/40** defaults; organizers who intentionally override capacity must
-align those expected allocations with the Terraform inputs and revalidate.
-The new Portal knowledge-base Chat completions model picker checked on 2026-09-06
-offered the deployed GPT-5.5 but not Luna, even with Medium retrieval effort; the Agent
-picker offered Luna. Follow these separate roles and confirm each picker before the
-event. Catalog/quota availability and
-[Search API support](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
-do not alone prove Portal compatibility. Stop and investigate missing support; do not add a fourth
-deployment, change providers/quota automatically, or silently choose another model.
+既定の容量単位は Luna / GPT-5.5 / 埋め込みの順に **40 / 100 / 40** です。
+開催前に同時実行のリハーサルと最新のクォータ確認を行ってください。
+GPT-5.5 は20単位で7行の Portal 評価を実行した際にスロットリングが発生したため、既定値を増やしています。
+詳細は[実行時の事象と追加の確認事項](troubleshooting.md#http-429-or-foundry-iq-timeouts-despite-available-subscription-quota)を参照してください。
 
-## Applying the fix
+`GlobalStandard` の容量は、既存のサブスクリプションのモデル・SKU 別クォータから
+デプロイの処理量を割り当てるものです。**クォータ上限の引き上げ、定額のトークン利用枠の購入、
+プロビジョニング済みスループットの予約ではありません。**
+料金は実際の使用量に応じて発生し、処理量を増やすと課金対象の呼び出しも増える可能性があります。
+100単位でも HTTP 429 が発生しない保証はありません。デプロイ後の `rateLimits` を確認し、
+クエリ計画・評価・最適化を組み合わせた負荷でリハーサルしてください。
 
-If the report shows one or more of the six providers is `NotRegistered`, register
-them explicitly:
+Terraform の容量変数は変更できますが、両方の事前確認スクリプトは既定の **40 / 100 / 40** を確認します。
+変更する場合は、スクリプトの確認対象容量と Terraform の入力値をそろえて再確認してください。
+
+### Portal でのモデル選択
+
+2026-09-06 の確認では、新しい Portal のナレッジベースの **Chat completions** モデル選択欄に
+GPT-5.5 は表示されましたが、Luna は検索の労力を **Medium** にしても表示されませんでした。
+一方、エージェントのモデル選択欄では Luna を選択できました。
+
+この役割分担を維持し、開催前に両方の選択欄を確認してください。
+カタログ・クォータ上の利用可否や [Search API の対応状況](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
+だけでは、Portal で利用できることの裏付けにはなりません。
+選択できない場合は作業を止めて原因を調べ、4つ目のデプロイの追加、
+プロバイダー・クォータの自動変更、別モデルへの無断切り替えは行わないでください。
+
+## 未登録のリソースプロバイダーを登録する
+
+対象プロバイダーに `NotRegistered` がある場合は、明示的に登録します。
 
 ```bash
 ./scripts/admin-preflight.sh --subscription "<subscription-id>" --apply
 ```
 
-`--apply` performs exactly one class of mutation: `az provider register` for the
-providers reported as missing. It still never touches quota, policy, resource
-groups, or role assignments. Re-run without `--apply` afterward to confirm every
-check now passes.
+`--apply` が変更するのは、未登録と判定されたプロバイダーへの `az provider register` の実行だけです。
+クォータ、ポリシー、リソースグループ、ロール割り当ては変更しません。
+登録後は `--apply` なしで再実行し、すべての確認が通ることを確かめてください。
 
-## Publish the workshop Travel Ops API image
+## Travel Ops API のイメージを公開する
 
-Before participants run setup, a repository maintainer must publish the immutable
-Travel Ops API image:
+参加者がセットアップを始める前に、リポジトリのメンテナーが
+ダイジェストで固定して利用できる Travel Ops API イメージを公開します。
 
-1. Push a tag matching `travel-api-v*` (the participant default resolves
-   `travel-api-v1.0.3`) or run **Publish Travel Ops API** manually.
-2. Open the resulting `travel-ops-api` package settings on GitHub and set the
-   package visibility to **Public**. A package built from a private repository
-   remains private by default, and GitHub doesn't provide a supported workflow-token
-   REST operation for changing this setting.
-3. Run participant setup once in a rehearsal RG. Its anonymous OCI lookup must
-   resolve the tag to an immutable `sha256:` digest before Terraform starts.
+1. `travel-api-v*` に一致するタグをプッシュするか、**Publish Travel Ops API** を手動実行します。参加者向けの既定のタグは `travel-api-v1.0.3` です。
+2. GitHub で作成された `travel-ops-api` パッケージの設定を開き、公開範囲を **Public** にします。非公開リポジトリから作成したパッケージは既定で非公開です。この設定をワークフロートークンで変更する REST 操作は GitHub でサポートされていません。
+3. リハーサル用の RG で参加者向けセットアップを一度実行します。Terraform の開始前に、匿名の OCI 参照でタグから不変の `sha256:` ダイジェストを取得できることを確認してください。
 
-If your organization can't expose a public GHCR package, publish the same image to
-an approved public registry and pass its immutable digest through
-`--travel-api-image-ref`.
+組織のルールで GHCR パッケージを公開できない場合は、承認済みの公開レジストリに同じイメージを公開し、
+`--travel-api-image-ref` で不変のダイジェストを指定してください。
 
-## Handing off to participants
+## 参加者への引き継ぎ
 
-Once `admin-preflight.sh` (without `--apply`, and with `--participant-count` set to
-your expected number of environments) reports all required providers as `Registered`
-and model quota/capacity as sufficient for that aggregate in at least one of
-`eastus2`/`swedencentral`, you can create (or designate) one existing resource group
-per participant or team, grant each participant **Owner** on their resource group
-only, and share this repository plus the
-[README quick start](../../README.md#quick-start). Participants then run
-`scripts/preflight.sh` and `scripts/setup.sh` themselves — both are strictly
-resource-group scoped and never require the permissions described on this page.
+想定する環境数を `--participant-count` に指定し、`--apply` なしで `admin-preflight.sh` を実行します。
+必要なプロバイダーがすべて `Registered` であり、`eastus2` / `swedencentral` の少なくとも一方に
+全環境分のモデルのクォータ・容量があることを確認してください。
 
-## See also
+その後、参加者・チームごとにリソースグループを作成するか既存のものを割り当て、
+**その RG だけに Owner ロールを付与**します。このリポジトリと
+[README のクイックスタート](../../README.md#quick-start)を共有してください。
 
-- [Administrator troubleshooting](troubleshooting.md)
-- [Costs and cleanup](../costs-and-cleanup.md)
-- [Architecture](../architecture.md)
+参加者は `scripts/preflight.sh` と `scripts/setup.sh` を実行します。
+両スクリプトは割り当てられたリソースグループの範囲内で動作し、このページに記載した管理者権限は必要ありません。
+
+## 関連資料
+
+- [管理者向けトラブルシューティング](troubleshooting.md)
+- [料金とクリーンアップ](../costs-and-cleanup.md)
+- [アーキテクチャ](../architecture.md)

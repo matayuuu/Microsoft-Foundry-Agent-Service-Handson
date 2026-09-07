@@ -1,94 +1,111 @@
-# Administrator troubleshooting
+# 管理者向けトラブルシューティング
 
-Failures reported here are diagnosed with the subscription administrator's tools
-(`az`, the Azure portal Activity Log, `scripts/admin-preflight.sh`). If a participant
-hits one of these during `scripts/setup.sh`, they cannot fix it themselves — it needs
-either a subscription-scope action from you, or an Azure support ticket.
+このページでは、サブスクリプション管理者が `az`、Azure portal のアクティビティログ、
+`scripts/admin-preflight.sh` を使って調査する問題をまとめています。
+参加者が `scripts/setup.sh` の実行中にこれらの問題に遭遇した場合、参加者自身では解決できません。
+管理者によるサブスクリプション全体への操作、または Azure サポートへの問い合わせが必要です。
 
-## `admin-preflight.sh` reports a resource provider as `NotRegistered`
+<a id="admin-preflightsh-reports-a-resource-provider-as-notregistered"></a>
 
-Run `./scripts/admin-preflight.sh --subscription "<id>" --apply` to register it. If
-registration itself fails with an authorization error, the identity you used does not
-have provider-registration rights at the subscription scope; use an identity with
-Contributor (or equivalent) at that scope, not a resource-group-scoped role — RG-scoped
-Owner cannot register providers, by design.
+## リソースプロバイダーが `NotRegistered` と表示される
 
-## `admin-preflight.sh` reports insufficient model quota/capacity
+`./scripts/admin-preflight.sh --subscription "<id>" --apply` を実行して登録します。
+登録時に認可エラーが出る場合は、実行したアカウントにサブスクリプション全体の
+プロバイダー登録権限がありません。
 
-This means the subscription's regional quota for `gpt-5.6-luna`, `gpt-5.5`,
-or `text-embedding-3-small` is below what the workshop needs for your
-expected participant/team count in that region. Options, in order of speed:
+サブスクリプション全体に **Contributor** または同等の権限を持つアカウントを使ってください。
+リソースグループ（RG）だけの **Owner** ロールでは、プロバイダーを登録できません。
 
-1. Re-run with `--location swedencentral` (or `eastus2`, whichever you did not just
-   check) — the workshop supports either as a full alternative, not a degraded mode.
-2. Request a quota increase for the relevant model/SKU via the Azure portal
-   (Quotas blade) or an Azure support ticket. Quota increases are not instant; plan
-   for lead time before the event.
-3. Reduce concurrent participant/team count, or stagger sessions, so the existing
-   quota covers the smaller concurrent footprint.
+<a id="admin-preflightsh-reports-insufficient-model-quotacapacity"></a>
 
-Never tell participants to proceed against a subscription with confirmed insufficient
-capacity — `terraform apply` will fail late, mid-workshop, with a much worse
-participant experience than catching it here first.
+## モデルのクォータ・容量が不足している
 
-Luna is shared by Prompt/Hosted Agents; GPT-5.5 is shared by Foundry IQ query planning,
-configurable LLM judges, and Optimizer. Check each deployment's own same-SKU
-`usageName` evidence, using default capacities 40/100/40K TPM respectively.
-Do not infer a quota bucket from a model name or substitute an old model version.
+対象リージョンの `gpt-5.6-luna`、`gpt-5.5`、`text-embedding-3-small` のいずれかで、
+想定する参加者・チーム数に対してサブスクリプションのクォータが不足しています。
+対応の目安は次のとおりです。
 
-## HTTP 429 or Foundry IQ timeouts despite available subscription quota
+1. `--location swedencentral` または `--location eastus2` で、もう一方のリージョンを指定して再実行します。どちらでも同じ内容のハンズオンを実施できます。
+2. Azure portal の **Quotas** または Azure サポートから、対象モデル・SKU のクォータ引き上げを申請します。即時には反映されないため、開催前に余裕を持って申請してください。
+3. 同時に利用する参加者・チーム数を減らすか、開催時間を分けて、既存のクォータ内に収めます。
 
-Subscription quota headroom and a deployment's allocated throughput are different.
-During a 2026-09-06 rehearsal, a seven-row Portal evaluation produced 36 HTTP 429
-responses between 01:37 and 01:42 UTC with the shared GPT-5.5 deployment at 20 capacity
-units. ARM reported `rateLimits` of 20 requests/60 seconds and 20,000 tokens/60 seconds;
-Foundry IQ retrieval also reached its 90-second timeout.
+**容量不足が確認された状態で参加者を先へ進めないでください。**
+ハンズオンの途中で `terraform apply` が失敗することを、事前に防ぐための確認です。
 
-The default `optimizer_model_capacity` is now **100**, shared by Foundry IQ query
-planning, configurable LLM judges, and Optimizer. Luna and embedding remain at 40.
-This allocates more deployment throughput within existing GlobalStandard model/SKU
-quota; it does not raise the subscription quota limit or purchase a fixed token-spend
-bill. Actual model consumption is still chargeable, and other Azure service charges
-remain. Higher throughput can permit more consumption.
+Luna は Prompt / Hosted Agent、GPT-5.5 は Foundry IQ のクエリ計画・設定可能な LLM 評価用モデル・
+Optimizer で共有します。Luna / GPT-5.5 / 埋め込みの既定の必要容量は、それぞれ **40 / 100 / 40K TPM** です。
+各デプロイの同じ SKU に対応する `usageName` を根拠に確認してください。
+モデル名からクォータの区分を推測したり、古いモデルバージョンに置き換えたりしないでください。
 
-For an existing environment, review the Terraform plan and any explicit capacity
-override before applying: an old tfvars or `-var` override of 20 still wins over the
-new default. Confirm the resulting deployment capacity and actual `rateLimits`, then
-repeat a controlled evaluation after the previous run is terminal. 100 units does
-not mathematically guarantee zero 429s: request bursts, token volume, and service-side
-limits still matter. Reduce overlapping workloads and honor retry guidance if
-throttling persists; do not blindly resubmit a running chargeable evaluation.
+<a id="http-429-or-foundry-iq-timeouts-despite-available-subscription-quota"></a>
 
-## A model appears in the catalog but not in the Portal picker
+## クォータに余裕があるのに HTTP 429 や Foundry IQ のタイムアウトが発生する
 
-Catalog availability, quota, and feature/API support are separate checks. Confirm the
-selected project and deployment names in `.workshop/context.json`. Prompt/Hosted
-Agents use `primary_model_deployment_name` (`gpt-5.6-luna`). Foundry IQ, configurable
-LLM evaluation judges, and both Optimizer model selections use
-`optimizer_model_deployment_name` (`gpt-5.5`); service-managed evaluators do not expose
-a configurable judge.
+**サブスクリプションのクォータの空き容量と、デプロイに割り当てた処理量は別です。**
+2026-09-06 のリハーサルでは、共有する GPT-5.5 デプロイが20容量単位の状態で
+7行の Portal 評価を行い、01:37〜01:42 UTC に HTTP 429 が36回発生しました。
+ARM が返した `rateLimits` は60秒あたり20リクエスト・20,000トークンで、
+Foundry IQ の検索も90秒のタイムアウトに達しました。
 
-In the new Portal checked on 2026-09-06, the knowledge-base Chat completions model
-picker offered the deployed GPT-5.5 but not Luna, even after choosing Medium. The Agent
-picker offered Luna and agent inference succeeded. Use GPT-5.5 for the knowledge base;
-do not change the Agent to match it. A model's availability through a
+現在の `optimizer_model_capacity` の既定値は **100** です。
+Foundry IQ のクエリ計画・設定可能な LLM 評価用モデル・Optimizer で共有し、Luna と埋め込みは40のままです。
+これは既存の `GlobalStandard` のモデル・SKU 別クォータ内でデプロイの処理量を増やす設定であり、
+サブスクリプションのクォータ上限の引き上げや、定額のトークン利用枠の購入ではありません。
+モデルの実際の使用量や、ほかの Azure サービスの料金は引き続き発生します。
+処理量を増やすと、使用量も増える可能性があります。
+
+既存環境へ適用する前に、Terraform の実行計画と容量の上書き設定を確認してください。
+古い tfvars や `-var` で20を指定している場合は、新しい既定値よりもその指定が優先されます。
+変更後のデプロイ容量と実際の `rateLimits` を確認し、前回の評価が終了してから、
+実行条件を管理したうえで再評価してください。
+
+100単位でも HTTP 429 が発生しない保証はありません。
+リクエストの集中、トークン量、サービス側の制限も影響します。
+スロットリングが続く場合は同時実行を減らし、再試行の案内に従ってください。
+**課金対象の評価が実行中のまま、むやみに再実行しないでください。**
+
+<a id="a-model-appears-in-the-catalog-but-not-in-the-portal-picker"></a>
+
+## カタログにあるモデルが Portal の選択欄に表示されない
+
+カタログでの利用可否、クォータ、機能・API の対応状況は別々に確認する必要があります。
+`.workshop/context.json` で、選択中のプロジェクトとデプロイ名を確認してください。
+
+| 用途 | 設定とモデル |
+| --- | --- |
+| Prompt / Hosted Agent | `primary_model_deployment_name`（`gpt-5.6-luna`） |
+| Foundry IQ、設定可能な LLM 評価用モデル、Optimizer の両方のモデル選択 | `optimizer_model_deployment_name`（`gpt-5.5`） |
+
+サービス管理の評価器では、評価用モデルを変更できません。
+
+2026-09-06 に確認した新しい Portal では、ナレッジベースの **Chat completions** モデル選択欄に
+GPT-5.5 は表示されましたが、Luna は検索の労力を **Medium** にしても表示されませんでした。
+一方、エージェントの選択欄には Luna が表示され、推論にも成功しました。
+ナレッジベースには GPT-5.5 を使い、エージェント側まで同じモデルに変更しないでください。
+
 [Search API](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
-does not guarantee that the current Portal exposes it.
-If the required picker/API is unavailable, stop and record the blocker rather than
-adding another deployment or silently switching models.
+で利用できるモデルでも、現在の Portal に表示されるとは限りません。
+必要な選択欄や API が利用できない場合は作業を止め、阻害要因を記録してください。
+別のデプロイを追加したり、無断でモデルを切り替えたりしないでください。
 
-## Updating an environment with old deployment names
+<a id="updating-an-environment-with-old-deployment-names"></a>
 
-Changing `primary`/`optimizer` to `gpt-5.6-luna`/`gpt-5.5` can replace model resources.
-Review the Terraform plan and reconnect any saved agent/knowledge/evaluation references
-after the change. State recovery only imports the exact current deployment IDs; do not
-delete state to bypass a mismatch. Preserve the original cleanup inputs and state until
-cleanup succeeds, and never delete the existing resource group.
+## 古いデプロイ名の環境を更新する
 
-## Azure AI Search reports `InsufficientResourcesAvailable`
+`primary` / `optimizer` を `gpt-5.6-luna` / `gpt-5.5` に変更すると、
+モデルのリソースが置き換わる場合があります。
+Terraform の実行計画を確認し、変更後は保存済みのエージェント・ナレッジ・評価の参照先を接続し直してください。
 
-Search capacity is a live regional constraint that the resource-provider availability
-metadata cannot predict. Re-run `scripts/setup.sh` with the supported alternate region:
+状態の復旧では、現在のデプロイ ID と完全に一致するものだけをインポートします。
+不一致を回避するために状態ファイルを削除しないでください。
+クリーンアップが成功するまで元の入力値と状態ファイルを保持し、**既存のリソースグループは削除しないでください。**
+
+<a id="azure-ai-search-reports-insufficientresourcesavailable"></a>
+
+## Azure AI Search で `InsufficientResourcesAvailable` が発生する
+
+Azure AI Search の空き容量はリージョンの実際の稼働状況に左右され、
+リソースプロバイダーの利用可否メタデータだけでは予測できません。
+対応する代替リージョンを指定して `scripts/setup.sh` を再実行します。
 
 ```bash
 ./scripts/setup.sh \
@@ -97,84 +114,81 @@ metadata cannot predict. Re-run `scripts/setup.sh` with the supported alternate 
   --location swedencentral
 ```
 
-Use `eastus2` instead when the failed attempt targeted `swedencentral`. Setup is
-idempotent, safely imports deterministic workshop-tagged resources and exact RBAC
-assignments that exist without a local state entry, and refreshes its Terraform plan
-after any partial apply. If recovery refuses an import because ownership tags differ,
-do not force-import or delete that resource; investigate the name collision first.
+`swedencentral` で失敗した場合は、代わりに `eastus2` を指定してください。
+セットアップは再実行しても安全です。ローカルの状態ファイルに記録がなくても、
+命名規則とハンズオン用タグで特定できるリソース、および完全に一致する RBAC 割り当てを安全にインポートします。
+一部だけ適用された場合も、Terraform の実行計画を更新します。
 
-## `admin-preflight.sh` reports an Azure Policy that may deny required resource types
+所有者を示すタグが異なるためインポートを拒否された場合は、強制インポートや削除をせず、
+まず名前の衝突を調査してください。
 
-The script's policy scan is **best-effort**: it lists policy assignments whose
-effect (`deny`, `disable`, etc.) and resource-type scope look like they could block
-`Microsoft.CognitiveServices/accounts`, `Microsoft.Search/searchServices`,
-`Microsoft.App/*`, or their sub-resources, but it cannot exhaustively evaluate every
-policy's condition logic (initiative-nested policies, tag-based conditions, and
-`deployIfNotExists` effects in particular are hard to statically resolve). If the
-report flags a candidate policy:
+<a id="admin-preflightsh-reports-an-azure-policy-that-may-deny-required-resource-types"></a>
 
-1. Open it in the portal (Policy > Definitions) and read its `if` condition against
-   the exact resource types above.
-2. If it denies one of them without an exemption path, either request a
-   policy exemption scoped to the workshop resource group, or choose a
-   different resource group/subscription that is not subject to it.
-3. If the report shows **no** flagged policies, that is not a guarantee — it means
-   none matched the script's heuristics. A real `terraform apply` failure with a
-   policy-denial error message is authoritative; the preflight scan is a fast,
-   non-exhaustive early warning only.
+## 必要なリソースを拒否する可能性のある Azure Policy が報告される
 
-Workshop versions before 2026-08-31 provisioned a Storage account for a redundant copy
-of the source documents. A management-group `modify` policy that disabled its public
-access caused bootstrap to fail from Codespaces. The current core path no longer
-provisions or accesses Storage; it indexes the repository's synthetic policy files
-directly into Azure AI Search. Update the checkout and rerun `setup.sh` to remove the
-legacy Storage resources through Terraform.
+スクリプトによるポリシー確認は **可能な範囲での確認**です。
+効果（`deny`、`disable` など）と対象リソースの範囲から、
+`Microsoft.CognitiveServices/accounts`、`Microsoft.Search/searchServices`、
+`Microsoft.App/*` やその配下のリソースをブロックしそうなポリシー割り当てを列挙します。
 
-## A participant's `preflight.sh` fails even though `admin-preflight.sh` passed
+ただし、すべての条件を網羅的には評価できません。
+特にイニシアティブ内のポリシー、タグに基づく条件、`deployIfNotExists` の効果は、
+静的な確認だけでは判断が困難です。候補のポリシーが報告されたら、次を確認してください。
 
-`scripts/preflight.sh` is participant/resource-group scoped and additionally checks
-things `admin-preflight.sh` cannot see from the subscription level: whether the named
-resource group actually exists, whether the participant's own identity has Owner on
-it, and live model-catalog availability at the exact region `preflight.sh` resolves
-to. Confirm:
+1. Portal の **Policy > Definitions** で対象ポリシーを開き、上記リソースの種類に対する `if` 条件を確認します。
+2. 対象リソースを拒否し、適用除外もない場合は、ハンズオン用 RG に限定したポリシー適用除外を申請するか、対象外の RG・サブスクリプションを選びます。
+3. 候補が **報告されなくても、問題がない保証にはなりません**。スクリプトの判定条件に一致しなかっただけです。実際の `terraform apply` でポリシー拒否のエラーが出た場合は、その結果を優先して調査してください。
 
-- The resource group name/subscription ID the participant passed match what you
-  provisioned for them.
-- The participant is signed in (`az login`) as the identity you granted Owner to,
-  not a different account or a service principal.
-- The provider registration and quota checks were performed for the **same** region
-  the participant is targeting (`--location`), not just the workshop default.
+2026-08-31 より前の教材では、元文書の複製用に Storage アカウントを作成していました。
+管理グループの `modify` ポリシーでパブリックアクセスが無効になり、
+Codespaces からの初期データ投入が失敗する事象がありました。
+現在の本編では Storage を作成・参照せず、リポジトリの合成ポリシーファイルを
+Azure AI Search に直接登録します。教材を更新して `setup.sh` を再実行し、
+古い Storage リソースを Terraform 経由で削除してください。
 
-## Terraform apply fails with an authorization error inside the resource group
+<a id="a-participants-preflightsh-fails-even-though-admin-preflightsh-passed"></a>
 
-This should not happen if `admin-preflight.sh` and the participant's `preflight.sh`
-both passed, since Terraform never operates outside the named resource group or at
-subscription scope. If it does happen, it is very likely one of:
+## 管理者の事前確認は通るのに、参加者の `preflight.sh` が失敗する
 
-- The participant's Owner role assignment on the resource group has not finished
-  propagating yet (Entra role propagation can take a few minutes) — wait and retry
-  `scripts/setup.sh`, which is idempotent.
-- The role was assigned at a different scope (e.g. a child resource) instead of the
-  resource group itself.
+`scripts/preflight.sh` は参加者とリソースグループを対象に、
+管理者の確認だけでは分からない次の条件も調べます。
+指定 RG の存在、参加者本人の **Owner** ロール、実際に選択されたリージョンでのモデルカタログの利用可否です。
 
-## Cleanup (`destroy.sh`) reports resources still present after `terraform destroy`
+- 参加者が指定した RG 名・サブスクリプション ID が、割り当てたものと一致しているか。
+- `az login` でサインインしたアカウントが、**Owner** を付与した本人のものか。別アカウントやサービスプリンシパルではないか。
+- プロバイダー登録とクォータの確認を、既定リージョンだけでなく、参加者が `--location` で指定した **同じリージョン**で行ったか。
 
-See [costs and cleanup](../costs-and-cleanup.md#cleanup-order) for the full teardown
-order. If Azure resources remain tagged as workshop resources in the resource group
-after a reported-successful `terraform destroy`, do not delete `.workshop/` state —
-re-run `scripts/destroy.sh`; Terraform destroy is idempotent and safe to retry against
-existing state. If it still leaves resources, inspect the exact resource and error
-`destroy.sh` reports; do not delete resources by hand outside of Terraform, since that
-can desynchronize local state from the real resource group and complicate a later
-retry.
+<a id="terraform-apply-fails-with-an-authorization-error-inside-the-resource-group"></a>
 
-If setup failed before `.workshop/context.json` was written, run
-`./scripts/destroy.sh` normally. Setup persists the resolved, non-secret Terraform
-inputs to `.workshop/terraform-inputs.json` before Terraform can create resources, and
-destroy uses that file automatically.
+## RG 内の操作なのに `terraform apply` が認可エラーで失敗する
 
-Only if both context files are unavailable, pass the original inputs explicitly so
-Terraform can destroy the partial state:
+Terraform は指定 RG の外やサブスクリプション全体への操作を行わないため、
+管理者と参加者の両方の事前確認が通っていれば、通常は発生しません。
+発生した場合は、次の原因を確認してください。
+
+- RG に付与した **Owner** ロールがまだ反映されていない。Entra のロール反映には数分かかる場合があります。少し待ってから、再実行しても安全な `scripts/setup.sh` を実行してください。
+- ロールの割り当て先が RG 自体ではなく、配下のリソースなど別の範囲になっている。
+
+<a id="cleanup-destroysh-reports-resources-still-present-after-terraform-destroy"></a>
+
+## `terraform destroy` 後もリソースが残っていると報告される
+
+削除の順序は[料金とクリーンアップ](../costs-and-cleanup.md#cleanup-order)を参照してください。
+`terraform destroy` が成功したと報告されても、ハンズオン用タグの付いた Azure リソースが RG 内に残っている場合は、
+**`.workshop/` の状態ファイルを削除せず**、`scripts/destroy.sh` を再実行してください。
+既存の状態ファイルを使った Terraform の削除処理は、安全に再実行できます。
+
+それでも残る場合は、`destroy.sh` が示したリソースとエラーを調査してください。
+Terraform を介さずに手動で削除すると、ローカルの状態と実際の RG が食い違い、
+後の再実行が難しくなるため避けてください。
+
+`.workshop/context.json` が作成される前にセットアップが失敗した場合も、
+通常どおり `./scripts/destroy.sh` を実行します。
+セットアップはリソース作成前に、確定した機密情報を含まない Terraform の入力値を
+`.workshop/terraform-inputs.json` に保存し、削除処理はこのファイルを自動で使います。
+
+**両方のファイルが利用できない場合に限り**、元の入力値を明示して、
+途中まで作成されたリソースを Terraform で削除します。
 
 ```bash
 ./scripts/destroy.sh \
@@ -189,8 +203,10 @@ Terraform can destroy the partial state:
   --auto-approve
 ```
 
-## See also
+<a id="see-also"></a>
 
-- [Administrator prerequisites](prerequisites.md)
-- [Costs and cleanup](../costs-and-cleanup.md)
-- [Architecture](../architecture.md)
+## 関連資料
+
+- [管理者向け前提条件](prerequisites.md)
+- [料金とクリーンアップ](../costs-and-cleanup.md)
+- [アーキテクチャ](../architecture.md)
