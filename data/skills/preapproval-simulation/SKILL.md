@@ -1,9 +1,9 @@
 ---
 name: preapproval-simulation
-description: Use when a user explicitly requests a Contoso travel preapproval simulation or wants to interpret its simulated decision. Do not start a simulation for an estimate-only or policy-only question.
+description: Contoso の出張事前承認シミュレーションを明示的に依頼された場合、またはその結果の解釈を求められた場合に使用する。見積もりや規程のみの質問ではシミュレーションを開始しない。
 ---
 
-# Preapproval simulation
+# 事前承認シミュレーション
 
 Contoso の事前承認を、合成データだけの Travel Ops API でシミュレーションする。
 これは申請の保存、実際の承認、予約を行う機能ではない。

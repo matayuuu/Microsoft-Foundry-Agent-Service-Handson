@@ -1,17 +1,15 @@
-# Lab 3 — Azure AI Search と Foundry IQ（35分）
+# Lab 3 — Foundry IQ（25分）
 
 ## ゴール
 
-利用条件と承認手続きを分けた 2 つの規程 index を使い、取得できた根拠の範囲と
-回答品質を比較します。
-
-1. **Azure AI Search tool**: 利用条件をまとめた検索用データ（index）だけを直接検索
-2. **Foundry IQ knowledge base**: 質問を分解し、利用条件と承認手続きの 2 つの検索先
-   （source）を横断検索
+Lab 2 では、Azure AI Search tool から利用条件をまとめた 1 つの index を直接検索しました。
+この Lab では **Foundry IQ knowledge base** を作成して Prompt Agent に接続し、質問を
+分解しながら利用条件と承認手続きの 2 つの検索先（source）を横断検索します。
 
 たとえば「ビジネスクラスに乗れるか」と「誰にどの順番で承認してもらうか」は、
-別の規程に書かれています。同じ質問を 2 つの検索方法で試し、**回答の根拠が増えること**
-を確認します。文書を検索して回答の根拠にする仕組みを RAG と呼びます。
+別の規程に書かれています。Lab 2 と同じ質問を送り、Direct search と比べて
+**回答の根拠が増えること**を確認します。文書を検索して回答の根拠にする仕組みを
+RAG と呼びます。
 
 > [!WARNING]
 > 検索とモデルの呼び出しには料金が発生します。教材の合成データと質問例を使います。
@@ -22,83 +20,15 @@
 jq -r '
   .terraform_outputs
   | {
-      search_service: .search_service_name.value,
       search_connection: "contoso-travel-search",
-      direct_search_index: "contoso-travel-policy",
+      policy_search_index: "contoso-travel-policy",
       approval_search_index: "contoso-travel-approval",
       knowledge_model: .optimizer_model_deployment_name.value
     }
 ' .workshop/context.json
 ```
 
-## 1. Azure AI Search tool を接続する
-
-1. **Build > Agents** から `contoso-travel-assistant` を開きます。
-2. **Tools > Add > Add tools** を選択します。
-
-![Tools の Add から Add tools を選ぶ](../docs/images/lab03-add-tools.png)
-
-3. **Configured** の **Azure AI search** を選び、**Add tool** を選択します。
-
-![Azure AI search を選んで追加する](../docs/images/lab03-select-ai-search.png)
-
-4. **Azure AI Search connection** を開き、`search_service_name` の値
-   （`srch-fdyws-...`）を選択します。**Connect to new resource** は使いません。
-
-![接続欄で自分の Search service を選択する](../docs/images/lab03-search-connection.png)
-
-`contoso-travel-search` は project connection 名です。この選択欄では
-service 名が表示されるため、`search_service_name` と見比べてください。
-
-5. `contoso-travel-policy` の行の丸い選択ボタンを選び、**Add** を押します。
-   `contoso-travel-approval` はまだ選びません。
-
-![policy index を選択する](../docs/images/lab03-ai-search-picker.png)
-
-6. Agent に戻ったら **Select a search index** が `contoso-travel-policy` であることを
-   確認し、**Save** を選択します。
-
-![接続した index を確認して保存する](../docs/images/lab03-search-attached.png)
-
-## 2. Direct search と citation を確認する
-
-**Playground > New chat** で、次の質問を送ります。
-
-```text
-東京から大阪へ日帰り出張する場合、食事の日当はいくらですか?
-```
-
-回答の金額と引用を確認し、[日当・食事規程](../data/policies/04-per-diem-meals.md)と見比べます。
-Search service のトップ URL が開く場合は
-[引用のトラブルシューティング](../docs/participant/troubleshooting.md#引用リンク)
-を確認してください。
-
-この確認後、もう一度 **New chat** を選び、複数 source の根拠が必要な
-比較用質問を送ります。
-
-```text
-片道12時間の国際線を出発2日前にビジネスクラスで予約したいです。
-直前予約として添付が必要なもの、ビジネスクラスの承認者と順序、
-申請に使う機能名、申請から承認完了までの標準最大営業日数をまとめてください。
-```
-
-次の 4 項目について、回答に値があるかだけでなく、対応する citation があるかを記録します。
-
-| 確認項目 | 根拠文書 |
-|---|---|
-| 直前予約で添付するもの | [フライト規程](../data/policies/02-flights.md) |
-| 承認者と順序 | [承認プロセス規程](../data/policies/09-approval-process.md) |
-| 申請に使う機能 | [承認プロセス規程](../data/policies/09-approval-process.md) |
-| 標準最大所要期間 | [承認プロセス規程](../data/policies/09-approval-process.md) |
-
-`contoso-travel-policy` にはフライト規程が含まれますが、承認プロセス規程は
-`contoso-travel-approval` に分けてあります。今は前者だけを接続しています。
-回答に値が書かれていても、対応する資料で裏付けられなければ未取得として記録します。
-
-画面の **AI Quality** の数値だけで合否を決めず、この表の 4 項目と根拠を使って
-比較します。
-
-## 3. Foundry IQ knowledge base を作成する
+## 1. Foundry IQ knowledge base を作成する
 
 Agent に接続する前に、**Build > Knowledge** で knowledge base を作成します。
 
@@ -151,14 +81,8 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
 
 9. 一覧で `contoso-travel-knowledge-lab` の Status が **Active** になるまで待ちます。
 
-Agent の **`gpt-5.6-luna`** は最終回答を作り、knowledge base の **`gpt-5.5`** は
-どこをどう検索するかを考えます。後者は評価・Optimizer 用の deployment と共有します。
-**Extractive data** を選ぶことで、knowledge base は取得した原文を返し、最終回答は
-Prompt Agent が作成します。
 
-**Medium** では検索結果が不十分な場合に追加の検索を行います。
-
-## 4. Knowledge base を agent に接続する
+## 2. Knowledge base を agent に接続する
 
 1. **Build > Agents > contoso-travel-assistant** に戻ります。
 2. 比較条件を揃えるため、**Tools** の **Azure AI Search** で
@@ -174,9 +98,9 @@ Search service や index を削除する操作ではありません。接続方�
    この操作で自動保存される場合があります。**Save** が有効なら押し、無効ならそのまま
    次へ進みます。
 
-## 5. Agentic retrieval を確認する
+## 3. Agentic retrieval を確認する
 
-Playground で **New chat** を選び、同じ質問を送ります。Direct search の回答が
+Playground で **New chat** を選び、Lab 2 と同じ質問を送ります。Direct search の回答が
 会話履歴から混入しないよう、必ず新しい会話で比較してください。
 
 ```text
@@ -185,7 +109,16 @@ Playground で **New chat** を選び、同じ質問を送ります。Direct sea
 申請に使う機能名、申請から承認完了までの標準最大営業日数をまとめてください。
 ```
 
-## 6. 回答の根拠を確認する
+回答内容と citation を、次の根拠文書と照合します。
+
+| 確認項目 | 根拠文書 |
+|---|---|
+| 直前予約で添付するもの | [フライト規程](../data/policies/02-flights.md) |
+| 承認者と順序 | [承認プロセス規程](../data/policies/09-approval-process.md) |
+| 申請に使う機能 | [承認プロセス規程](../data/policies/09-approval-process.md) |
+| 標準最大所要期間 | [承認プロセス規程](../data/policies/09-approval-process.md) |
+
+## 4. 回答の根拠を確認する
 
 回答末尾の **根拠資料** に、フライト規程と承認プロセス規程が含まれることを確認します。
 category はそれぞれ `flights` と `approval_process` です。追加の FAQ などが
@@ -199,7 +132,7 @@ Search index 型の Foundry IQ では、引用が `mcp://searchindex/...` とい
 2. **Trajectories > Find in trace** で `knowledge_base_retrieve` を検索し、
    該当する処理の **Input + Output** を開きます。
 3. **Input** の質問と、**Output** に含まれる `flights` / `approval_process` の文書を確認します。
-   取得した文書と回答を見比べ、手順 2 で記録した結果と比較してください。
+   取得した文書と回答を見比べ、Lab 2 で記録した結果と比較してください。
 
 ## 完了チェック
 
@@ -210,7 +143,7 @@ Search index 型の Foundry IQ では、引用が `mcp://searchindex/...` とい
 <details>
 <summary>回答後の確認ポイント</summary>
 
-国内日帰りの食事日当は `1,500円` です。比較用質問は次の 4 項目を確認します。
+比較用質問は次の 4 項目を確認します。
 
 | 確認項目 | 規程に基づく内容 |
 |---|---|

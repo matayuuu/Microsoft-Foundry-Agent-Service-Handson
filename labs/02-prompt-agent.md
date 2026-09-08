@@ -1,13 +1,27 @@
-# Lab 2 — Prompt Agent（10分）
+# Lab 2 — Prompt Agent と Azure AI Search（20分）
 
 ## ゴール
 
 Microsoft Foundry Portal で、後続 Lab の knowledge と tool を接続する Prompt Agent
-`contoso-travel-assistant` を作成します。
+`contoso-travel-assistant` を作成し、Azure AI Search tool で社内規程を検索できるように
+します。
 
-Prompt Agent は、**モデルと指示文を組み合わせたアシスタント**です。この Lab では
-「何をする担当か」を設定します。社内規程を調べる機能は Lab 3、費用を計算する機能は
-Lab 4 で追加します。
+Microsoft Foundry Agent Service には、次の 2 種類の Agent があります。
+
+- **Prompt Agent**：指示、モデル、tool を設定すると、コードやインフラを管理せずに
+  Foundry 上で実行できる Agent
+- **Hosted Agent**：独自のコードやフレームワークで実装し、Foundry が managed endpoint、
+  scaling、identity を備えた container として実行する Agent
+
+参考：[What is Microsoft Foundry Agent Service? — Agent types](https://learn.microsoft.com/en-us/azure/foundry/agents/overview#agent-types)
+
+この Lab では、Portal から **Prompt Agent** を構築し、「何をする担当か」を指示文で
+設定します。その後、利用条件をまとめた検索用データ（index）を直接検索する
+Azure AI Search tool を接続します。Lab 3 では Foundry IQ に切り替えて検索範囲を広げ、
+Lab 4 では費用を計算する機能を追加します。
+
+> [!WARNING]
+> 検索とモデルの呼び出しには料金が発生します。教材の合成データと質問例を使います。
 
 ## 始める前に
 
@@ -22,7 +36,9 @@ jq -r '
   .terraform_outputs
   | {
       project: .foundry_project_name.value,
-      model: .primary_model_deployment_name.value
+      model: .primary_model_deployment_name.value,
+      search_service: .search_service_name.value,
+      direct_search_index: "contoso-travel-policy"
     }
 ' .workshop/context.json
 ```
@@ -77,23 +93,101 @@ Tools に Web search がなければ操作は不要です。**Guardrail** など
 Travel Ops tool の都市名には、Tokyo、Osaka、New York のような英語の canonical name を
 渡してください。
 予約や承認を実行したとは表現せず、シミュレーションであることを明示してください。
-
-規程を参照した回答の末尾に「根拠資料」を設け、実際に参照した取得結果に含まれる title（文書名）と category を示してください。
-文書IDを求められた場合は取得結果の id を使ってください。URLが取得結果にある場合だけ、そのURLをそのまま併記してください。取得できない出典名・ID・URLは推測して作らないでください。
 ```
 
 モデル・Web search の削除・Instructions を確認し、**Save** でまとめて保存します。
 
 ![Instructions を入力し、設定をまとめて Save](../docs/images/lab02-instructions-save.png)
 
+## 5. Azure AI Search tool を接続する
+
+1. **Tools > Add > Add tools** を選択します。
+
+![Tools の Add から Add tools を選ぶ](../docs/images/lab03-add-tools.png)
+
+2. **Configured** の **Azure AI search** を選び、**Add tool** を選択します。
+
+![Azure AI search を選んで追加する](../docs/images/lab03-select-ai-search.png)
+
+3. **Azure AI Search connection** を開き、`search_service_name` の値
+  （`srch-fdyws-...`）を選択します。**Connect to new resource** は使いません。
+
+![接続欄で自分の Search service を選択する](../docs/images/lab03-search-connection.png)
+
+`contoso-travel-search` は project connection 名です。この選択欄では
+service 名が表示されるため、`search_service_name` と見比べてください。
+
+4. `contoso-travel-policy` の行の丸い選択ボタンを選び、**Add** を押します。
+  `contoso-travel-approval` はまだ選びません。
+
+![policy index を選択する](../docs/images/lab03-ai-search-picker.png)
+
+5. Agent に戻ったら **Select a search index** が `contoso-travel-policy` であることを
+  確認し、**Save** を選択します。
+
+![接続した index を確認して保存する](../docs/images/lab03-search-attached.png)
+
+## 6. Direct search と citation を確認する
+
+**Playground > New chat** で、次の質問を送ります。
+
+```text
+東京から大阪へ日帰り出張する場合、食事の日当はいくらですか?
+```
+
+回答の金額と、回答下部に表示される番号付きの citation を確認し、
+[日当・食事規程](../data/policies/04-per-diem-meals.md)と見比べます。
+Search service のトップ URL が開く場合は
+[引用のトラブルシューティング](../docs/participant/troubleshooting.md#引用リンク)
+を確認してください。
+
+
+この確認後、もう一度 **New chat** を選び、複数の規程に根拠が分かれている比較用質問を
+送ります。
+
+```text
+片道12時間の国際線を出発2日前にビジネスクラスで予約したいです。
+直前予約として添付が必要なもの、ビジネスクラスの承認者と順序、
+申請に使う機能名、申請から承認完了までの標準最大営業日数をまとめてください。
+```
+
+次の 4 項目について、回答に値があるかだけでなく、対応する citation があるかを
+記録します。この結果は Lab 3 で Foundry IQ と比較します。
+
+| 確認項目 | 根拠文書 |
+|---|---|
+| 直前予約で添付するもの | [フライト規程](../data/policies/02-flights.md) |
+| 承認者と順序 | [承認プロセス規程](../data/policies/09-approval-process.md) |
+| 申請に使う機能 | [承認プロセス規程](../data/policies/09-approval-process.md) |
+| 標準最大所要期間 | [承認プロセス規程](../data/policies/09-approval-process.md) |
+
+`contoso-travel-policy` にはフライト規程が含まれますが、承認プロセス規程は
+`contoso-travel-approval` に分けてあります。今は前者だけを接続しています。
+回答に値が書かれていても、対応する資料で裏付けられなければ未取得として記録します。
+
+画面の **AI Quality** の数値だけで合否を決めず、この表の 4 項目と根拠を使って
+比較します。
+
 ## 完了チェック
 
 - Agents の一覧に `contoso-travel-assistant` が表示される
 - Agent の model と instructions が保存されている
-- Knowledge と Tools はまだ空である
+- Tools に `contoso-travel-policy` を使う Azure AI Search が接続されている
+- 食事日当の回答に金額と番号付きの citation があり、内部表現が本文に露出していない
+- 比較用質問の 4 項目について、根拠の有無を記録している
 
-この Lab ではまだ質問を送信しません。続けて knowledge を接続します。
+Direct search では原則として、フライト規程にある 1 項目だけを根拠付きで回答できます。
+続けて Foundry IQ を接続し、2 つの index を横断検索します。
+
+<details>
+<summary>回答後の確認ポイント</summary>
+
+国内日帰りの食事日当は `1,500円` です。比較用質問では、Direct search が原則として
+4 項目中 1 項目だけを根拠付きで回答します。生成文に値が含まれていても、citation が
+なければ根拠付き回答には数えません。
+
+</details>
 
 ## 次の Lab
 
-[Lab 3 — Azure AI Search と Foundry IQ](03-rag-foundry-iq.md)
+[Lab 3 — Foundry IQ](03-rag-foundry-iq.md)

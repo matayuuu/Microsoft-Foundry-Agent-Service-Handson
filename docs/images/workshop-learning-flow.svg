@@ -32,12 +32,12 @@
   <rect id="lab2-prompt" class="card" x="80" y="580" width="480" height="140" rx="16" stroke="#0078D4" fill="#CFE4FA"/>
   <text id="lab2-prompt-text" x="320" font-size="20" text-anchor="middle">
     <tspan x="320" y="634">Lab 2｜Prompt Agent</tspan>
-    <tspan x="320" y="684">役割と回答方針を保存する</tspan>
+    <tspan x="320" y="684">規程の直接検索まで確認する</tspan>
   </text>
   <rect id="lab3-knowledge" class="card" x="80" y="760" width="480" height="140" rx="16" stroke="#0078D4" fill="#CFE4FA"/>
   <text id="lab3-knowledge-text" x="320" font-size="20" text-anchor="middle">
-    <tspan x="320" y="814">Lab 3｜Knowledge / Foundry IQ</tspan>
-    <tspan x="320" y="864">規程を調べ、根拠を示す</tspan>
+    <tspan x="320" y="814">Lab 3｜Foundry IQ</tspan>
+    <tspan x="320" y="864">複数の規程を横断検索する</tspan>
   </text>
   <rect id="lab4-toolbox" class="card" x="80" y="940" width="480" height="140" rx="16" stroke="#0078D4" fill="#CFE4FA"/>
   <text id="lab4-toolbox-text" x="320" font-size="20" text-anchor="middle">

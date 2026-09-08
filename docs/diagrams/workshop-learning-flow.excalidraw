@@ -98,8 +98,8 @@
     {
       "id": "lab2-prompt-text", "type": "text",
       "x": 100, "y": 600, "width": 440, "height": 100,
-      "text": "Lab 2｜Prompt Agent\n役割と回答方針を保存する",
-      "originalText": "Lab 2｜Prompt Agent\n役割と回答方針を保存する",
+      "text": "Lab 2｜Prompt Agent\n規程の直接検索まで確認する",
+      "originalText": "Lab 2｜Prompt Agent\n規程の直接検索まで確認する",
       "fontSize": 20, "fontFamily": 2, "lineHeight": 2.5,
       "textAlign": "center", "verticalAlign": "middle", "containerId": "lab2-prompt",
       "strokeColor": "#000000", "backgroundColor": "transparent",
@@ -121,8 +121,8 @@
     {
       "id": "lab3-knowledge-text", "type": "text",
       "x": 100, "y": 780, "width": 440, "height": 100,
-      "text": "Lab 3｜Knowledge / Foundry IQ\n規程を調べ、根拠を示す",
-      "originalText": "Lab 3｜Knowledge / Foundry IQ\n規程を調べ、根拠を示す",
+      "text": "Lab 3｜Foundry IQ\n複数の規程を横断検索する",
+      "originalText": "Lab 3｜Foundry IQ\n複数の規程を横断検索する",
       "fontSize": 20, "fontFamily": 2, "lineHeight": 2.5,
       "textAlign": "center", "verticalAlign": "middle", "containerId": "lab3-knowledge",
       "strokeColor": "#000000", "backgroundColor": "transparent",

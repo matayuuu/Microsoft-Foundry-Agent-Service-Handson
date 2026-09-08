@@ -74,11 +74,6 @@ OPENAPI_FETCH_MAX_ATTEMPTS = 5
 OPENAPI_FETCH_RETRY_DELAY_SECONDS = 3.0
 
 
-# ---------------------------------------------------------------------------
-# Pure logic (unit-testable, no Azure/network access)
-# ---------------------------------------------------------------------------
-
-
 def build_openapi_tool(
     *,
     tool_name: str,
@@ -235,11 +230,6 @@ def set_live_server_url(spec: dict[str, Any], base_url: str) -> dict[str, Any]:
     normalized = copy.deepcopy(spec)
     normalized["servers"] = [{"url": base_url.rstrip("/")}]
     return normalized
-
-
-# ---------------------------------------------------------------------------
-# I/O adapters
-# ---------------------------------------------------------------------------
 
 
 def fetch_openapi_spec(
@@ -420,13 +410,25 @@ def attach_toolbox_to_agent(
         )
 
     existing_tools = list(definition.tools or [])
-    if any(
-        isinstance(tool, MCPTool) and tool.server_url == toolbox_endpoint for tool in existing_tools
-    ):
+    for tool in existing_tools:
+        if not isinstance(tool, MCPTool) or tool.server_url != toolbox_endpoint:
+            continue
+        if tool.require_approval == "never":
+            return {
+                "action": "unchanged",
+                "agent_name": agent_name,
+                "agent_version": latest.version,
+            }
+        tool.require_approval = "never"
+        definition.tools = existing_tools
+        created = client.agents.create_version(
+            agent_name=agent_name,
+            definition=definition,
+        )
         return {
-            "action": "unchanged",
+            "action": "updated",
             "agent_name": agent_name,
-            "agent_version": latest.version,
+            "agent_version": created.version,
         }
 
     definition.tools = [

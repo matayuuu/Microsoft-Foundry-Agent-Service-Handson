@@ -22,8 +22,8 @@ Trace が見えない場合は数分待って browser を再読み込みしま�
 
 `contoso-travel-assistant` の **Traces** で、Lab 4〜6 で質問した実行の行を選択します。
 対象の version と実行時刻を確認してください。操作方法は
-[Lab 3 の検索 trace](03-rag-foundry-iq.md#6-回答の根拠を確認する)、
-[Lab 4 の API 呼び出し](04-tools-toolbox.md#7-api-の実行と-skill-の利用を区別して確認する)
+[Lab 3 の検索 trace](03-rag-foundry-iq.md#4-回答の根拠を確認する)、
+[Lab 4 の API 呼び出し](04-tools-toolbox.md#8-api-の実行と-skill-の利用を区別して確認する)
 でも確認できます。
 
 - Model の input / output と token 数

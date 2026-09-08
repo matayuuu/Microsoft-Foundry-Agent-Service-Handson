@@ -257,6 +257,11 @@ def test_toolbox_lab_uses_portal_for_openapi_and_skills() -> None:
     ):
         assert step in lab
     assert "Notebook は本編では使いません" in lab
+    assert "Conversations view" in lab
+    assert "execute_tool" in lab
+    assert "tools/call" in lab
+    assert lab.index("Always auto-approve all tools") < lab.index("Playground の **New chat**")
+    assert "Approve once" not in lab
 
 
 def test_beginner_path_handles_observed_portal_defaults() -> None:
@@ -298,14 +303,31 @@ def test_overview_and_setup_omit_instructor_led_basics() -> None:
     assert "![" not in project_selection
 
 
-def test_prompt_creation_uses_one_entry_image_and_one_final_save() -> None:
+def test_prompt_creation_and_search_attachment_use_scoped_saves() -> None:
     prompt = (LABS_DIR / "02-prompt-agent.md").read_text(encoding="utf-8")
     creation = prompt.split("## 1.", 1)[1].split("## 2.", 1)[0]
+    initial_configuration = prompt.split("## 1.", 1)[1].split("## 5.", 1)[0]
+    search_attachment = prompt.split("## 5.", 1)[1].split("## 6.", 1)[0]
     assert creation.count("![") == 1
     assert "lab02-agent-list.png" in creation
-    assert prompt.count("**Save**") == 1
-    assert "まとめて保存" in prompt
+    assert initial_configuration.count("**Save**") == 1
+    assert "まとめて保存" in initial_configuration
+    assert search_attachment.count("**Save**") == 1
+    assert "contoso-travel-policy" in search_attachment
     assert "囲みのバッククォート" not in prompt
+
+
+def test_search_learning_steps_are_split_between_prompt_and_iq_labs() -> None:
+    prompt = (LABS_DIR / "02-prompt-agent.md").read_text(encoding="utf-8")
+    retrieval = (LABS_DIR / "03-rag-foundry-iq.md").read_text(encoding="utf-8")
+
+    assert "## 5. Azure AI Search tool を接続する" in prompt
+    assert "## 6. Direct search と citation を確認する" in prompt
+    assert "東京から大阪へ日帰り出張する場合" in prompt
+    assert "## 1. Foundry IQ knowledge base を作成する" in retrieval
+    assert "## 1. Azure AI Search tool を接続する" not in retrieval
+    assert "Lab 2 と同じ質問" in retrieval
+    assert "規程を参照した回答には出典を付け" in prompt
 
 
 def test_core_labs_do_not_show_answer_screenshots_or_numbered_image_captions() -> None:

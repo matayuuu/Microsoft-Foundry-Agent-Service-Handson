@@ -79,7 +79,7 @@
   resource group 名の入力ミス。[docs/participant/troubleshooting.md](../docs/participant/troubleshooting.md)
   を画面共有できるようにしておく。
 
-### 00:30–00:50 Lab 2 — Prompt Agent（baseline）
+### 00:30–00:50 Lab 2 — Prompt Agent と Azure AI Search（baseline）
 
 - **デモプロンプト**（`data/eval/live_subset.jsonl` の実データ、そのまま読み上げ可）:
   - `direct_policy_fact`: 「東京から大阪へ日帰り出張する場合、食事の日当はいくらですか?」
@@ -94,7 +94,7 @@
 - **チェックポイント**: 参加者が baseline の instructions を書き換えていないこと
   （Lab 6 の Optimizer の before/after 比較に必要）。
 
-### 00:50–01:25 Lab 3 — Azure AI Search と Foundry IQ
+### 00:50–01:25 Lab 3 — Foundry IQ
 
 - **チェックポイント**: Foundry IQ Knowledge Base（**Preview**）に利用条件と承認手続きの
   2 source が接続され、`multi_hop` の根拠付き回答数が Direct search の原則 1/4 から

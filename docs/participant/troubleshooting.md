@@ -68,12 +68,27 @@ Toolbox 作成時にも推奨ツールが入る場合があります。
 
 ## 引用リンク
 
+### Azure AI Search の回答に `%%CITATION_0%%` が表示される
+
+`%%CITATION_0%%` は、Portal が番号付きの citation に変換するための内部表現です。
+本文や **根拠資料** にそのまま表示される状態は、意図した最終表示ではありません。
+
+回答下部に番号付きの citation が表示され、実行情報に `azure_ai_search_call` があれば、
+検索自体は成功しています。リソースや index を作り直す必要はありません。
+[Lab 2](../../labs/02-prompt-agent.md) の最新の Instructions を保存し、**New chat** で
+もう一度質問してください。成功時は、番号付きの citation が参照元の文書を示し、本文に
+`%%CITATION_...%%` が残らないことを確認します。
+
+公式の確認方法は
+[Connect an Azure AI Search index to Foundry agents — Verify results](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/ai-search#verify-results)
+を参照してください。
+
 ### Foundry IQ の引用が `mcp://searchindex/...` になり、Web ページを開けない
 
 これは Search インデックスの MCP 取得結果を指す識別子であり、通常の Web URL ではありません。
 リンクが開けないことだけを理由にセットアップをやり直したり、インデックスのフィールドを変更したりしません。
 回答の **根拠資料** と `knowledge_base_retrieve` の **Output** にある文書名・カテゴリを
-見比べます。元の規程を読むには [Lab 3](../../labs/03-rag-foundry-iq.md) の教材リンクを使います。
+見比べます。元の規程を読むには [Lab 2](../../labs/02-prompt-agent.md) の教材リンクを使います。
 
 根拠資料が出ない場合は、[Lab 2](../../labs/02-prompt-agent.md) の指示文が保存済みか
 確認し、**New chat** で質問してください。取得結果にない文書名・ID・URLを作らせません。
@@ -125,7 +140,10 @@ Toolbox への認証は Entra ID/RBAC です。OpenAPI の模擬 API の **Anony
 
 Toolbox の公開済みバージョンに Skill が含まれること、参照先 Skill のバージョン、
 利用クライアントの MCP Resources／Skill プロバイダーへの対応を確認します。
-新しい会話または再接続で読み込み記録を確認し、API の成功だけを Skill の成功としません。
+Portal の Prompt Agent は Toolbox の callable tool を実行できますが、MCP Resources の Skill は
+自動で読み込みません。同じ Prompt Agent を Python の `AIProjectClient` から呼び出しても
+実行環境は同じです。新しい会話または再接続で `resources/read` や `load_skill` の記録を確認し、
+API の成功だけを Skill の成功としません。
 既存の Lab 7 のワークフローは Skill プロバイダーを含みません。
 Skill をエージェントの指示文にコピーする代替手段は、Toolbox 経由の利用とは区別してください。
 

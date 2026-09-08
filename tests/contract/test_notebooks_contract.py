@@ -15,6 +15,12 @@ NOTEBOOKS = {
             "ensure_toolbox",
             "contoso-travel-toolbox",
             "travel_ops_api",
+            "get_openai_client(agent_name=AGENT_NAME)",
+            "responses.create",
+            "Conversation ID",
+            "conversations.items.list",
+            "mcp_call",
+            "total_estimate",
         ],
     },
     "07-hosted-agent.ipynb": {

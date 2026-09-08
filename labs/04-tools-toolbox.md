@@ -1,9 +1,9 @@
-# Lab 4 — Portal で Toolbox と Skills を作成する（30分）
+# Lab 4 — Toolbox と Skills を作成する（30分）
 
 ## ゴール
 
-Microsoft Foundry **Portal の UI** で、Travel Ops API と操作手順の Skills を
-`contoso-travel-toolbox` にまとめて公開します。Notebook は本編では使いません。
+Microsoft Foundry で、Travel Ops API と操作手順の Skills を
+`contoso-travel-toolbox` にまとめて公開します。
 
 Lab 3 の規程検索を残したまま、API による費用計算と、Skills による操作手順の共有を追加します。
 
@@ -13,10 +13,17 @@ Lab 3 の規程検索を残したまま、API による費用計算と、Skills 
 | `travel-estimation` Skill | 不足情報を確認し、照会・見積もり API を使い分け、費用内訳を説明する |
 | `preapproval-simulation` Skill | 実行意思を確認し、合成の承認結果と実際の承認を区別する |
 
-> [!WARNING]
-> Skill は操作手順であり、認可や強制的な承認制御の代わりではありません。
-> モデル・API の利用には料金が発生し、外部 tool へ送るデータは Foundry の境界外で
-> 処理されます。このラボでは合成データだけを使い、実際の予約・承認は行いません。
+## Toolbox とは
+
+Toolbox は、Agent が利用する Tools や Skills などを一元的に管理し、共有するための仕組みです。
+Tool は Agent が実行できる操作を定義し、Skill はその Tool をいつ、どのような手順で
+使うかを定義します。
+
+公開した Toolbox は、単一の MCP 互換 endpoint を通じて複数の Agent から再利用できます。
+認証、アクセス制御、guardrail、可観測性、version も Toolbox 単位で管理できます。
+
+このラボでは、Travel Ops API の OpenAPI tool と、費用見積もり・承認シミュレーションの
+2 つの Skills を 1 つの Toolbox にまとめて公開します。
 
 ## 1. 貼り付け・アップロード用ファイルを用意する
 
@@ -54,7 +61,8 @@ Browser のファイル選択ダイアログは Codespace 内を直接参照で�
 4. **Description** に次を入力します。
 
 ```text
-Contoso Travel Ops API and reusable skills for estimates and preapproval simulations.
+Contoso Travel Ops API と、費用見積もりの手順を記載した travel-estimation Skill、
+事前承認シミュレーションの手順を記載した preapproval-simulation Skill。
 ```
 
 **Included** に最初から推奨 tool が入っている場合は、この演習で使わないものを外します。
@@ -78,7 +86,7 @@ Contoso Travel Ops API and reusable skills for estimates and preapproval simulat
 | 項目 | 入力 |
 |---|---|
 | **Name** | `travel_ops_api` |
-| **Description** | `Contoso Travel Ops API for per-diem, estimates, and simulated preapproval.` |
+| **Description** | `Contoso の日当照会、費用見積もり、事前承認シミュレーションを実行する Travel Ops API。` |
 | **Authentication method** | `Anonymous` |
 | **OpenAPI 3.0+ schema** | `.workshop/toolbox/travel-ops.openapi.json` の内容全体 |
 
@@ -120,6 +128,12 @@ Contoso Travel Ops API and reusable skills for estimates and preapproval simulat
 - 本文は **どう使うか**を示す。入力確認、API の選択、結果の説明を記述する。
 - 規程の金額や承認条件を複製しない。Foundry IQ と API を情報源にする。
 - 見積もり依頼だけで承認シミュレーションを実行しない。
+
+> [!NOTE]
+> Guardrail は、Toolbox の tool に渡す入力と tool から返る出力に、責任ある AI（RAI）の
+> コンテンツフィルタリングを適用する仕組みです。モデル側のコンテンツフィルターとは独立して
+> Toolbox 層で動作します。このハンズオンでは Guardrail の作成・設定・検証は行わず、
+> 画面に表示される既定の設定を変更しません。組織で必須の Guardrail がある場合は維持してください。
 
 ## 5. Toolbox を公開する
 
@@ -168,13 +182,30 @@ API key や手動で取得した bearer token は使いません。
 .venv/bin/python scripts/connect_toolbox.py
 ```
 
-このコマンドは **公開済み Toolbox への接続だけ**を行います。
+このコマンドは公開済み Toolbox への接続だけを行います。
 `az login` の認証で `contoso-travel-toolbox-mcp` connection を用意し、
-既存の Knowledge を残して Agent に追加します。Toolbox の作成・Skill の変更は行いません。
+既存の Knowledge を残して Agent に追加します。Toolbox version、Skill、Agent instructions
+の変更は行いません。
 
 </details>
 
-## 7. API の実行と Skill の利用を区別して確認する
+## 7. ハンズオン用 MCP の tool を自動承認する
+
+この後の API 実行と Lab 5 / 6 の自動評価が操作承認で止まらないように設定します。
+対象は **このハンズオン専用の合成データ API を含む MCP 接続だけ**です。
+一般の業務 API や、初期追加の管理用 tool にこの設定を適用しません。
+
+1. Agent の Tools で **contoso-travel-toolbox-mcp** の **Actions > Configure** を開きます。
+2. **Approval setting for tools in this MCP server for this agent** で
+   **Always auto-approve all tools** を選択します。
+3. **Apply** を押し、Agent 画面で **Save** を押します。
+
+![ハンズオン用 MCP の自動承認設定を Apply し、Agent を保存する](../docs/images/lab04-batch-approval-setting.png)
+
+これは model が tool を呼ぶ際の操作確認の設定です。Microsoft Entra の認証・RBAC を
+無効にするものでも、実際の出張承認を与えるものでもありません。
+
+## 8. API の実行と Skill の利用を区別して確認する
 
 Playground の **New chat** で新しい会話を作り、次を入力して **Send** を押します。
 
@@ -184,81 +215,66 @@ Playground の **New chat** で新しい会話を作り、次を入力して **S
 予約や承認シミュレーションは不要です。
 ```
 
-Tool の確認が表示されたら、関数名が **createTripEstimate** であり、
-都市・日程・座席クラス・人数が依頼どおりであることを確認します。
-そのうえで **Approve > Approve once** を選択します。
+費用内訳と合計を含む最終回答が表示されることを確認します。
+確認画面が表示された場合は自動承認設定が保存されていないため、Section 7 に戻ってください。
 
-![今回の見積もりだけを許可する Approve once](../docs/images/lab04-approve-once.png)
+回答後、次の手順で **Traces** の tool 呼び出しを確認します。
 
-`createPreapproval` など、依頼していない処理を求められた場合は承認せず、
-送った質問と接続した tool を確認してください。
+1. Playground の回答下部にある **Traces** を選択し、**Conversations view** を開きます。
+   **Traces** が表示されない場合は、**Build > Agents > contoso-travel-assistant > Traces**
+   から開きます。
+2. 質問を送信した時刻に対応する `conv_...`（Conversation）を開きます。
+   ID は実行ごとに異なります。
+3. **Trajectories** で `invoke_agent contoso-travel-assistant` を展開し、
+   `execute_tool ...travel_ops_api___createTripEstimate` を選択します。
+4. 右側の **Input + Output** で、入力の都市、日程、座席クラス、人数と、
+   出力の `total_estimate` を確認します。`total_estimate` は Playground の回答の合計と
+   一致する必要があります。
+5. Toolbox 側の `tools/call travel_ops_api___createTripEstimate` も成功していることを確認します。
+   `createPreapproval` の呼び出しがないことも確認してください。
 
-回答と、必要に応じて **Traces** の tool 呼び出しを確認します。
-
-- `createTripEstimate` が呼ばれる（公開名の例: `travel_ops_api___createTripEstimate`）
-- `origin_city=Tokyo`、`destination_city=New York`、`traveler_count=1`
-- `start_date=2026-07-10`、`end_date=2026-07-15`、`cabin_class=business`
-- API の内訳・合計が回答に反映され、実際の予約・承認ではないと明記される
-- `createPreapproval` は呼ばれない
-
-**Traces** でこの質問の実行を開き、詳細を拡大します。
-**Find in trace** に `createTripEstimate` と入力し、
-`execute_tool ...travel_ops_api___createTripEstimate` の **Input + Output** を選びます。
-
-**Output** の `total_estimate` と回答の合計を見比べます。
-`manager_preapproval_required` などは「承認が必要」という条件であり、
-承認を実行・取得したという意味ではありません。
-
-Agent 側の `execute_tool` と Toolbox 側の `tools/call` が別々に記録される場合があります。
-最後に **Find in trace** を空に戻し、`createPreapproval` の呼び出しがないことも確認します。
+Portal の表示によっては、Agent 側の `execute_tool` と Toolbox 側の `tools/call` が
+別の階層に表示されます。どちらも同じ API 呼び出しを Agent 側と Toolbox 側から記録したものです。
 
 **Skill の登録成功と、Agent がその Skill を読み込んだことは別です。**
-読み込み記録がない場合は「登録・公開済み／利用は未確認」と記録して次へ進みます。
+2026-09-08 時点では、Portal で作る Prompt Agent の MCP 接続は Toolbox の callable tool を
+実行できますが、MCP Resources として公開された Skill を自動発見・読み込みしません。
+Python の `AIProjectClient` は Skill の作成・管理と Toolbox への参照追加に対応していますが、
+`PromptAgentDefinition` に Toolbox Skill の runtime reference はありません。Portal の代わりに
+同じ Prompt Agent を SDK から呼び出しても、この制約は変わりません。
+
+したがって、このラボの結果は「Skill は Toolbox に登録・公開済み／Prompt Agent からの
+利用は未確認」ではなく、Trace に `resources/read` がなければ **この実行では未使用** と記録します。
+Skill 本文を Agent instructions へ複製して、Toolbox Skill を使ったものとは扱いません。
 本編の到達点は、Skills の登録・公開と Agent からの API 呼び出しです。
 
 <details>
 <summary>Skill の読み込みをさらに確認する場合</summary>
 
-Skills は MCP の `resources/list` / `resources/read` で公開され、対応する Skill provider が必要です。
-対応クライアントでは `load_skill` または resource read の記録を確認します。
+Skills は MCP の `resources/list` / `resources/read` で公開され、MCP Resources protocol に
+対応するクライアントまたは Skill provider が必要です。対応クライアントでは `load_skill`
+または resource read の記録を確認します。
 対応実装の例は公式の [Agent Framework Toolbox Skills sample](https://github.com/microsoft-foundry/foundry-samples/tree/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-mcp-skills)
 を参照してください。本編 Lab 7 の workflow は、この Skill provider をまだ実装していません。
-公式の [Prompt Agent サンプル](https://github.com/Azure/azure-sdk-for-python/blob/f90b55500941d7b161afb94b9ba45e53a865c4e2/sdk/ai/azure-ai-projects/samples/agents/tools/sample_toolbox_with_shipping_skill.py)
-には Skill を instructions へ組み込む例もありますが、MCP resource の自動取得とは別の方式です。
+公式の [Skills の Python 手順](https://learn.microsoft.com/ja-jp/azure/foundry/agents/how-to/tools/skills?pivots=python)
+では、`ToolboxSkillReference` による公開と、MCP Resources 対応クライアントによる利用を
+区別しています。
 
 </details>
 
-## 8. 次の自動評価に備える
-
-Lab 5 / 6 は質問集を自動で実行するため、毎回の操作承認で止まらないよう設定します。
-対象は **このハンズオン専用の合成データ API を含む MCP 接続だけ**です。
-一般の業務 API や、初期追加の管理用 tool にこの設定を適用しません。
-
-1. Agent の Tools で **contoso-travel-toolbox-mcp** の **Actions > Configure** を開きます。
-2. **Approval setting for tools in this MCP server for this agent** で
-   **Always auto-approve all tools** を選択します。
-
-3. **Apply** を押し、Agent 画面で **Save** を押します。
-
-![ハンズオン用 MCP の自動承認設定を Apply し、Agent を保存する](../docs/images/lab04-batch-approval-setting.png)
-
-これは model が tool を呼ぶ際の操作確認の設定です。Microsoft Entra の認証・RBAC を
-無効にするものでも、実際の出張承認を与えるものでもありません。
-
 ## 完了チェック
 
-- Portal で Toolbox を公開できた
-- OpenAPI tool と 2 つの Skills が公開済み Toolbox に含まれる
-- 各 Skill の本文を確認し、規程と操作手順の違いを説明できる
-- Agent の Knowledge を残したまま API を呼び出せた
-- Skill の登録状態と、利用側での読み込み確認の有無を区別して記録した
-- 次の評価用に、この mock MCP 接続の自動承認設定を保存した
+- OpenAPI tool と 2 つの Skills を含む Toolbox を公開できた
+- Agent から Toolbox の API を呼び出し、費用見積もりを確認できた
+- Trace で `createTripEstimate` の実行を確認できた
 
 ## 任意: SDK で同じ構成を扱う
 
 [`notebooks/04-create-toolbox.ipynb`](../notebooks/04-create-toolbox.ipynb) は SDK 学習用の補助です。
+Notebook は本編では使いません。
 OpenAPI の更新時に既存 Skills・他の tools・guardrail を保持しますが、
 Skill 自体のアップロードは上の Portal 手順で行います。
+Prompt Agent の呼び出し、回答の検証、Conversation に記録された Tool の入出力確認も行います。
 UI の作成操作を体験する前に Notebook で Toolbox を作る必要はありません。
 
 公式仕様: [Toolbox](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/toolbox) /

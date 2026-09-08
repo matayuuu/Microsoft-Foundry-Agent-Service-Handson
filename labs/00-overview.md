@@ -26,8 +26,8 @@ Foundry IQ / Toolbox / Travel Ops API には接続しません。
 | Lab | 体験すること | 到達点 |
 |---|---|---|
 | [Lab 1](01-setup.md) | 共通の Azure 環境を準備する | 自分の Foundry project を開ける |
-| [Lab 2](02-prompt-agent.md) | Prompt Agent の役割と指示を設定する | Agent の基本設定を保存できる |
-| [Lab 3](03-rag-foundry-iq.md) | 直接検索と Foundry IQ を比較する | 複数の規程を根拠に回答できる |
+| [Lab 2](02-prompt-agent.md) | Prompt Agent を作り、Azure AI Search を接続する | 1 つの規程 index を直接検索できる |
+| [Lab 3](03-rag-foundry-iq.md) | Foundry IQ を接続し、直接検索と比較する | 複数の規程を根拠に回答できる |
 | [Lab 4](04-tools-toolbox.md) | API と Skills を Toolbox にまとめる | 検索に加えて費用計算を使える |
 | [Lab 5](05-evaluation.md) | 同じ質問集で Agent を評価する | 点数と判定理由から改善点を見つける |
 | [Lab 6](06-optimization.md) | 指示文の改善候補を比較する | 採用するか、元の設定を維持するか判断する |

@@ -71,8 +71,8 @@ following its next-lab link.
 |---|---|---:|
 | [Lab 0](labs/00-overview.md) | Overview and workshop flow | 5 min |
 | [Lab 1](labs/01-setup.md) | Codespaces and Terraform setup | 20 min |
-| [Lab 2](labs/02-prompt-agent.md) | Create a Prompt Agent | 10 min |
-| [Lab 3](labs/03-rag-foundry-iq.md) | Azure AI Search and Foundry IQ | 35 min |
+| [Lab 2](labs/02-prompt-agent.md) | Prompt Agent and Azure AI Search | 20 min |
+| [Lab 3](labs/03-rag-foundry-iq.md) | Foundry IQ | 25 min |
 | — | Break | 10 min |
 | [Lab 4](labs/04-tools-toolbox.md) | Create Toolbox and Skills in the Portal | 30 min |
 | [Lab 5](labs/05-evaluation.md) | Portal agent evaluation | 15 min |

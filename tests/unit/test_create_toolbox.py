@@ -43,11 +43,6 @@ SAMPLE_SPEC = {
 }
 
 
-# ---------------------------------------------------------------------------
-# build_auth_details
-# ---------------------------------------------------------------------------
-
-
 def test_build_auth_details_anonymous_needs_no_audience() -> None:
     auth = create_toolbox.build_auth_details("anonymous", audience=None)
 
@@ -602,9 +597,11 @@ def test_attach_toolbox_to_agent_preserves_existing_knowledge_tool_and_model(mod
     assert result["action"] == "attached"
     assert result["agent_version"] == "14"
     assert client.agents.created_definition.model == model
+    assert client.agents.created_definition.instructions == "Use knowledge and tools."
     created_tools = client.agents.created_definition.tools
     assert [tool.server_label for tool in created_tools] == ["knowledge", "travel_ops"]
     assert definition.tools == [knowledge_tool]
+    assert definition.instructions == "Use knowledge and tools."
 
 
 def test_attach_toolbox_to_agent_reuses_existing_attachment() -> None:
@@ -636,3 +633,35 @@ def test_attach_toolbox_to_agent_reuses_existing_attachment() -> None:
         "agent_version": "13",
     }
     assert client.agents.created_definition is None
+
+
+def test_attach_toolbox_to_agent_updates_existing_attachment_to_auto_approve() -> None:
+    toolbox_endpoint = "https://project.example/toolboxes/demo/mcp?api-version=v1"
+    definition = create_toolbox.PromptAgentDefinition(
+        model="gpt-5.6-luna",
+        instructions="Use tools.",
+        tools=[
+            create_toolbox.MCPTool(
+                server_label="travel_ops",
+                server_url=toolbox_endpoint,
+                project_connection_id="contoso-travel-toolbox-mcp",
+                require_approval="always",
+            )
+        ],
+    )
+    client = _FakeAgentClient(definition)
+
+    result = create_toolbox.attach_toolbox_to_agent(
+        client,
+        agent_name="contoso-travel-assistant",
+        connection_name="contoso-travel-toolbox-mcp",
+        toolbox_endpoint=toolbox_endpoint,
+    )
+
+    assert result == {
+        "action": "updated",
+        "agent_name": "contoso-travel-assistant",
+        "agent_version": "14",
+    }
+    assert client.agents.created_definition.tools[0].require_approval == "never"
+    assert definition.tools[0].require_approval == "always"

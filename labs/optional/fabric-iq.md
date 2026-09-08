@@ -224,5 +224,5 @@ connection の完全なリソース ID です。本編の `.workshop/context.jso
 ## 関連リンク
 
 - [選択ラボ index](README.md)
-- [本編 Lab 3 — Azure AI Search と Foundry IQ](../03-rag-foundry-iq.md)（Foundry IQ との違いの比較対象）
+- [本編 Lab 3 — Foundry IQ](../03-rag-foundry-iq.md)（Foundry IQ との違いの比較対象）
 - [本編 Lab 4 — Tools・Toolbox](../04-tools-toolbox.md)

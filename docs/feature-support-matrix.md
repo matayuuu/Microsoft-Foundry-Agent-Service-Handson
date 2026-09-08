@@ -2,6 +2,7 @@
 
 この表は **新しい** Microsoft Foundry を対象としています。Toolbox の UI に関する項目は、
 参加者から提供されたポータルのスクリーンショットに基づき **2026-09-05** に更新しました。
+Toolbox Skills の実行経路は公式 Learn と実環境の Trace に基づき **2026-09-08** に確認しました。
 その他の項目は 2026-09-01 時点の情報を維持しています。プレビュー機能の画面やポータルのラベルは
 変更される場合があります。現在、Toolbox の公式記事は、確認済みの Web ポータルの操作よりも
 SDK/Toolkit の手順を詳しく説明しています。ポータルの列がないことを、
@@ -18,7 +19,7 @@ UI が利用できない根拠として解釈しないでください。
 | Code Interpreter | エージェント設定 | 対応 | 対応 | 必須ハンズオンの対象外 |
 | Toolbox での OpenAPI 利用 | 対応を確認済み | UI の対応が案内されているが、Learn の表とは差異あり | 対応 | 必須。Add tool > Custom > OpenAPI tool で、稼働中の API の OpenAPI 3.1 定義を貼り付け |
 | Skills の作成・アップロード・接続 | 対応を確認済み | Skills の記事に記載あり | 対応 | 必須。Add skill > Upload skill を使用し、ハンズオンの 2 つの Skills を両方含める |
-| Toolbox Skills の利用 | クライアントに依存 | クライアントに依存 | MCP Resources / Skill プロバイダー | プレビュー。登録だけでは実行時の読み込みを証明できない |
+| Toolbox Skills の利用 | Prompt Agent は未対応 | クライアントに依存 | Skill の管理・添付に対応。実行には MCP Resources 対応 client が必要 | プレビュー。`resources/list` / `resources/read` または `load_skill` で利用を確認する |
 | Tool Search | 非対応 | 対応 | 対応 | プレビュー。必須ハンズオンの対象外 |
 | エージェント評価の送信 | 対応 | 該当なし | 対応 | 必須手順では、準備済みの合成データセットを使用してポータルで実施 |
 | 評価結果の表示 | 対応 | 対応 | 対応 | 必須。ポータルで実施 |
@@ -61,9 +62,11 @@ UI が利用できない根拠として解釈しないでください。
 - Foundry Tool Catalog と Toolboxes は一般提供されていますが、個々のツールは
   プレビューの場合があります。
 - Skills と Toolbox の Skill 検出はプレビューです。Skill の参照は `tools[]` とは別であり、
-  互換性のある MCP Resources の利用機能が必要です。Lab 7 の Python ワークフローには、
-  現在 Skill プロバイダーが含まれていません。Prompt Agent に Toolbox を追加しただけで、
-  Skills が読み込まれたと判断しないでください。
+  互換性のある MCP Resources の利用機能が必要です。Portal の Prompt Agent と Python SDK の
+  `PromptAgentDefinition` には Toolbox Skill の runtime reference がありません。SDK から同じ
+  Prompt Agent を呼び出しても `resources/read` は行われません。Skill 本文を Agent instructions
+  に複製する方式も Toolbox 経由の利用ではありません。Lab 7 の Python ワークフローには現在
+  Skill プロバイダーが含まれていません。
 - Lab 4 には、確認済みの Web ポータルの操作手順をスクリーンショット付きで記載しています。
   ローカルの準備では、稼働中の API の OpenAPI 定義と Skill ZIP をエクスポートするだけで、
   リモートのオブジェクトは作成しません。

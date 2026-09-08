@@ -70,8 +70,8 @@ Codespace の準備を行います。Azure 環境構築のコマンドは Lab 1 
 |---|---|---:|
 | [Lab 0](labs/00-overview.md) | 全体像と進め方 | 5分 |
 | [Lab 1](labs/01-setup.md) | Codespaces と Terraform による環境構築 | 20分 |
-| [Lab 2](labs/02-prompt-agent.md) | Prompt Agent の作成 | 10分 |
-| [Lab 3](labs/03-rag-foundry-iq.md) | Azure AI Search と Foundry IQ | 35分 |
+| [Lab 2](labs/02-prompt-agent.md) | Prompt Agent と Azure AI Search | 20分 |
+| [Lab 3](labs/03-rag-foundry-iq.md) | Foundry IQ | 25分 |
 | — | 休憩 | 10分 |
 | [Lab 4](labs/04-tools-toolbox.md) | Portal で Toolbox と Skills を作成 | 30分 |
 | [Lab 5](labs/05-evaluation.md) | Portal で Agent evaluation | 15分 |

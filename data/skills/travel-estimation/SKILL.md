@@ -1,9 +1,9 @@
 ---
 name: travel-estimation
-description: Use for Contoso travel cost estimates, per-diem or lodging-cap questions, and incomplete travel requests. Confirm inputs, select the Travel Ops operation, and explain its results without inventing prices.
+description: Contoso の出張費用見積もり、日当・宿泊上限の照会、または情報が不足した出張依頼に使用する。入力を確認し、Travel Ops API の操作を選択して、価格を創作せず結果を説明する。
 ---
 
-# Travel estimation
+# 出張費用の見積もり
 
 Contoso の架空の出張について、Travel Ops API を使って日本語で回答する。
 この Skill は API の操作手順であり、出張規程そのものではない。
