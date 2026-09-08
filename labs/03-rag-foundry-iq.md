@@ -11,6 +11,10 @@ Lab 2 では、Azure AI Search tool から利用条件をまとめた 1 つの i
 **回答の根拠が増えること**を確認します。文書を検索して回答の根拠にする仕組みを
 RAG と呼びます。
 
+ここで作る `contoso-travel-knowledge-lab` は Prompt Agent だけの一時状態ではありません。
+Lab 7 の plain / Harness Agent と Lab 8 の Hosted workflow も、同じ remote knowledge base
+をコードから参照します。
+
 > [!WARNING]
 > 検索とモデルの呼び出しには料金が発生します。教材の合成データと質問例を使います。
 

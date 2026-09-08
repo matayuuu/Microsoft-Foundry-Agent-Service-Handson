@@ -22,7 +22,7 @@ against a stale or wrong ``.workshop/`` directory.
 
 Idempotency: if the agent does not exist, this exits 0 and reports
 ``action: "not_found"`` -- a second/duplicate ``destroy.sh`` run (or a
-workshop environment that never got as far as Lab 7) must not fail. Any other
+workshop environment that never got as far as Lab 8) must not fail. Any other
 error (auth, network, permission) is a real failure and is surfaced with a
 non-zero exit and a message on stderr, never silently swallowed. If the project
 endpoint is unreachable after its account was deleted, account absence must

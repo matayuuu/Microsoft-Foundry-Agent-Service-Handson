@@ -15,17 +15,18 @@ UI が利用できない根拠として解釈しないでください。
 | Foundry IQ ナレッジベースの作成 | 対応 | 該当なし | 対応 | 必須。ポータルのエージェント型検索は引き続きプレビュー |
 | Toolbox の作成 | 対応を確認済み | 対応 | 対応 | 必須。Web ポータルの Build > Tools > Create toolbox |
 | Toolbox のバージョンライフサイクル全体の管理 | Publish は確認済み。その他の操作は環境により異なる | 一部対応 | 対応 | SDK による代替手順は、既存の Skills、ツール、メタデータ、ガードレールを保持 |
-| Web Search | エージェント設定 | 対応 | 対応 | 必須ハンズオンの対象外 |
-| Code Interpreter | エージェント設定 | 対応 | 対応 | 必須ハンズオンの対象外 |
+| Web Search | Toolbox への追加を確認済み | 対応 | 対応 | 必須。Lab 4 で追加し、明示された現在の公開旅行情報だけに使用 |
+| Code Interpreter | Toolbox への追加を確認済み | 対応 | 対応 | 必須。Lab 4 で追加し、API 結果の数値比較・表整形に使用 |
 | Toolbox での OpenAPI 利用 | 対応を確認済み | UI の対応が案内されているが、Learn の表とは差異あり | 対応 | 必須。Add tool > Custom > OpenAPI tool で、稼働中の API の OpenAPI 3.1 定義を貼り付け |
 | Skills の作成・アップロード・接続 | 対応を確認済み | Skills の記事に記載あり | 対応 | 必須。Add skill > Upload skill を使用し、ハンズオンの 2 つの Skills を両方含める |
 | Toolbox Skills の利用 | Prompt Agent は未対応 | クライアントに依存 | Skill の管理・添付に対応。実行には MCP Resources 対応 client が必要 | プレビュー。`resources/list` / `resources/read` または `load_skill` で利用を確認する |
-| Tool Search | 非対応 | 対応 | 対応 | プレビュー。必須ハンズオンの対象外 |
+| Tool Search | Toolbox の On/Off 設定を確認済み | 対応 | 対応 | 必須。Lab 4 で `tool_search` → `call_tool` → 実 tool を Trace で確認 |
 | エージェント評価の送信 | 対応 | 該当なし | 対応 | 必須手順では、準備済みの合成データセットを使用してポータルで実施 |
 | 評価結果の表示 | 対応 | 対応 | 対応 | 必須。ポータルで実施 |
 | Prompt Agent Optimizer | 対応 | 該当なし | サービスが管理 | プレビュー。ポータルのウィザードを使用 |
 | Hosted Agent Optimizer | 非対応 | 対応 | azd/SDK 連携 | 任意 |
-| Agent Framework Hosted Agent の開発 | 非対応 | 対応 | コード | 必須。Codespaces で実施 |
+| Agent Framework の Agent / Harness Agent 開発 | 非対応 | 対応 | コード | 必須。Lab 7 で Foundry IQ・Toolbox Tools / Skills を再利用 |
+| Agent Framework Hosted workflow の開発 | 非対応 | 対応 | コード | 必須。Lab 8 で shared Harness factory を participant として再利用 |
 | Hosted Agent のソースデプロイ | 非対応 | 対応 | 対応 | 必須手順では、認証を `az login` のみに統一するため SDK を使用 |
 | Hosted Agent Playground | 対応 | 対応 | 対応 | 必須。バージョンがアクティブになった後にポータルで実施 |
 | Prompt Agent / Hosted Agent のトレース | 対応 | 対応 | OpenTelemetry | 必須。Application Insights は接続済み |
@@ -65,8 +66,8 @@ UI が利用できない根拠として解釈しないでください。
   互換性のある MCP Resources の利用機能が必要です。Portal の Prompt Agent と Python SDK の
   `PromptAgentDefinition` には Toolbox Skill の runtime reference がありません。SDK から同じ
   Prompt Agent を呼び出しても `resources/read` は行われません。Skill 本文を Agent instructions
-  に複製する方式も Toolbox 経由の利用ではありません。Lab 7 の Python ワークフローには現在
-  Skill プロバイダーが含まれていません。
+  に複製する方式も Toolbox 経由の利用ではありません。Lab 7 の Harness Agent と Lab 8 の
+  Hosted workflow は、同じ checked-in factory の Skill provider を使用します。
 - Lab 4 には、確認済みの Web ポータルの操作手順をスクリーンショット付きで記載しています。
   ローカルの準備では、稼働中の API の OpenAPI 定義と Skill ZIP をエクスポートするだけで、
   リモートのオブジェクトは作成しません。

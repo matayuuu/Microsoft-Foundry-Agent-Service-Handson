@@ -61,9 +61,9 @@ def test_master_has_approximately_twelve_cases(data_dir):
     assert 12 <= len(cases) <= 14, f"expected ~12 master cases, found {len(cases)}"
 
 
-def test_live_subset_has_six_to_eight_cases(data_dir):
+def test_live_subset_has_exactly_seven_cases(data_dir):
     cases = _load_jsonl(data_dir / "eval" / "live_subset.jsonl")
-    assert 6 <= len(cases) <= 8, f"expected 6-8 live subset cases, found {len(cases)}"
+    assert len(cases) == 7, f"expected exactly 7 live subset cases, found {len(cases)}"
 
 
 def test_master_covers_every_required_category(data_dir):
@@ -188,3 +188,50 @@ def test_tool_choice_cases_declare_expected_tool_calls(data_dir):
         assert case.get("expected_tool_calls"), (
             f"{case['id']} is a tool_choice case but declares no expected_tool_calls"
         )
+
+
+def test_tool_search_cases_separate_meta_and_underlying_calls(data_dir):
+    cases = _load_jsonl(data_dir / "eval" / "master.jsonl")
+    tool_cases = [case for case in cases if case.get("expected_meta_tool_calls")]
+    assert tool_cases
+    for case in tool_cases:
+        meta_names = [call["tool"] for call in case["expected_meta_tool_calls"]]
+        underlying_names = [call["tool"] for call in case["expected_tool_calls"]]
+        assert meta_names == ["tool_search", "call_tool"], case["id"]
+        assert not {"tool_search", "call_tool"} & set(underlying_names), case["id"]
+
+
+def test_live_subset_is_process_evaluator_compatible(data_dir):
+    cases = _load_jsonl(data_dir / "eval" / "live_subset.jsonl")
+    assert all(case["process_evaluator_compatible"] for case in cases)
+    assert all("process_evaluator" in case["evaluation_methods"] for case in cases)
+    limited_tools = {"web_search", "code_interpreter"}
+    assert not any(
+        call["tool"] in limited_tools
+        for case in cases
+        for call in case.get("expected_tool_calls", [])
+    )
+
+
+def test_current_info_cases_use_task_rubric_and_trace_without_fixed_fact(data_dir):
+    cases = _load_jsonl(data_dir / "eval" / "master.jsonl")
+    current_cases = [case for case in cases if case["category"] == "current_info_web_search"]
+    assert current_cases
+    for case in current_cases:
+        assert case["ground_truth"] is None
+        assert case["process_evaluator_compatible"] is False
+        assert case["evaluation_methods"] == ["task_level", "custom_rubric", "trace"]
+        assert "取得日時" in case["expected_behavior"]
+        assert "URL" in case["expected_behavior"]
+        assert any(call["tool"] == "web_search" for call in case["expected_tool_calls"])
+
+
+def test_create_preapproval_is_expected_only_when_explicitly_requested(data_dir):
+    cases = _load_jsonl(data_dir / "eval" / "master.jsonl")
+    preapproval_cases = [
+        case
+        for case in cases
+        if any(call["tool"] == "createPreapproval" for call in case.get("expected_tool_calls", []))
+    ]
+    assert len(preapproval_cases) == 1
+    assert "実行してください" in preapproval_cases[0]["query"]

@@ -23,7 +23,7 @@ PC へのインストールは不要です。Docker、API キー、クライア�
 | 場所 | 用途 |
 | --- | --- |
 | 手元の PC | ブラウザーを開く。アップロード用の素材を保存する |
-| Codespace | Explorer で教材を開き、Terminal でコマンドを実行する。Lab 7 の Notebook もここで開く |
+| Codespace | Explorer で教材を開き、Terminal でコマンドを実行する。Lab 7 / 8 の Notebook もここで開く |
 | Foundry Portal（別タブ） | **Foundry (new)** でエージェントの設定・会話・評価・実行履歴を確認する |
 
 **本編の `bash` コマンドはすべて Codespace の Terminal で実行します。**
@@ -58,7 +58,7 @@ PC の PowerShell / Terminal や Azure Cloud Shell は使いません。
 
 > [!WARNING]
 > **Codespaces と Azure の利用には料金が発生します。** 実際の個人情報・顧客情報は使わず、教材の合成データだけを使ってください。
-> 終了時は [Lab 8](../../labs/08-observability-cleanup.md) のクリーンアップを行い、Codespace を停止します。
+> 終了時は [Lab 9](../../labs/09-observability-cleanup.md) のクリーンアップを行い、Codespace を停止します。
 > **Codespace を閉じるだけでは Azure リソースは削除されません。**
 
 ## 次のステップ

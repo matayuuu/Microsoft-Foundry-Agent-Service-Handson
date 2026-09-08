@@ -2,14 +2,17 @@
 
 ## ゴール
 
-Microsoft Foundry で、Travel Ops API と操作手順の Skills を
-`contoso-travel-toolbox` にまとめて公開します。
+Microsoft Foundry で、Travel Ops API、Code Interpreter、Web Search と操作手順の Skills を
+`contoso-travel-toolbox` にまとめ、**Tool Search** を有効にして公開します。
 
 Lab 3 の規程検索を残したまま、API による費用計算と、Skills による操作手順の共有を追加します。
 
 | 要素 | 役割 |
 |---|---|
-| Travel Ops API | 日当照会・費用計算・事前承認シミュレーションを実行する |
+| Foundry IQ（Lab 3 の Knowledge） | 社内規程を検索し、根拠を引用する。Toolbox には移動しない |
+| Travel Ops API（OpenAPI 1 項目） | `getHealth` / `getPerDiem` / `createTripEstimate` / `createPreapproval` の 4 operation を公開し、決定論的な照会・計算・シミュレーションを行う |
+| Code Interpreter | API 結果の数値比較・集計・表整形だけを行う。規程や入力値を作らない |
+| Web Search | ユーザーが明示的に求めた、現在の公開旅行情報だけを検索する |
 | `travel-estimation` Skill | 不足情報を確認し、照会・見積もり API を使い分け、費用内訳を説明する |
 | `preapproval-simulation` Skill | 実行意思を確認し、合成の承認結果と実際の承認を区別する |
 
@@ -22,8 +25,15 @@ Tool は Agent が実行できる操作を定義し、Skill はその Tool を�
 公開した Toolbox は、単一の MCP 互換 endpoint を通じて複数の Agent から再利用できます。
 認証、アクセス制御、guardrail、可観測性、version も Toolbox 単位で管理できます。
 
-このラボでは、Travel Ops API の OpenAPI tool と、費用見積もり・承認シミュレーションの
-2 つの Skills を 1 つの Toolbox にまとめて公開します。
+このラボでは、Travel Ops API の OpenAPI tool、2 つの built-in tool と、費用見積もり・
+承認シミュレーションの 2 つの Skills を 1 つの Toolbox にまとめて公開します。
+Tool Search を有効にすると、最初から全 tool 定義をモデルへ渡さず、`tool_search` で必要な
+定義を発見し、`call_tool` で選んだ tool を実行します。
+
+> [!IMPORTANT]
+> Web Search へ秘密、資格情報、顧客データ、個人データを送信しないでください。
+> 検索結果は信頼できない外部入力として扱います。この教材では、公開情報だけを含む明示的な
+> 検索依頼でのみ使います。社内規程は Foundry IQ、費用計算は Travel Ops API が正本です。
 
 ## 1. 貼り付け・アップロード用ファイルを用意する
 
@@ -61,17 +71,14 @@ Browser のファイル選択ダイアログは Codespace 内を直接参照で�
 4. **Description** に次を入力します。
 
 ```text
-Contoso Travel Ops API と、費用見積もりの手順を記載した travel-estimation Skill、
-事前承認シミュレーションの手順を記載した preapproval-simulation Skill。
+Contoso Travel Ops API、数値比較用 Code Interpreter、明示された現在情報用 Web Search と、
+費用見積もり・事前承認シミュレーションの手順を記載した 2 Skills。
 ```
 
-**Included** に最初から推奨 tool が入っている場合は、この演習で使わないものを外します。
-`web_search`、`code_interpreter`、`FoundryMCPServerpreview` がある場合、それぞれの
-右端の **Actions** から **Remove** を選択してください。
-
-![自動追加されている場合は、この3つの tool を外す](../docs/images/lab04-default-tools.png)
-
-これらが最初から入っていなければ削除操作は不要です。
+**Included** に `web_search` と `code_interpreter` が最初から入っている場合は残します。
+同じ種類を重複追加しません。`FoundryMCPServerpreview` が自動追加されている場合は、
+この演習の対象外で管理操作を Tool Search の候補に混ぜないため、右端の **Actions > Remove**
+で外します。組織が追加したほかの tool は、管理者へ確認せず削除しないでください。
 この演習では **Guardrail** は既定のままにします。組織で必須の設定がある場合は従い、
 既存の guardrail を削除しないでください。
 
@@ -96,15 +103,31 @@ Contoso Travel Ops API と、費用見積もりの手順を記載した travel-e
 `OpenAPI 3.0+` という UI ラベルですが、貼り付ける教材の定義は **3.1.0** です。
 `servers[0].url` が自分の Travel Ops API になっていることも確認してください。
 
-追加後は **Tool search** を **Off** にします。この演習では API が 1 つなので、
-利用できる関数を直接確認する構成にします。
+追加後は **Tool search** を **On** にします。OpenAPI は Included 上では 1 項目ですが、
+schema の `operationId` により、次の 4 つが個別に発見・実行できる callable operation です。
 
-![travel_ops_api を追加し、Tool search を Off にする](../docs/images/lab04-tool-search-off.png)
+- `getHealth`
+- `getPerDiem`
+- `createTripEstimate`
+- `createPreapproval`
+
+Tool Search 自体は `tool_search` と `call_tool` という 2 つの meta-tool を公開します。
+これらは上の 4 operation の代替ではなく、発見と実行を包む layer です。
 
 > [!NOTE]
 > `Anonymous` は公開された合成データ専用 mock API の認証方式です。
 > **Agent から Foundry Toolbox への認証まで Anonymous にする、という意味ではありません。**
 > Toolbox 側は Microsoft Entra ID/RBAC を使います。
+
+## 3.1 Code Interpreter と Web Search を確認する
+
+1. Included に **Code Interpreter** がなければ **+ Add > Add tool** から追加します。
+2. Included に **Web Search** がなければ同様に追加します。外部 connection は作成しません。
+3. Tool Search が **On** のままであることを確認します。
+
+Code Interpreter は Travel Ops が返した数値の比較・集計・表整形に限定します。
+Web Search は「現在の公開情報を調べて」と明示された場合だけ利用し、出典 URL と取得日時を
+回答へ含めます。通常の規程質問や見積もりでは、どちらも呼び出しません。
 
 ## 4. 2 つの Skills をアップロードする
 
@@ -137,11 +160,12 @@ Contoso Travel Ops API と、費用見積もりの手順を記載した travel-e
 
 ## 5. Toolbox を公開する
 
-1. Included が **travel_ops_api / travel-estimation / preapproval-simulation の 3 つ**
-   で、Tool search が Off であることを確認します。
+1. Included に **travel_ops_api / Code Interpreter / Web Search /
+   travel-estimation / preapproval-simulation** があり、Tool search が **On** であることを
+   確認します。
 2. 右上の **Publish** を選択します。
 
-3. 公開後に Toolbox を開き直し、3 つの項目と公開済み version を確認します。
+3. 公開後に Toolbox を開き直し、5 つの項目、Tool search On、公開済み version を確認します。
 
 ## 6. Prompt Agent に keyless 接続する
 
@@ -172,6 +196,20 @@ Toolbox は MCP という共通の接続方式で Agent から呼び出します
    確認して **Save** を押します。
 
 API key や手動で取得した bearer token は使いません。
+
+Agent の既存 instructions（Lab 3 の規程検索指示）を残したまま、次の境界を追記して
+**Save** します。
+
+```text
+- 社内規程と根拠は Foundry IQ Knowledge で検索する。
+- 日当、旅費見積もり、事前承認シミュレーションは Travel Ops API の決定論的な結果を使う。
+- Toolbox tool が必要なときは tool_search で候補を探し、call_tool で選んだ tool を実行する。
+- Code Interpreter は API 結果の数値比較、集計、表整形にだけ使い、規程値や旅程を作らない。
+- Web Search はユーザーが現在の公開旅行情報を明示的に求めた場合だけ使い、出典 URL と
+  取得日時を示す。秘密、資格情報、個人情報、顧客データを検索へ送らない。
+- 見積もりだけの依頼で createPreapproval を呼ばない。明示的な実行意思を確認した場合だけ
+  合成の事前承認シミュレーションを行い、実際の承認・予約ではないと明示する。
+```
 
 <details>
 <summary>keyless 接続の選択肢が表示されない場合だけ使う補助コマンド</summary>
@@ -205,7 +243,7 @@ API key や手動で取得した bearer token は使いません。
 これは model が tool を呼ぶ際の操作確認の設定です。Microsoft Entra の認証・RBAC を
 無効にするものでも、実際の出張承認を与えるものでもありません。
 
-## 8. API の実行と Skill の利用を区別して確認する
+## 8. Tool Search と実 tool の実行を Trace で確認する
 
 Playground の **New chat** で新しい会話を作り、次を入力して **Send** を押します。
 
@@ -225,26 +263,71 @@ Playground の **New chat** で新しい会話を作り、次を入力して **S
    から開きます。
 2. 質問を送信した時刻に対応する `conv_...`（Conversation）を開きます。
    ID は実行ごとに異なります。
-3. **Trajectories** で `invoke_agent contoso-travel-assistant` を展開し、
-   `execute_tool ...travel_ops_api___createTripEstimate` を選択します。
-4. 右側の **Input + Output** で、入力の都市、日程、座席クラス、人数と、
+3. **Trajectories** で `invoke_agent contoso-travel-assistant` を展開し、まず
+   `tool_search`、次に `call_tool` があることを確認します。
+4. `call_tool` が選んだ実 tool が `travel_ops_api___createTripEstimate` であることを
+   Input / Output または、その配下の Toolbox Trace で確認します。Portal の版によって
+   downstream call は同じ階層に flatten されず、`call_tool` の内側に表示されます。
+5. 右側の **Input + Output** で、入力の都市、日程、座席クラス、人数と、
    出力の `total_estimate` を確認します。`total_estimate` は Playground の回答の合計と
    一致する必要があります。
-5. Toolbox 側の `tools/call travel_ops_api___createTripEstimate` も成功していることを確認します。
-   `createPreapproval` の呼び出しがないことも確認してください。
+6. `getHealth`、`getPerDiem`、`createPreapproval`、Code Interpreter、Web Search が
+   実行されていないことを確認します。Tool Search の候補に現れただけでは「実行」ではありません。
 
-Portal の表示によっては、Agent 側の `execute_tool` と Toolbox 側の `tools/call` が
-別の階層に表示されます。どちらも同じ API 呼び出しを Agent 側と Toolbox 側から記録したものです。
+Portal の表示によっては、Agent 側の `call_tool` と Toolbox 側の
+`tools/call travel_ops_api___createTripEstimate` が別階層です。順序は
+**`tool_search` → `call_tool` → 選択された実 tool** として読み、候補一覧と実行済み call を
+混同しないでください。Trace UI の版によっては各 call が `execute_tool` span として表示される
+ため、span 名だけでなく Input / Output の tool 名も確認します。
+
+### 用途を変えて routing を確認する
+
+新しい chat を使い、1 回ずつ実行します。
+
+```text
+Travel Ops APIで大阪の2026-05-11の日当を確認してください。見積もりや承認は不要です。
+```
+
+`tool_search → call_tool → travel_ops_api___getPerDiem` だけが実行され、
+`createTripEstimate` / `createPreapproval` / Code Interpreter / Web Search が呼ばれないことを
+確認します。
+
+```text
+現在のニューヨークの公開交通情報をWeb Searchで調べ、参照URLと取得日時を示してください。
+社内情報・顧客情報は検索語に含めないでください。
+```
+
+この明示依頼だけで `tool_search → call_tool → Web Search` が実行され、出典と取得日時が
+回答に含まれることを確認します。固定の正解値とは比較しません。
+
+```text
+見積もり結果の航空券・宿泊・日当の比率を計算し、表に整形してください。
+新しい規程値や旅程は仮定しないでください。
+```
+
+既に同じ chat に見積もり結果がある場合だけ Code Interpreter を使い、数値比較・表整形を
+行うことを確認します。Travel Ops の値そのものを置き換えてはいけません。
+
+`createPreapproval` は次のように、シミュレーションであることを理解した上で実行を明示した
+場合だけ呼び出します。
+
+```text
+この見積もりについて、実際の承認ではないことを理解しました。
+事前承認シミュレーションを実行してください。
+```
+
+Trace で初めて `tool_search → call_tool → travel_ops_api___createPreapproval` が現れ、
+回答が実承認・予約ではなく simulated result と明記されることを確認します。
 
 **Skill の登録成功と、Agent がその Skill を読み込んだことは別です。**
-2026-09-08 時点では、Portal で作る Prompt Agent の MCP 接続は Toolbox の callable tool を
+2026-09-09 時点では、Portal で作る Prompt Agent の MCP 接続は Toolbox の callable tool を
 実行できますが、MCP Resources として公開された Skill を自動発見・読み込みしません。
 Python の `AIProjectClient` は Skill の作成・管理と Toolbox への参照追加に対応していますが、
 `PromptAgentDefinition` に Toolbox Skill の runtime reference はありません。Portal の代わりに
 同じ Prompt Agent を SDK から呼び出しても、この制約は変わりません。
 
-したがって、このラボの結果は「Skill は Toolbox に登録・公開済み／Prompt Agent からの
-利用は未確認」ではなく、Trace に `resources/read` がなければ **この実行では未使用** と記録します。
+したがって、Trace に `load_skill` または MCP `resources/read` がなければ、Skill 利用は
+**この実行では未証明（利用は未確認）** と記録します。
 Skill 本文を Agent instructions へ複製して、Toolbox Skill を使ったものとは扱いません。
 本編の到達点は、Skills の登録・公開と Agent からの API 呼び出しです。
 
@@ -255,7 +338,9 @@ Skills は MCP の `resources/list` / `resources/read` で公開され、MCP Res
 対応するクライアントまたは Skill provider が必要です。対応クライアントでは `load_skill`
 または resource read の記録を確認します。
 対応実装の例は公式の [Agent Framework Toolbox Skills sample](https://github.com/microsoft-foundry/foundry-samples/tree/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-mcp-skills)
-を参照してください。本編 Lab 7 の workflow は、この Skill provider をまだ実装していません。
+を参照してください。2 つの Skills は Lab 7 / 8 の共有 Harness factory が提供する
+Skill provider で読み込むため、登録・公開状態を維持します。Lab 7 では `load_skill` と
+`resources/read` の実行記録を確認し、Toolbox への登録だけでなく実際の利用を証明します。
 公式の [Skills の Python 手順](https://learn.microsoft.com/ja-jp/azure/foundry/agents/how-to/tools/skills?pivots=python)
 では、`ToolboxSkillReference` による公開と、MCP Resources 対応クライアントによる利用を
 区別しています。
@@ -264,15 +349,17 @@ Skills は MCP の `resources/list` / `resources/read` で公開され、MCP Res
 
 ## 完了チェック
 
-- OpenAPI tool と 2 つの Skills を含む Toolbox を公開できた
-- Agent から Toolbox の API を呼び出し、費用見積もりを確認できた
-- Trace で `createTripEstimate` の実行を確認できた
+- OpenAPI、Code Interpreter、Web Search と 2 Skills を含み、Tool Search On の Toolbox を公開した
+- Trace で `tool_search → call_tool → createTripEstimate` を確認した
+- 見積もり依頼で無関係な tool と `createPreapproval` が呼ばれないことを確認した
+- Skill は登録・公開済みであり、`load_skill` / `resources/read` なしには利用済みと主張しない
 
 ## 任意: SDK で同じ構成を扱う
 
 [`notebooks/04-create-toolbox.ipynb`](../notebooks/04-create-toolbox.ipynb) は SDK 学習用の補助です。
 Notebook は本編では使いません。
-OpenAPI の更新時に既存 Skills・他の tools・guardrail を保持しますが、
+OpenAPI の更新時に既存 Skills・他の tools・guardrail・Tool Search を保持し、不足する
+Lab 4 の built-in tool と Tool Search だけを SDK が対応する正式な model で追加しますが、
 Skill 自体のアップロードは上の Portal 手順で行います。
 Prompt Agent の呼び出し、回答の検証、Conversation に記録された Tool の入出力確認も行います。
 UI の作成操作を体験する前に Notebook で Toolbox を作る必要はありません。

@@ -2,7 +2,7 @@
 
 ## これは何か
 
-Lab 5（評価）・Lab 6（Optimizer）・Lab 7（Hosted Agent デプロイ）の live 実行が、
+Lab 5（評価）・Lab 6（Optimizer）・Lab 8（Hosted Agent デプロイ）の live 実行が、
 preview 機能の不安定さやネットワーク・quota の事情で当日時間内に完了しない場合に、
 講師が画面共有して「本来この形の結果が返ってくる」と説明するための**参考資料**です。
 
@@ -32,7 +32,7 @@ preview 機能の不安定さやネットワーク・quota の事情で当日時
 |---|---|---|
 | [evaluation-run.simulated.json](evaluation-run.simulated.json) | [Lab 5](../../labs/05-evaluation.md) | [schemas/evaluation-run.schema.json](schemas/evaluation-run.schema.json) |
 | [optimizer-run.simulated.json](optimizer-run.simulated.json) | [Lab 6](../../labs/06-optimization.md) | [schemas/optimizer-run.schema.json](schemas/optimizer-run.schema.json) |
-| [hosted-agent-deploy.simulated.json](hosted-agent-deploy.simulated.json) | [Lab 7](../../labs/07-hosted-multi-agent.md) | [schemas/hosted-agent-deploy.schema.json](schemas/hosted-agent-deploy.schema.json) |
+| [hosted-agent-deploy.simulated.json](hosted-agent-deploy.simulated.json) | [Lab 8](../../labs/08-hosted-multi-agent.md) | [schemas/hosted-agent-deploy.schema.json](schemas/hosted-agent-deploy.schema.json) |
 
 `tests/contract/test_completed_run_assets_contract.py`（本タスクで追加）が、各 JSON ファイル
 がそのスキーマに準拠していること、`asset_status` が `SIMULATED`/`REFERENCE` のいずれかで

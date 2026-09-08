@@ -193,6 +193,24 @@ def test_build_monitoring_role_assignment_is_resource_scoped_and_deterministic()
     assert body["properties"]["principalType"] == "ServicePrincipal"
 
 
+def test_build_resource_role_assignment_uses_requested_role() -> None:
+    resource_id = (
+        "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
+        "Microsoft.Search/searchServices/search-1"
+    )
+
+    url, body = deploy_hosted_agent.build_resource_role_assignment(
+        resource_id=resource_id,
+        principal_id="principal-1",
+        role_id=deploy_hosted_agent.SEARCH_INDEX_DATA_READER_ROLE_ID,
+    )
+
+    assert resource_id in url
+    assert body["properties"]["roleDefinitionId"].endswith(
+        f"/{deploy_hosted_agent.SEARCH_INDEX_DATA_READER_ROLE_ID}"
+    )
+
+
 def test_grant_monitoring_metrics_publisher_uses_bearer_token() -> None:
     calls: list[dict] = []
 
@@ -291,9 +309,25 @@ def test_build_definition_passes_through_environment_variables() -> None:
 
 def _context_with_model_deployment(name: str = "gpt-4o-mini") -> dict:
     return {
+        "subscription_id": "sub-1",
+        "resource_group_name": "rg-1",
         "terraform_outputs": {
             "primary_model_deployment_name": {"value": name},
-        }
+            "search_service_endpoint": {"value": "https://search.example.invalid"},
+            "search_service_name": {"value": "search-1"},
+            "foundry_project_id": {
+                "value": (
+                    "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
+                    "Microsoft.CognitiveServices/accounts/account-1/projects/project-1"
+                )
+            },
+            "application_insights_id": {
+                "value": (
+                    "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
+                    "Microsoft.Insights/components/appi-1"
+                )
+            },
+        },
     }
 
 
@@ -305,7 +339,12 @@ def test_resolve_environment_variables_auto_injects_model_deployment_name(
         {}, context=_context_with_model_deployment(deployment)
     )
 
-    assert result == {"FOUNDRY_MODEL": deployment}
+    assert result == {
+        "FOUNDRY_MODEL": deployment,
+        "AZURE_AI_SEARCH_SERVICE_ENDPOINT": "https://search.example.invalid",
+        "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME": "contoso-travel-knowledge-lab",
+        "TOOLBOX_NAME": "contoso-travel-toolbox",
+    }
 
 
 def test_resolve_environment_variables_keeps_other_explicit_env_vars() -> None:
@@ -316,17 +355,27 @@ def test_resolve_environment_variables_keeps_other_explicit_env_vars() -> None:
     assert result == {
         "SOME_OTHER_VAR": "value",
         "FOUNDRY_MODEL": "gpt-4o-mini",
+        "AZURE_AI_SEARCH_SERVICE_ENDPOINT": "https://search.example.invalid",
+        "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME": "contoso-travel-knowledge-lab",
+        "TOOLBOX_NAME": "contoso-travel-toolbox",
     }
 
 
 def test_resolve_environment_variables_explicit_override_wins() -> None:
     result = deploy_hosted_agent.resolve_environment_variables(
-        {"FOUNDRY_MODEL": "explicit-override"},
+        {
+            "FOUNDRY_MODEL": "explicit-override",
+            "AZURE_AI_SEARCH_SERVICE_ENDPOINT": "https://override.example.invalid",
+        },
         context=_context_with_model_deployment("gpt-4o-mini"),
     )
 
-    assert result == {"FOUNDRY_MODEL": "explicit-override"}
-    # The Terraform output must not even need to be present when overridden.
+    assert result == {
+        "FOUNDRY_MODEL": "explicit-override",
+        "AZURE_AI_SEARCH_SERVICE_ENDPOINT": "https://override.example.invalid",
+        "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME": "contoso-travel-knowledge-lab",
+        "TOOLBOX_NAME": "contoso-travel-toolbox",
+    }
 
 
 def test_resolve_environment_variables_never_sets_foundry_project_endpoint() -> None:
@@ -346,6 +395,59 @@ def test_resolve_environment_variables_raises_when_terraform_output_missing_and_
 
     with pytest.raises(deploy_hosted_agent.WorkshopContextError):
         deploy_hosted_agent.resolve_environment_variables({}, context=context)
+
+
+def test_runtime_resource_ids_stay_inside_workshop_resources() -> None:
+    context = _context_with_model_deployment()
+
+    assert deploy_hosted_agent.search_service_resource_id(context) == (
+        "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
+        "Microsoft.Search/searchServices/search-1"
+    )
+    assert deploy_hosted_agent.foundry_account_resource_id(context) == (
+        "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
+        "Microsoft.CognitiveServices/accounts/account-1"
+    )
+
+
+def test_configure_runtime_identity_access_grants_search_foundry_and_monitoring(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    role_calls: list[dict] = []
+    monitoring_calls: list[dict] = []
+    monkeypatch.setattr(
+        deploy_hosted_agent,
+        "grant_resource_role",
+        lambda **kwargs: role_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        deploy_hosted_agent,
+        "grant_monitoring_metrics_publisher",
+        lambda **kwargs: monitoring_calls.append(kwargs),
+    )
+    credential = object()
+
+    deploy_hosted_agent.configure_runtime_identity_access(
+        credential=credential,
+        context=_context_with_model_deployment(),
+        principal_id="agent-principal",
+    )
+
+    assert [call["role_name"] for call in role_calls] == [
+        "Search Index Data Reader",
+        "Foundry User",
+    ]
+    assert all(call["principal_id"] == "agent-principal" for call in role_calls)
+    assert monitoring_calls == [
+        {
+            "credential": credential,
+            "application_insights_id": (
+                "/subscriptions/sub-1/resourceGroups/rg-1/providers/"
+                "Microsoft.Insights/components/appi-1"
+            ),
+            "principal_id": "agent-principal",
+        }
+    ]
 
 
 # ---------------------------------------------------------------------------

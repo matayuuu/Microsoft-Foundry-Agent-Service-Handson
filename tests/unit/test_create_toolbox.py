@@ -18,7 +18,13 @@ from types import ModuleType, SimpleNamespace
 
 import httpx
 import pytest
-from azure.ai.projects.models import ToolboxPolicies, ToolboxSkillReference, WebSearchToolboxTool
+from azure.ai.projects.models import (
+    CodeInterpreterToolboxTool,
+    ToolboxPolicies,
+    ToolboxSkillReference,
+    ToolSearchToolboxTool,
+    WebSearchToolboxTool,
+)
 from azure.core.exceptions import ResourceNotFoundError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -210,6 +216,40 @@ def test_upsert_openapi_tool_is_unchanged_when_exact_tool_exists() -> None:
 
     assert not changed
     assert merged == [web_search, desired]
+
+
+def test_ensure_lab_tool_set_adds_required_builtins_and_tool_search() -> None:
+    desired = create_toolbox.build_openapi_tool(
+        tool_name="travel_ops_api",
+        spec=SAMPLE_SPEC,
+        auth=create_toolbox.OpenApiAnonymousAuthDetails(),
+    )
+
+    merged, changed = create_toolbox.ensure_lab_tool_set([], desired)
+
+    assert changed
+    assert [tool.type for tool in merged] == [
+        "openapi",
+        "code_interpreter",
+        "web_search",
+        "toolbox_search",
+    ]
+
+
+def test_ensure_lab_tool_set_preserves_portal_managed_builtin_settings() -> None:
+    desired = create_toolbox.build_openapi_tool(
+        tool_name="travel_ops_api",
+        spec=SAMPLE_SPEC,
+        auth=create_toolbox.OpenApiAnonymousAuthDetails(),
+    )
+    code = CodeInterpreterToolboxTool(name="portal-code")
+    web = WebSearchToolboxTool(name="portal-web", search_context_size="high")
+    search = ToolSearchToolboxTool(name="portal-search")
+
+    merged, changed = create_toolbox.ensure_lab_tool_set([code, web, search, desired], desired)
+
+    assert not changed
+    assert merged == [code, web, search, desired]
 
 
 # ---------------------------------------------------------------------------
@@ -437,6 +477,12 @@ def test_ensure_toolbox_creates_first_version_without_extra_publish() -> None:
     assert result["action"] == "created"
     assert result["default_version"] == "2"
     assert len(client.toolboxes.created) == 1
+    assert [tool.type for tool in client.toolboxes.created[0][1]] == [
+        "openapi",
+        "code_interpreter",
+        "web_search",
+        "toolbox_search",
+    ]
     assert client.toolboxes.updated == []
 
 
@@ -446,7 +492,15 @@ def test_ensure_toolbox_reuses_unchanged_default_version() -> None:
         spec=SAMPLE_SPEC,
         auth=create_toolbox.OpenApiAnonymousAuthDetails(),
     )
-    client = _FakeClient(toolbox=_FakeToolbox(default_version="3"), tools=[desired])
+    client = _FakeClient(
+        toolbox=_FakeToolbox(default_version="3"),
+        tools=[
+            desired,
+            CodeInterpreterToolboxTool(),
+            WebSearchToolboxTool(),
+            ToolSearchToolboxTool(),
+        ],
+    )
 
     result = create_toolbox.ensure_toolbox(
         client,
@@ -468,7 +522,12 @@ def test_ensure_toolbox_preserves_ui_skills_and_policies_on_update(publish: bool
         auth=create_toolbox.OpenApiAnonymousAuthDetails(),
     )
     other_tool = WebSearchToolboxTool(name="existing")
-    client = _FakeClient(toolbox=_FakeToolbox(default_version="3"), tools=[other_tool])
+    code_tool = CodeInterpreterToolboxTool(name="existing-code")
+    search_tool = ToolSearchToolboxTool(name="existing-search")
+    client = _FakeClient(
+        toolbox=_FakeToolbox(default_version="3"),
+        tools=[other_tool, code_tool, search_tool],
+    )
     snapshot = client.toolboxes.snapshot
     snapshot.skills = [ToolboxSkillReference(name="travel-estimation", version="2")]
     snapshot.policies = ToolboxPolicies(rai_config={"rai_policy_name": "existing-guardrail"})
@@ -482,14 +541,14 @@ def test_ensure_toolbox_preserves_ui_skills_and_policies_on_update(publish: bool
         publish=publish,
     )
 
-    assert client.toolboxes.created[0][1] == [other_tool, desired]
+    assert client.toolboxes.created[0][1] == [other_tool, code_tool, search_tool, desired]
     assert client.toolboxes.created[0][2] == snapshot.description
     assert client.toolboxes.created_settings == {
         "skills": snapshot.skills,
         "policies": snapshot.policies,
         "metadata": snapshot.metadata,
     }
-    assert snapshot.tools == [other_tool]
+    assert snapshot.tools == [other_tool, code_tool, search_tool]
     assert snapshot.skills[0].version == "2"
     assert result["default_version"] == ("2" if publish else "3")
     assert client.toolboxes.updated == ([("contoso-travel-toolbox", "2")] if publish else [])

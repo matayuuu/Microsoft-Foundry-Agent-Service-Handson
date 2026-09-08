@@ -53,12 +53,29 @@ Skill のアップロードに使われた `skill_...` という項目が表示�
    違っていればこの値を入力し、**Save** を押します。
 3. **Next** を選択します。
 
-## 4. Criteria を選択する
+## 4. Process evaluator の適用範囲を決める
+
+Tool Search を有効にすると、tool call は `tool_search` / `call_tool` と、その内側で
+実行された実 tool の 2 層になります。downstream call が `sample.tool_calls` へ flatten
+されるかは runtime に依存し、Evaluation 実行前にはこの project の sample shape を
+確認できません。
+
+そのため、**本編の 1 回目は shape に依存しない task-level/custom evaluator だけ**を使います。
+Tool の選択と引数は Conversation / Trace で確認します。実行後に raw sample で 2 層とも
+確認できた場合だけ、ToolSelection / ToolInputAccuracy を使う任意の 2 回目へ進めます。
+
+> [!IMPORTANT]
+> 公式ドキュメントでは、Code Interpreter と Web Search は process evaluator の対応が限定的です。
+> これらを呼ぶ case に ToolSelection、ToolInputAccuracy、ToolCallAccuracy などを適用しません。
+> 7 件の live subset は両 tool を呼ばない構成です。現在情報/Web Search case は master dataset
+> にだけ置き、task-level、custom rubric、Trace で出典 URL と取得日時を確認します。
+
+## 5. Criteria を選択する
 
 1. **Judge model** で **Deployments** の **gpt-5.5** を選択します。
    `optimizer_model_deployment_name` の値です。初期選択が Luna なら変更してください。
 
-2. 初期選択の評価器から、次の **4 つだけ**を残します。
+2. 初期選択の評価器から、次の **2 つだけ**を残します。
    不要なチップの **×** で外せます。**Quality** と **Safety** の評価器は、
    それぞれの **Remove all** でまとめて外して構いません。
    これは今回実行する評価器の選択であり、Agent の Guardrail を削除する操作ではありません。
@@ -67,13 +84,14 @@ Skill のアップロードに使われた `skill_...` という項目が表示�
 |---|---|
 | **TaskAdherence** | instructions と依頼に従ったか |
 | **TaskCompletion** | 必要な内容を回答したか |
-| **ToolSelection** | 必要な tool を選んだか |
-| **ToolInputAccuracy** | tool へ正しい値を渡したか |
 
-## 5. 評価器が読むデータを確認する
+3. setup が登録した custom evaluator **Contoso Travel Rubric** を追加します。
+   これで本編の評価器は合計 **3 つ**です。
 
-Tool 呼び出しを含む全体を読む評価器には、最終回答の文章だけでなく
-**`{{sample.output_items}}`** を渡します。
+## 6. 評価器が読むデータを確認する
+
+TaskAdherence と custom rubric には、最終文章だけでなく top-level の tool call を含む
+`sample.output_items` を渡します。downstream operation の評価に使うわけではありません。
 
 1. **TaskAdherence** のチップを開き、**Response** を `{{sample.output_items}}` に
    変更して **Update** を押します。Judge model は `gpt-5.5`、
@@ -81,30 +99,20 @@ Tool 呼び出しを含む全体を読む評価器には、最終回答の文章
 
 ![TaskAdherence の Response は output_items にする](../docs/images/lab05-task-adherence-mapping.png)
 
-2. **ToolInputAccuracy** も開き、**Response** を `{{sample.output_items}}` に変更して
-   **Update** を押します。
-
-3. **ToolSelection** は次の既定値を確認します。正しければ変更不要です。
-
-| 項目 | 値 |
-|---|---|
-| Judge model | `gpt-5.5` |
-| Query | `{{item.query}}` |
-| Tool definitions | `{{sample.tool_definitions}}` |
-| Response | `{{sample.output_text}}` |
-| Tool calls | `{{sample.tool_calls}}` |
-
-4. **TaskCompletion** は `gpt-5.5`、Query = `{{item.query}}`、
+2. **TaskCompletion** は `gpt-5.5`、Query = `{{item.query}}`、
    Response = `{{sample.output_text}}` を確認します。Threshold などは既定のままです。
-5. Judge model と評価器が 4 つであることを再確認して、**Next** を押します。
+3. **Contoso Travel Rubric** は Judge model = `gpt-5.5`、
+   Query = `{{item.query}}`、Response = `{{sample.output_items}}` にします。
+4. Judge model と評価器が 3 つであることを再確認して、**Next** を押します。
 
-![Judge model と4つの評価器を確認する](../docs/images/lab05-criteria.png)
+Portal が追加の evaluator を初期選択していても、本編では上の 3 つを正とします。
+ToolSelection / ToolInputAccuracy はまだ追加しません。
 
-## 6. 実行する
+## 7. 実行する
 
 1. **Review** の Evaluation name に `contoso-travel-portal-eval` を入力します。
 2. Target が `contoso-travel-assistant` の 1 version、dataset が指定の合成データ、
-   Frequency が One time、評価器が 4 つであることを確認します。
+   Frequency が One time、評価器が上の 3 つであることを確認します。
 3. **Submit** を選択します。
 
 4. Evaluation detail の run が終了するまで待ちます。
@@ -113,7 +121,7 @@ Tool 呼び出しを含む全体を読む評価器には、最終回答の文章
 
 7 件では通常数分かかります。**In progress** の間は同じ run を再送しません。
 
-## 7. 結果を読む
+## 8. 結果を読む
 
 実行一覧の `contoso-travel-assistant` を開き、**Overall metric results** と
 **Detailed metrics result** を確認します。
@@ -133,6 +141,19 @@ Conversation ID が表示される行は、そのリンクから会話や tool �
 | 攻撃文の行で `content_filter` | 保護機能による遮断として記録する。Guardrail を弱めて通さない |
 | `429`・タイムアウトなどの **Error** | 採点結果と区別し、[トラブルシューティング](../docs/participant/troubleshooting.md#評価と最適化)で原因を解消する |
 
+Tool Search の row は、次の 2 層を分けて記録します。
+
+| 層 | 確認場所 | 確認内容 |
+|---|---|---|
+| discovery/meta | `sample.output_items` / `sample.tool_calls` と Conversation | `tool_search` の意図、`call_tool` の選択 |
+| downstream | `sample.tool_calls` に実在する場合、または Trace | `createTripEstimate` などの実 operation と引数・出力 |
+
+ここが **compatibility gate** です。`eval-009` の raw sample で meta-call と downstream call の
+両方を確認できた場合だけ、任意の 2 回目の run で ToolSelection / ToolInputAccuracy を追加
+できます。downstream call が Trace にしかない場合は追加せず、3 evaluator の結果と Trace を
+正とします。Conversation / Trace から `sample.tool_calls` の shape を推測しません。
+確認した shape と選択をメモし、Lab 6 でも同じ判断を使います。
+
 **Completed / Partial でも、全行を正常に採点できたとは限りません。** Error の内容まで確認します。
 
 ## 完了チェック
@@ -141,6 +162,7 @@ Conversation ID が表示される行は、そのリンクから会話や tool �
 - 採点できた行で Evaluator ごとの pass / fail が表示される
 - Error がある場合、保護機能による遮断と、未解消の実行エラーを区別できる
 - Tool が必要な row で tool call と入力値を確認できる
+- Tool Search の meta-call と downstream call を別々に確認できる
 - Fail の row で evaluator の reason を確認できる
 
 次の Lab では同じ dataset と、setup 済みの **Contoso Travel Rubric** を使います。

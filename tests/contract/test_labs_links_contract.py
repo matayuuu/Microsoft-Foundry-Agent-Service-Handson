@@ -1,7 +1,7 @@
 """Contract test: every local markdown link in the participant path resolves.
 
 This workstream owns the root README files, ``labs/00-overview.md`` through
-``labs/08-observability-cleanup.md``, and participant support docs. It also reads
+``labs/09-observability-cleanup.md``, and participant support docs. It also reads
 several sibling docs it does not own (``README.md``, ``docs/architecture.md``,
 ``docs/feature-support-matrix.md``, ``docs/costs-and-cleanup.md``,
 ``docs/participant/prerequisites.md``, ``docs/admin/troubleshooting.md``).
@@ -43,8 +43,9 @@ OWNED_FILES = [
     LABS_DIR / "04-tools-toolbox.md",
     LABS_DIR / "05-evaluation.md",
     LABS_DIR / "06-optimization.md",
-    LABS_DIR / "07-hosted-multi-agent.md",
-    LABS_DIR / "08-observability-cleanup.md",
+    LABS_DIR / "07-agent-framework-harness.md",
+    LABS_DIR / "08-hosted-multi-agent.md",
+    LABS_DIR / "09-observability-cleanup.md",
     REPO_ROOT / "docs" / "participant" / "prerequisites.md",
     REPO_ROOT / "docs" / "participant" / "troubleshooting.md",
 ]
@@ -124,7 +125,7 @@ def test_every_owned_file_links_onward_or_is_the_final_lab() -> None:
     the bottom of a lab, which would strand a participant with no way to
     discover the next file from within the document itself.
     """
-    final_lab = LABS_DIR / "08-observability-cleanup.md"
+    final_lab = LABS_DIR / "09-observability-cleanup.md"
     for source_file in OWNED_FILES:
         if source_file == final_lab or not source_file.is_file():
             continue
@@ -151,8 +152,9 @@ def test_readme_agenda_links_every_lab_and_uses_duration_columns() -> None:
             "04-tools-toolbox.md",
             "05-evaluation.md",
             "06-optimization.md",
-            "07-hosted-multi-agent.md",
-            "08-observability-cleanup.md",
+            "07-agent-framework-harness.md",
+            "08-hosted-multi-agent.md",
+            "09-observability-cleanup.md",
         ]
     ):
         assert f"[Lab {lab_number}](labs/{filename})" in readme
@@ -210,7 +212,7 @@ def test_learning_flow_source_and_rendered_labels_agree() -> None:
             assert element["strokeColor"] == "#000000"
             assert svg_labels[element["id"]] == " ".join(element["text"].split())
     assert "会話する" not in svg_labels["lab2-prompt-text"]
-    assert "には接続しない" in svg_labels["lab7-independent-note-text"]
+    assert "同じ remote resources" in svg_labels["lab7-independent-note-text"]
 
 
 def test_portal_labs_use_setup_prepared_evaluation_assets() -> None:
@@ -268,11 +270,13 @@ def test_beginner_path_handles_observed_portal_defaults() -> None:
     prompt = (LABS_DIR / "02-prompt-agent.md").read_text(encoding="utf-8")
     toolbox = (LABS_DIR / "04-tools-toolbox.md").read_text(encoding="utf-8")
     optimization = (LABS_DIR / "06-optimization.md").read_text(encoding="utf-8")
-    hosted = (LABS_DIR / "07-hosted-multi-agent.md").read_text(encoding="utf-8")
+    hosted = (LABS_DIR / "08-hosted-multi-agent.md").read_text(encoding="utf-8")
 
     assert "Web search" in prompt and "Remove" in prompt
-    for default_tool in ("web_search", "code_interpreter", "FoundryMCPServerpreview"):
-        assert default_tool in toolbox
+    assert "web_search" in toolbox and "code_interpreter" in toolbox
+    assert "最初から入っている場合は残します" in toolbox
+    assert "FoundryMCPServerpreview" in toolbox
+    assert "**Actions > Remove**" in toolbox
     assert "Select dataset and criteria" in optimization
     assert "Generate data" in optimization
     assert "Jupyter Kernel..." in hosted
@@ -282,7 +286,7 @@ def test_beginner_path_handles_observed_portal_defaults() -> None:
 
 def test_hosted_notebook_keeps_practical_notices_without_preview_disclaimer() -> None:
     notebook = json.loads(
-        (REPO_ROOT / "notebooks" / "07-hosted-agent.ipynb").read_text(encoding="utf-8")
+        (REPO_ROOT / "notebooks" / "08-hosted-agent.ipynb").read_text(encoding="utf-8")
     )
     introduction = "".join(notebook["cells"][0]["source"])
 
@@ -343,8 +347,8 @@ def test_core_labs_do_not_show_answer_screenshots_or_numbered_image_captions() -
         "lab06-optimizer-results.png",
         "lab06-view-changes.png",
         "lab06-rubric-reason.png",
-        "lab07-hosted-agent-playground.png",
-        "lab08-reviewer-output.png",
+        "lab08-hosted-agent-playground.png",
+        "lab09-reviewer-output.png",
     }
     for source in OWNED_FILES:
         if source.parent != LABS_DIR:

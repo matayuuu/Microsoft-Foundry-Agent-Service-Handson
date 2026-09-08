@@ -1,7 +1,7 @@
 # 講師向け資料（instructor materials）
 
-このディレクトリは、Microsoft Foundry Agent Service ハンズオン（3 時間 50 分、
-[Lab 0〜Lab 8](../labs/00-overview.md)）を進行する**講師専用**の資料です。参加者向けの
+このディレクトリは、Microsoft Foundry Agent Service ハンズオン（4 時間 30 分、
+[Lab 0〜Lab 9](../labs/00-overview.md)）を進行する**講師専用**の資料です。参加者向けの
 `labs/` `docs/participant/` とは独立しており、参加者に配布する必要はありません。
 
 > [!IMPORTANT]
@@ -15,7 +15,7 @@
 
 | ファイル/ディレクトリ | 内容 |
 |---|---|
-| [runbook.md](runbook.md) | 3 時間 50 分の進行台本。事前準備、区切りごとのチェックポイント、デモ用プロンプト、コスト・データ境界の注意喚起の読み上げ文、live 実行が難しい場合の切り替え判断、cleanup 確認手順 |
+| [runbook.md](runbook.md) | 4 時間 30 分の進行台本。事前準備、区切りごとのチェックポイント、デモ用プロンプト、コスト・データ境界の注意喚起の読み上げ文、live 実行が難しい場合の切り替え判断、cleanup 確認手順 |
 | [completed-run-assets/](completed-run-assets/README.md) | Optimizer・評価・Hosted Agent デプロイの live 実行が難しい場合に提示する、明示的に **SIMULATED**（模擬）または **REFERENCE**（参考構造）とラベル付けされた JSON/Markdown 資料 |
 
 ## 使い方
@@ -24,7 +24,7 @@
    `admin-preflight.sh` の結果と、参加者数に応じた model quota を確認します。
 2. 当日は [runbook.md](runbook.md) の時間割に沿って進行し、各区切りのチェックポイントで
    参加者の進捗を確認します。
-3. Optimizer（Lab 6）や評価（Lab 5）、Hosted Agent デプロイ（Lab 7）で live 実行が
+3. Optimizer（Lab 6）や評価（Lab 5）、Hosted Agent デプロイ（Lab 8）で live 実行が
    時間内に完了しない・preview 機能が不安定などの理由で難しい場合は、
    [completed-run-assets/](completed-run-assets/README.md) の該当資料を画面共有し、
    「本来ならこの形の結果が返ってくる」という参考として説明します。

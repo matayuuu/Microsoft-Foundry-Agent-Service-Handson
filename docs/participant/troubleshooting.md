@@ -144,7 +144,9 @@ Portal の Prompt Agent は Toolbox の callable tool を実行できますが�
 自動で読み込みません。同じ Prompt Agent を Python の `AIProjectClient` から呼び出しても
 実行環境は同じです。新しい会話または再接続で `resources/read` や `load_skill` の記録を確認し、
 API の成功だけを Skill の成功としません。
-既存の Lab 7 のワークフローは Skill プロバイダーを含みません。
+Lab 7 の Harness Agent と Lab 8 の Hosted workflow は、同じ checked-in factory の
+Skill provider を使います。Lab 8 は Lab 7 の Notebook session state ではなく、
+Lab 3 / 4 の remote resources を参照します。
 Skill をエージェントの指示文にコピーする代替手段は、Toolbox 経由の利用とは区別してください。
 
 ## Notebook での Toolbox 操作
@@ -259,6 +261,14 @@ src/hosted-agent/.venv/bin/python -m ipykernel install \
 **Build > Agents** で `contoso-travel-hosted-planner` の状態とビルドエラーを確認します。
 ソースコードを変更せずにデプロイコマンドを何度も実行しないでください。
 
+### Hosted Agent から Foundry IQ / Toolbox が 403 になる
+
+`deploy_hosted_agent.py` は agent identity に Search Index Data Reader、Foundry User、
+Monitoring Metrics Publisher を workshop resource scope で付与します。deploy が `active` に
+なった直後だけ失敗する場合は、role assignment の反映を待って同じ依頼を再送します。
+新しい agent version を作り直したり、subscription scope の広い role を追加したりしません。
+継続する場合は deploy 出力の role assignment エラーと agent identity を講師へ共有します。
+
 ## トレース
 
 ### トレースが表示されない
@@ -293,29 +303,29 @@ Terraform の状態ファイルと `.workshop/` はクリーンアップ完了�
 1. **Build > Agents > contoso-travel-assistant > Playground** の **Tools** で、
    `contoso-travel-toolbox-mcp` の **Actions > Remove** を選び、**Save** します。
 
-![ハンズオン用の MCP 接続だけを Remove する](../images/lab08-remove-toolbox-connection.png)
+![Lab 9 でハンズオン用の MCP 接続だけを Remove する](../images/lab08-remove-toolbox-connection.png)
 
-![接続を外した後に Save する](../images/lab08-save-disconnected-agent.png)
+![Lab 9 で接続を外した後に Save する](../images/lab08-save-disconnected-agent.png)
 
 2. **Build > Tools > Toolboxes** で `contoso-travel-toolbox` の行にポインターを重ね、
    表示された **… > Delete** を選び、
    確認画面の名前を確認して削除します。
 
-![対象 Toolbox の操作メニューから Delete](../images/lab08-delete-toolbox-menu.png)
+![Lab 9 で対象 Toolbox の操作メニューから Delete](../images/lab08-delete-toolbox-menu.png)
 
-![削除対象の名前を確認する](../images/lab08-confirm-delete-toolbox.png)
+![Lab 9 で削除対象の名前を確認する](../images/lab08-confirm-delete-toolbox.png)
 
 3. **Skills** で、他の Toolbox が参照していない `travel-estimation` と
    `preapproval-simulation` を削除します。**確認画面が出ない場合があるため、
    Delete を選ぶ前に名前を確認してください。**
 
-![Skills タブで travel-estimation を削除する](../images/lab08-delete-skill-menu.png)
+![Lab 9 の Skills タブで travel-estimation を削除する](../images/lab08-delete-skill-menu.png)
 
-![preapproval-simulation も名前を確認して削除する](../images/lab08-delete-second-skill.png)
+![Lab 9 で preapproval-simulation も名前を確認して削除する](../images/lab08-delete-second-skill.png)
 
 4. ブラウザーを再読み込みして対象が消えたことを確認し、`./scripts/destroy.sh` を再実行します。
 
-![この演習の2つだけだった場合は Add your first skill と表示される](../images/lab08-skills-deleted.png)
+![Lab 9 でこの演習の2つだけだった場合は Add your first skill と表示される](../images/lab08-skills-deleted.png)
 
 削除画面が利用できない場合は講師へ連絡し、SDK での削除を確認してから再実行してください。
 

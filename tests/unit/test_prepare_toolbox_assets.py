@@ -33,6 +33,14 @@ def test_export_assets_packages_both_skills_and_only_portal_values(tmp_path: Pat
         "https://project.example.invalid/toolboxes/contoso-travel-toolbox/mcp?api-version=v1"
     )
     assert values["skills"] == list(assets.SKILL_NAMES)
+    assert values["builtin_tools"] == ["code_interpreter", "web_search"]
+    assert values["openapi_operations"] == [
+        "getHealth",
+        "getPerDiem",
+        "createTripEstimate",
+        "createPreapproval",
+    ]
+    assert values["tool_search"] == "On"
     assert set(values) == {
         "toolbox_name",
         "tool_name",
@@ -40,6 +48,9 @@ def test_export_assets_packages_both_skills_and_only_portal_values(tmp_path: Pat
         "toolbox_mcp_endpoint",
         "toolbox_audience",
         "skills",
+        "builtin_tools",
+        "openapi_operations",
+        "tool_search",
     }
     before = {path.name: path.read_bytes() for path in paths}
     assets.export_assets(spec=spec, endpoint="https://project.example.invalid", output_dir=tmp_path)

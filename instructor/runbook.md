@@ -1,4 +1,4 @@
-# 進行台本（runbook）— 3 時間 50 分アジェンダ
+# 進行台本（runbook）— 4 時間 30 分アジェンダ
 
 対象読者: このハンズオンを進行する講師。参加者には配布しません。
 
@@ -38,7 +38,7 @@
   両モデル選択は `optimizer_model_deployment_name`（GPT-5.5）を使います。
   Model catalog と Portal picker の対応は同一視せず、当日もそれぞれ確認します。
   サービス管理の Violence などには judge を指定しません。
-- Lab 5（評価）・Lab 6（Optimizer）・Lab 7（Hosted Agent デプロイ）を一度通しで
+- Lab 5（評価）・Lab 6（Optimizer）・Lab 7（Harness Agent）・Lab 8（Hosted Agent デプロイ）を一度通しで
   実行し、リモートビルドや preview 機能の待ち時間の当日の目安を体感しておきます。
 - [instructor/completed-run-assets/](completed-run-assets/README.md) の内容に目を通し、
   画面共有する場合にどこを見せるかを決めておきます。
@@ -57,7 +57,7 @@
 ## 1. 当日の進行（[README のアジェンダ](../README.md#agenda)に対応）
 
 各区切りは目安時間です。参加者の進捗にばらつきが出やすいのは Lab 3（Foundry IQ の
-待ち時間）と Lab 7（リモートビルドの待ち時間）です。早く終わった参加者には、該当する
+待ち時間）と Lab 8（リモートビルドの待ち時間）です。早く終わった参加者には、該当する
 [選択ラボ](../labs/optional/README.md)の該当節（読むだけでも可）を勧めてください。
 
 ### 00:00–00:10 Lab 0 — オープニング
@@ -67,7 +67,7 @@
   データはすべて合成データで、実在の人物・企業とは無関係です」。
 - **読み上げポイント**（コスト）: 「今日作成するリソースは Azure AI Search Basic、
   model 推論・embedding・評価 judge・Agent Optimizer のトークン課金、Container Apps
-  など、いずれも小さいですが無料ではありません。終了後は必ず Lab 8 の cleanup を
+  など、いずれも小さいですが無料ではありません。終了後は必ず Lab 9 の cleanup を
   実行します」（[costs-and-cleanup.md](../docs/costs-and-cleanup.md)）。
 
 ### 00:10–00:30 Lab 1 — 環境構築
@@ -109,20 +109,23 @@
 - **操作面**: 本編は Web Portal。`prepare_toolbox_assets.py` は素材のローカル出力のみ。
   Notebook で先に Toolbox を作らせない。2026-09-05 の実画面では OpenAPI と Skill upload
   に対応しているため、古い「Portal 非対応」という説明を使わない。
-- **チェックポイント**: Included に `travel_ops_api`、`travel-estimation`、
-  `preapproval-simulation` があり、Publish 後も保持されていること。
+- **チェックポイント**: Included に `travel_ops_api`、Code Interpreter、Web Search、
+  `travel-estimation`、`preapproval-simulation` があり、Tool Search が On のまま
+  Publish されていること。Trace で `tool_search` → `call_tool` → 実 tool を区別する。
 - **Skills の説明**: API は実行機能、Skill は操作手順、Foundry IQ は規程。
   Skill は preview の MCP resource であり、登録と実際の読み込みは別。
   API call が成功しただけで Skill を利用できたと説明しない。
-- **コスト・境界**: モデル／API の料金と Foundry 外へ送るデータの注意を再確認する。
-  本編では Web Search・Code Interpreter を追加しない。
+- **コスト・境界**: Code Interpreter は API 結果の比較、Web Search は明示された
+  現在の公開旅行情報だけに使う。秘密・個人情報・顧客情報を検索へ送らない。
 
 ### 02:10–02:35 Lab 5 — Agent evaluation
 
 - **モデルの確認**: 対象 Agent は Luna のまま、設定可能な LLM judge は GPT-5.5。
   少数の rubric 判定と理由を人の判断と照合し、モデル名だけで評価の正しさを断定しません。
-- **チェックポイント**: `.venv/bin/python scripts/run_evaluation.py --output json` が
-  `status: "completed"` で終わり、`report_url` が Foundry portal で開けること。
+- **チェックポイント**: Portal の本編 run は TaskAdherence、TaskCompletion、
+  Contoso Travel Rubric の 3 evaluator を使う。`eval-009` の raw sample と Trace で
+  Tool Search の meta-call と downstream call を分け、両方が sample にある場合だけ
+  ToolSelection / ToolInputAccuracy を任意の別 run で使用する。
 - **live 実行が難しい場合**: judge model のレート制限や評価 API のタイムアウトで
   時間内に終わらない場合は、
   [completed-run-assets/evaluation-run.simulated.json](completed-run-assets/evaluation-run.simulated.json)
@@ -141,13 +144,21 @@
   を画面共有し、baseline との score 差分・promote の判断基準（「すべての候補が
   baseline を下回ったら現状維持」）を説明する。
 
-### 02:55–03:40 Lab 7 — Agent Framework workflow の Hosted Agent 配布
+### 02:55–03:40 Lab 7 — plain Agent から Harness Agent へ
 
-- **学習順序**: Notebook で `as_agent()` による作成、`SequentialBuilder` による接続、
-  実物のグラフ表示、途中回答の観察、入力を変えたテストの順に進めてから deploy する。
-  最初から完成済み workflow の呼び出しや deploy だけを実行させない。
-- **チェックポイント**: 3 agent の役割と会話の引き継ぎを説明でき、Notebook の
-  入力不足・海外 business の回答を期待値と比較できること。その後、
+- **学習順序**: Lab 3 の Foundry IQ と Lab 4 の Toolbox / Skills を plain Agent に接続し、
+  Harness Agent で plan / todo / memory と tool 選択を追加する。
+- **チェックポイント**: 同じ remote resources を使いながら、plain Agent と Harness Agent の
+  実行ループの違いを説明できること。Notebook の session state は Lab 8 に引き継がれない。
+- **スキップ時**: 経験者は Lab 3 / 4 の remote resources が準備済みなら Lab 7 Notebook を
+  実行せず Lab 8 へ進める。Lab 8 は checked-in factory を使用する。
+
+### 03:40–04:20 Lab 8 — Harness Agent workflow の Hosted Agent 配布
+
+- **学習順序**: `intake_agent`、Lab 7 と同じ shared `travel_harness_agent`、
+  `reviewer_agent` を `SequentialBuilder` で接続し、workflow の引き継ぎを確認して deploy する。
+- **チェックポイント**: Harness Agent が Foundry IQ / Toolbox / Skills を再利用すること、
+  Lab 7 の Notebook state ではなく checked-in source を deploy することを説明できる。その後、
   `.venv/bin/python scripts/deploy_hosted_agent.py --output json` が
   `status: "active"` を返し、Playground で応答が確認できること。
 - **リモートビルド待ち時間の目安**: 数分程度かかることがあるため、待ち時間中に
@@ -157,9 +168,9 @@
   [completed-run-assets/hosted-agent-deploy.simulated.json](completed-run-assets/hosted-agent-deploy.simulated.json)
   を画面共有し、`agent_name`/`version`/`status`/`portal_url` の各フィールドが何を
   意味するかを説明したうえで、`failure_hint` が出た場合の確認先（Foundry portal の
-  version ページ、Lab 8 の Application Insights トレース）を案内する。
+  version ページ、Lab 9 の Application Insights トレース）を案内する。
 
-### 03:40–03:50 Lab 8 — Observability・governance・cleanup
+### 04:20–04:30 Lab 9 — Observability・governance・cleanup
 
 - **チェックポイント**: 全参加者が `./scripts/destroy.sh` を実行し、正常終了
   （resource group 自体は残り、タグ付きリソースが削除される）を確認する。

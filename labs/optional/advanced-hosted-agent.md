@@ -2,10 +2,10 @@
 
 ## この文書の位置づけ
 
-本編 [Lab 7](../07-hosted-multi-agent.md) は、`src/hosted-agent/` の Agent Framework
+本編 [Lab 8](../08-hosted-multi-agent.md) は、`src/hosted-agent/` の Agent Framework
 workflow を **source-code remote build** で Hosted Agent としてデプロイします。これは
 `scripts/deploy_hosted_agent.py` が使う唯一の経路であり、**本編の core はこれからも
-source deploy のままです**。このラボは、Lab 7 のコードとデプロイ結果をベースに、
+source deploy のままです**。このラボは、Lab 8 のコードとデプロイ結果をベースに、
 Hosted Agent の任意（optional）の拡張パターンを扱います。
 
 > [!IMPORTANT]
@@ -85,7 +85,7 @@ ACR connection をスキャンし、候補として提示します。ACR connect
 - コンパイル済みバイナリや、pip 以外の方法で配布されるツールチェーンが必要な場合。
 - 複数言語（Python + Node.js など）を 1 つのコンテナに同居させる場合。
 
-いずれの場合も、まず本編 Lab 7 のようにローカルで `python main.py` を実行し、ローカル環境で
+いずれの場合も、まず本編 Lab 8 のようにローカルで `python main.py` を実行し、ローカル環境で
 必要な依存関係を明確にしてから `Dockerfile` に落とし込むと、リモートビルドの失敗を切り分け
 やすくなります。
 
@@ -113,8 +113,9 @@ A2A を有効化する詳細な前提条件・手順は [A2A・Routines・Publis
 ## 4. Tool Search（preview）
 
 Tool Search は Toolbox 内の
-ツール数が多い場合に、モデルが動的にツールを検索して呼び出す preview 機能です。Portal からは
-利用できず、Foundry Toolkit または SDK からのみ設定できます。Hosted Agent の Toolbox に
+ツール数が多い場合に、モデルが動的にツールを検索して呼び出す preview 機能です。
+本編 Lab 4 では Portal の Toolbox 設定で有効にします。pin や追加検索語などの高度な構成、
+再現可能な自動化には Foundry Toolkit または SDK を使います。Hosted Agent の Toolbox に
 多数のツール（本ラボで扱う Fabric IQ、Work IQ、Travel Ops API の OpenAPI ツールなど）を
 まとめて接続する場合、Tool Search を有効にすることで、モデルへのプロンプトに全ツール定義を
 毎回埋め込む必要がなくなり、コンテキストサイズとレイテンシを抑えられます。preview 機能の
@@ -129,8 +130,8 @@ MCP の `resources/list` / `resources/read` で公開されます。
 
 Hosted Agent で利用するには、対応する Skill provider が必要です。
 Skill 名・description を提示し、必要なときだけ本文を読み込む progressive disclosure を
-実装します。本編 Lab 7 の Python workflow にはこの provider を含めていないため、
-Toolbox の作成だけで自動利用されるとは扱いません。
+実装します。本編 Lab 7 / 8 の shared Harness factory はこの provider を含みますが、
+Skill の読み込みと API 呼び出しは別々に確認します。
 拡張時は [公式の Agent Framework Toolbox Skills sample](https://github.com/microsoft-foundry/foundry-samples/tree/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-mcp-skills)
 と [Skills の仕様](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/skills)を参照し、
 Skill の読み込みと API 呼び出しを別々に確認してください。
@@ -168,6 +169,6 @@ Skill の読み込みと API 呼び出しを別々に確認してください。
 ## 関連リンク
 
 - [選択ラボ index](README.md)
-- [本編 Lab 7 — Agent Framework workflow の Hosted Agent 配布](../07-hosted-multi-agent.md)
+- [本編 Lab 8 — Agent Framework workflow の Hosted Agent 配布](../08-hosted-multi-agent.md)
 - [azd 付録](azd-appendix.md)
 - [A2A・Routines・Publish](a2a-routines-publish.md)

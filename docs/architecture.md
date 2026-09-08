@@ -28,7 +28,12 @@ flowchart LR
     iq --> search
     prompt --> toolbox[Toolbox]
     toolbox --> api
+    codespace -->|Lab 7 Notebook| codeagent[Agent Framework Agent / Harness Agent]
+    codeagent --> iq
+    codeagent --> toolbox
     codespace -->|Python SDK によるソースデプロイ| hosted[Hosted Agent]
+    hosted --> iq
+    hosted --> toolbox
     prompt --> monitor
     hosted --> monitor
 ```
@@ -46,8 +51,8 @@ flowchart LR
 | Travel Ops Skills | 参加者がポータルで管理 | Lab 4 で `data/skills/` 内の合成コンテンツをアップロード。Skills を削除する前に参照を解除 |
 | 合成の評価データセットと評価基準（ルーブリック） | セットアップアダプター | ポータルで実施する Lab 5 と Lab 6 に向けて冪等に準備 |
 | 評価実行 | 参加者がポータルで管理 | Lab 5 で作成。親プロジェクトとともに削除 |
-| Hosted Agent と変更不可のバージョン | Python SDK ラッパー | Lab 7 で作成。Terraform による削除の前に削除 |
-| Hosted Agent ランタイムのテレメトリ用ロール | Hosted Agent デプロイアダプター | ランタイム ID の作成後にリソーススコープで付与 |
+| Hosted Agent と変更不可のバージョン | Python SDK ラッパー | Lab 8 で作成。Terraform による削除の前に削除 |
+| Hosted Agent ランタイムの Search / Foundry / テレメトリ用ロール | Hosted Agent デプロイアダプター | ランタイム ID の作成後、Search Index Data Reader、Foundry User、Monitoring Metrics Publisher を各 resource scope で冪等に付与 |
 
 Terraform と SDK ラッパーが同じオブジェクトを管理してはいけません。
 
@@ -132,7 +137,10 @@ Lab 4 では、API の実行と動作の指針を分離します。Toolbox に�
 Skills は MCP リソースであり、通常の API ツールや認可制御ではありません。
 利用するクライアントには、互換性のある Skill プロバイダーが必要です。
 API 呼び出しの成功やポータルへの登録だけでは、Skill が読み込まれたことを証明できません。
-Lab 7 のワークフローは、このプレビュー版のランタイム統合には依存しません。
+Lab 7 は Foundry IQ と Toolbox Skills を Agent Framework から再利用し、plain Agent から
+Harness Agent へ発展させます。Lab 8 は同じ `travel_agents.py` の factory を
+sequential workflow の participant として再利用します。Lab 8 は checked-in source と
+Lab 3 / 4 の remote resources に依存し、Lab 7 の Notebook session state には依存しません。
 
 ## ネットワークの方針
 

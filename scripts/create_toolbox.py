@@ -3,8 +3,9 @@
 
 Optional SDK path for the ``contoso-travel-toolbox`` Microsoft Foundry toolbox
 in notebooks/04-create-toolbox.ipynb. Lab 4 creates the toolbox in the Portal.
-This adapter adds the Travel Ops OpenAPI tool while preserving UI-managed
-tools, Skills, metadata, and guardrails.
+This adapter ensures the Travel Ops OpenAPI tool, Code Interpreter, Web Search,
+and Tool Search while preserving every other UI-managed tool, Skill, metadata
+field, and guardrail.
 
 Why a script and not Terraform: per docs/architecture.md, toolbox versions are
 a Foundry data-plane object owned by SDK wrappers, not Terraform. The adapter
@@ -40,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import httpx
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import (
+    CodeInterpreterToolboxTool,
     MCPTool,
     OpenApiAnonymousAuthDetails,
     OpenApiAuthDetails,
@@ -50,6 +52,8 @@ from azure.ai.projects.models import (
     PromptAgentDefinition,
     ToolboxTool,
     ToolboxVersionObject,
+    ToolSearchToolboxTool,
+    WebSearchToolboxTool,
 )
 from azure.core.exceptions import ResourceNotFoundError
 from lib.workshop_context import (
@@ -66,6 +70,7 @@ DEFAULT_TOOL_NAME = "travel_ops_api"
 DEFAULT_OPENAPI_PATH = "/openapi.json"
 DEFAULT_TOOLBOX_CONNECTION_NAME = "contoso-travel-toolbox-mcp"
 DEFAULT_TOOLBOX_SERVER_LABEL = "travel_ops"
+REQUIRED_BUILTIN_TOOL_TYPES = ("code_interpreter", "web_search", "toolbox_search")
 ARM_ENDPOINT = "https://management.azure.com"
 PROJECT_CONNECTION_API_VERSION = "2025-10-01-preview"
 CONNECTION_TIMEOUT_SECONDS = 60.0
@@ -208,6 +213,38 @@ def upsert_openapi_tool(
     return merged, not found_exact
 
 
+def ensure_lab_tool_set(
+    existing_tools: list[ToolboxTool], desired_tool: OpenApiToolboxTool
+) -> tuple[list[ToolboxTool], bool]:
+    """Merge the Lab 4 tools without replacing Portal-managed configurations.
+
+    Existing Code Interpreter, Web Search, and Tool Search entries are kept
+    byte-for-byte (including any Portal settings). Missing entries receive
+    conservative defaults. The OpenAPI item alone is replaced when its live
+    schema changes.
+    """
+    merged, changed = upsert_openapi_tool(existing_tools, desired_tool)
+    existing_types = {getattr(tool, "type", None) for tool in merged}
+    defaults: list[ToolboxTool] = [
+        CodeInterpreterToolboxTool(
+            description="Compare Travel Ops numeric results and format tables; do not invent data."
+        ),
+        WebSearchToolboxTool(
+            description=(
+                "Search current public travel information only when the user "
+                "explicitly requests it."
+            )
+        ),
+        ToolSearchToolboxTool(),
+    ]
+    for tool in defaults:
+        if tool.type not in existing_types:
+            merged.append(tool)
+            existing_types.add(tool.type)
+            changed = True
+    return merged, changed
+
+
 def mcp_endpoints(endpoint: str, toolbox_name: str, version: str) -> dict[str, str]:
     """The consumer (default-version) and developer (pinned-version) MCP
     endpoint URLs for a toolbox, per the documented URL format:
@@ -298,7 +335,7 @@ def ensure_toolbox(
     """Create or update the toolbox and return a participant-friendly result."""
     existing = get_existing_default_version(client, toolbox_name)
     existing_tools = list(existing.tools) if existing is not None else []
-    tools_for_version, changed = upsert_openapi_tool(existing_tools, desired_tool)
+    tools_for_version, changed = ensure_lab_tool_set(existing_tools, desired_tool)
 
     if existing is not None and not changed:
         default_version = existing.version

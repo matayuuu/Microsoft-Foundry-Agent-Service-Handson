@@ -251,5 +251,5 @@ jobs:
 
 - [選択ラボ index](README.md)
 - [本編 Lab 5 — 評価](../05-evaluation.md)
-- [本編 Lab 7 — Hosted Agent デプロイ](../07-hosted-multi-agent.md)
+- [本編 Lab 8 — Hosted Agent デプロイ](../08-hosted-multi-agent.md)
 - [instructor runbook](../../instructor/runbook.md)

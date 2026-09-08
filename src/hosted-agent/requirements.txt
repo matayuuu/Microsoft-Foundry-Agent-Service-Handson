@@ -6,9 +6,10 @@
 # (no stable release exists yet); pin it exactly rather than with a loose
 # range so a remote build is reproducible.
 #
-# This workflow creates policy/planner/reviewer agents from one
-# FoundryChatClient and connects them with SequentialBuilder, so the Foundry,
-# orchestration, and identity packages are runtime dependencies.
+# This workflow creates intake/reviewer agents and reuses one Harness Agent as
+# the middle participant. The Harness Agent connects to Foundry IQ and the
+# Lab 4 Toolbox, so the core, Foundry, hosting, orchestration, HTTP, and
+# identity packages are direct runtime dependencies.
 #
 # IMPORTANT: agent-framework-foundry==1.11.0 constrains azure-ai-projects to
 # <2.4.0,>=2.2.0, which conflicts with the >=2.5.0 the repo-root
@@ -16,11 +17,13 @@
 # (create_version_from_code/HostedAgentDefinition/CodeConfiguration). Do not
 # try to satisfy both from one virtual environment -- install this file's
 # pins into their own isolated venv (see README.md's "Two Python
-# environments" and labs/07-hosted-multi-agent.md) rather than the repo
+# environments" and labs/08-hosted-multi-agent.md) rather than the repo
 # root's .venv, which intentionally keeps the newer azure-ai-projects for
 # the deploy/delete scripts instead.
-agent-framework-core==1.15.0
+agent-framework-core==1.16.0
 agent-framework-orchestrations==1.1.1
 agent-framework-foundry==1.11.0
-agent-framework-foundry-hosting==1.0.0b260813
+agent-framework-foundry-hosting==1.0.0b260827
 azure-identity==1.25.3
+httpx==0.28.1
+python-dotenv==1.2.3

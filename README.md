@@ -7,12 +7,14 @@
 最初は会話だけの状態から始め、規程を調べる、API で計算する、回答を評価して改善する、
 という順に機能を追加します。AI Agent の開発経験は不要です。
 
-![学習の流れ。Lab 0・1 で準備し、Lab 2〜6 で一つの Prompt Agent を拡張する。Lab 7 は独立した 3 Agent のシミュレーションで、Lab 8 で実行履歴の確認と片付けを行う](docs/images/workshop-learning-flow.svg)
+![学習の流れ。Lab 0・1 で準備し、Lab 2〜6 で一つの Prompt Agent を拡張する。Lab 7 で同じ Foundry IQ・Toolbox・Skills を使う Agent と Harness Agent をコードで比較し、Lab 8 で Harness Agent を workflow に組み込んでデプロイし、Lab 9 で trace の比較と片付けを行う](docs/images/workshop-learning-flow.svg)
 
 [学習の流れを Excalidraw で編集する](docs/diagrams/workshop-learning-flow.excalidraw)
 
-図の左側は **同じ Agent を育てる Lab 2〜6**、右側は **別の作り方を学ぶ Lab 7** です。
-Lab 7 を前の機能と統合した最終アプリにはしません。すべての題材は合成データで、
+図の左側は **同じ Prompt Agent を育てる Lab 2〜6**、右側はその資産をコードから再利用する
+**Lab 7〜8** です。Lab 7 は plain Agent から Harness Agent へ発展させ、Lab 8 は同じ
+checked-in factory を sequential workflow の participant としてデプロイします。Lab 9 で
+Prompt Agent と Hosted workflow の trace を比較します。すべての題材は合成データで、
 実際の予約・承認・精算は行いません。
 
 ## 何ができるようになるか
@@ -21,9 +23,9 @@ Lab 7 を前の機能と統合した最終アプリにはしません。すべ�
 |---|---|
 | **Agent / Prompt Agent** | Agent は指示に沿って応答し、必要に応じて機能を使う AI の担当者。Prompt Agent は、その指示を文章で設定する方式です。まず役割と回答方針を保存します |
 | **Knowledge / Foundry IQ** | Knowledge は回答の根拠にする資料。Foundry IQ は複数の資料を調べる仕組みです。出張規程を検索し、引用元を確認します |
-| **Tool / Skill / Toolbox** | Tool は計算などを実行する機能、Skill は使い方の手順書、Toolbox は両方をまとめて Agent に渡す入れ物です。Travel Ops API（別のプログラムに計算を依頼する窓口）で費用内訳を取得します |
+| **Tool / Skill / Toolbox / Tool Search** | Tool は API・計算・Web 検索などの機能、Skill は使い方の手順書、Toolbox は両方をまとめる入れ物です。Tool Search で必要な tool を動的に発見し、Travel Ops API の費用内訳などを取得します |
 | **Evaluation / Optimizer** | Evaluation は同じ質問集と基準で回答を点検すること。Optimizer は指示文の改善案を試して比較する仕組みです。点数だけでなく判定理由を読み、採用するか判断します |
-| **Hosted Agent** | 自分で書いたコードを Foundry 上で動かす方式です。Lab 7 では規程確認・計画・見直しの 3 担当を順に動かす、独立したシミュレーションを作ります |
+| **Agent Framework / Harness Agent / Hosted Agent** | Lab 7 では Foundry IQ と Toolbox の Tools / Skills を plain Agent から Harness Agent へ引き継ぎ、計画・todo・memory を観察します。Lab 8 では同じ factory を intake と reviewer の間に置き、workflow 全体を Hosted Agent として動かします |
 
 たとえば Lab 3 では「大阪の宿泊費の上限は？」に対して、合成規程の
 「1 泊 15,000 円」と出典を確認します。Lab 4 では日程・都市などを渡して、
@@ -34,7 +36,7 @@ API が返す費用内訳と合計を確認します。これは**学ぶ内容�
 
 - **ブラウザーの GitHub Codespaces**: ブラウザー内の VS Code で教材ファイルを開きます。
   **Terminal** はコマンドを実行する場所、**Notebook** は説明と Python コードを
-  小さな単位で読みながら実行するファイルです。必須の Notebook 演習は Lab 7 です。
+  小さな単位で読みながら実行するファイルです。必須の Notebook 演習は Lab 7 と Lab 8 です。
 - **別のブラウザータブの Microsoft Foundry Portal**: Agent の設定、会話、評価結果などを
   操作します。教材は **Foundry (new) の English UI・ダークモード**に、日本語で説明を付けています。
 - **手元の PC**: ブラウザーを使い、Lab 4 などでアップロードする素材を保存します。
@@ -73,11 +75,12 @@ Codespace の準備を行います。Azure 環境構築のコマンドは Lab 1 
 | [Lab 2](labs/02-prompt-agent.md) | Prompt Agent と Azure AI Search | 20分 |
 | [Lab 3](labs/03-rag-foundry-iq.md) | Foundry IQ | 25分 |
 | — | 休憩 | 10分 |
-| [Lab 4](labs/04-tools-toolbox.md) | Portal で Toolbox と Skills を作成 | 30分 |
+| [Lab 4](labs/04-tools-toolbox.md) | 複数 tools・Skills・Tool Search の Toolbox | 30分 |
 | [Lab 5](labs/05-evaluation.md) | Portal で Agent evaluation | 15分 |
 | [Lab 6](labs/06-optimization.md) | Agent Optimizer | 20分 |
-| [Lab 7](labs/07-hosted-multi-agent.md) | Agent Framework の Hosted Agent | 40分 |
-| [Lab 8](labs/08-observability-cleanup.md) | Observability と cleanup | 10分 |
+| [Lab 7](labs/07-agent-framework-harness.md) | Agent Framework の Agent と Harness Agent | 45分 |
+| [Lab 8](labs/08-hosted-multi-agent.md) | Harness Agent を組み込んだ Hosted workflow | 40分 |
+| [Lab 9](labs/09-observability-cleanup.md) | Trace の比較と cleanup | 10分 |
 
 ## Azure 上の構成を知りたいとき
 
@@ -100,4 +103,4 @@ Codespace の準備を行います。Azure 環境構築のコマンドは Lab 1 
 > [!WARNING]
 > モデル呼び出し・評価・最適化、Azure resources、Codespaces の利用には料金が発生します。
 > ブラウザーを閉じても Azure resources は削除されません。終了時は必ず
-> [Lab 8](labs/08-observability-cleanup.md) の cleanup を実行し、Codespace も停止してください。
+> [Lab 9](labs/09-observability-cleanup.md) の cleanup を実行し、Codespace も停止してください。

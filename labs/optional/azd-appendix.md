@@ -2,7 +2,7 @@
 
 ## この文書の位置づけ
 
-本編 [Lab 7](../07-hosted-multi-agent.md) の §5「azd（任意サイドバー）」で触れているとおり、
+本編 [Lab 8](../08-hosted-multi-agent.md) の代替経路として、
 本編の core は `scripts/deploy_hosted_agent.py` による **source-code remote build** のみで
 完結し、`azd` は一切使いません。この付録は、`azd` の Foundry 拡張機能を使った代替デプロイ
 経路を、**本編とは別の認証方式が必要になる**ことを明示したうえで説明します。
@@ -84,7 +84,7 @@ agent 用 Microsoft Entra identity の作成・必要な RBAC 割り当てまで
 
 ## 6. この付録を使わない場合
 
-本編の Lab 7 は `azd` を一切使わずに完結します。この付録は完全に任意であり、実施しなくても
+本編の Lab 8 は `azd` を一切使わずに完結します。この付録は完全に任意であり、実施しなくても
 ワークショップの他の部分には影響しません。
 
 ## 公式参照
@@ -97,4 +97,4 @@ agent 用 Microsoft Entra identity の作成・必要な RBAC 割り当てまで
 
 - [選択ラボ index](README.md)
 - [Advanced Hosted Agent](advanced-hosted-agent.md)
-- [本編 Lab 7 — Agent Framework workflow の Hosted Agent 配布](../07-hosted-multi-agent.md)
+- [本編 Lab 8 — Agent Framework workflow の Hosted Agent 配布](../08-hosted-multi-agent.md)

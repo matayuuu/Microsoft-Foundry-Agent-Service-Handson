@@ -62,6 +62,8 @@ Azure AI Search の作成で `InsufficientResourcesAvailable` が表示された
 
 成功時は account、project、Travel Ops API と `.workshop/context.json` が表示されます。
 Lab 5 / 6 で使う合成 dataset と rubric evaluator も、この setup で登録されます。
+ここで作る Foundry project、Search、モデルは、Lab 7 のコード演習と Lab 8 の Hosted
+workflow でも同じものを再利用します。
 
 ```bash
 jq -r '

@@ -28,6 +28,8 @@ Lab 4 では費用を計算する機能を追加します。
 Lab 1 の setup が完了し、自分の Foundry project を開いていることを確認します。
 以後、同じ `contoso-travel-assistant` を編集して機能を追加します。
 Lab ごとに別の Agent を作る必要はありません。
+Labs 2〜6 ではこの 1 つの Prompt Agent を育てます。Lab 7 / 8 は別の Agent を
+作り直すのではなく、ここから先で準備する remote resources をコードから再利用します。
 
 ## 使用する値
 

@@ -26,7 +26,7 @@
 
 > [!NOTE]
 > **Foundry agent 同士**の委任には A2A は不要です。同じ Foundry project 内の複数 agent を
-> 連携させたい場合は、本編 [Lab 7](../07-hosted-multi-agent.md) が使う Microsoft Agent
+> 連携させたい場合は、本編 [Lab 8](../08-hosted-multi-agent.md) が使う Microsoft Agent
 > Framework の workflow、または prompt agent の connected agents 機能を使ってください。
 > A2A は **Foundry の外にある agent**（他プラットフォーム、他ベンダーの agent）との相互運用
 > のための preview プロトコルです。
@@ -77,7 +77,7 @@ A2A は v1.0（推奨、`A2A-Version: 1.0` ヘッダーを送信）と v0.3（�
 ### 2.1 概要
 
 Routine は、**1 つのトリガーに対して 1 つのアクション**を紐づける自動化の仕組みです。
-Workflow（本編 Lab 7 の Agent Framework）が扱う複雑な分岐・複数 agent の連携とは異なり、
+Workflow（本編 Lab 8 の Agent Framework）が扱う複雑な分岐・複数 agent の連携とは異なり、
 Routine は次のようなシンプルな自動化に向いています。
 
 | トリガーの種類 | 例 |
@@ -104,7 +104,7 @@ Foundry portal 上の run history で確認できます。preview 機能のた�
 - 単純な「決まった時刻に決まった 1 つのプロンプトを実行する」「特定イベントで 1 アクション
   を起動する」だけなら **Routines**。
 - 複数 agent のオーケストレーション、条件分岐、人間の承認ステップを含む場合は、引き続き
-  本編の **Agent Framework workflow**（[Lab 7](../07-hosted-multi-agent.md)）を使う。
+  本編の **Agent Framework workflow**（[Lab 8](../08-hosted-multi-agent.md)）を使う。
 
 ## 3. Teams・Microsoft 365 への publish（preview）
 
@@ -153,4 +153,4 @@ Foundry portal 上の run history で確認できます。preview 機能のた�
 - [選択ラボ index](README.md)
 - [Advanced Hosted Agent](advanced-hosted-agent.md)（Responses/Activity プロトコルの詳細）
 - [Work IQ](work-iq.md)（Work IQ 自体が A2A + OBO を使う実例）
-- [本編 Lab 7 — Agent Framework workflow](../07-hosted-multi-agent.md)
+- [本編 Lab 8 — Agent Framework workflow](../08-hosted-multi-agent.md)

@@ -10,6 +10,11 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip(
+    "agent_framework_foundry_hosting",
+    reason="Hosted Agent tests run in the isolated src/hosted-agent environment.",
+)
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _HOSTED_AGENT_SRC = _REPO_ROOT / "src" / "hosted-agent"
 if str(_HOSTED_AGENT_SRC) not in sys.path:

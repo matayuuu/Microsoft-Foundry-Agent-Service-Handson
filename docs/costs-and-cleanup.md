@@ -38,7 +38,7 @@
 
 対象リソースを確認し、削除を承認します。ハンズオン用の Foundry プロジェクト / アカウントと
 その他の Terraform 管理リソースを削除しますが、リソースグループは残します。
-[Lab 8](../labs/08-observability-cleanup.md) を参照してください。
+[Lab 9](../labs/09-observability-cleanup.md) を参照してください。
 Toolbox または Skill の参照が原因で削除に失敗した場合は、
 [参加者向けのクリーンアップのトラブルシューティング](participant/troubleshooting.md#クリーンアップ)
 に従ってください。

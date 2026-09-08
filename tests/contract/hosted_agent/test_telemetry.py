@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 from agent_framework.observability import ChatTelemetryLayer
-from fakes import REVIEWER_RESPONSE, ScriptedChatClient
+from fakes import REVIEWER_RESPONSE, ScriptedChatClient, build_scripted_harness_agent
 from opentelemetry import trace
 from workflow import SAMPLE_REQUEST, WORKFLOW_NAME, build_workflow
 
@@ -35,7 +35,10 @@ def test_complete_workflow_trace_preserves_three_agent_hierarchy(
     # Avoid replacing OpenTelemetry's process-wide write-once provider in the test suite.
     monkeypatch.setattr(trace, "get_tracer_provider", lambda: provider)
     client = InstrumentedScriptedChatClient()
-    agent = build_workflow(chat_client=client).as_agent(name=WORKFLOW_NAME)
+    agent = build_workflow(
+        chat_client=client,
+        harness_agent=build_scripted_harness_agent(client),
+    ).as_agent(name=WORKFLOW_NAME)
 
     async def run() -> str:
         with trace.get_tracer("test-host").start_as_current_span("hosted-request"):
@@ -59,8 +62,8 @@ def test_complete_workflow_trace_preserves_three_agent_hierarchy(
             key=lambda span: span.start_time,
         )
         assert [span.name for span in agent_spans] == [
-            "invoke_agent policy_agent",
-            "invoke_agent planner_agent",
+            "invoke_agent intake_agent",
+            "invoke_agent travel_harness_agent",
             "invoke_agent reviewer_agent",
         ]
         chat_spans = [span for span in spans if span.name == "chat scripted-test-model"]
@@ -68,7 +71,8 @@ def test_complete_workflow_trace_preserves_three_agent_hierarchy(
         assert {span.parent.span_id for span in chat_spans} == {
             span.context.span_id for span in agent_spans
         }
-        for name, agent_span in zip(client.created_agents, agent_spans, strict=True):
+        participant_names = ["intake_agent", "travel_harness_agent", "reviewer_agent"]
+        for name, agent_span in zip(participant_names, agent_spans, strict=True):
             executor_span = next(span for span in spans if span.name == f"executor.process {name}")
             assert agent_span.parent.span_id == executor_span.context.span_id
             assert executor_span.parent.span_id == workflow_span.context.span_id

@@ -4,7 +4,7 @@
 
 # This repo's workshop scaffold is not azd-based in the core lab, but keep
 # the same exclusion convention as the official Foundry samples in case a
-# participant later adds an optional azd sidecar (see labs/07 "azd column").
+# participant later adds an optional azd sidecar.
 .agentignore
 azure.yaml
 agent.yaml

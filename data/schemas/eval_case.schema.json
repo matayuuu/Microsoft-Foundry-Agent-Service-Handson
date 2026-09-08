@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "{{WORKSHOP_SOURCE_BASE}}/data/schemas/eval_case.schema.json",
   "title": "Travel Ops evaluation case",
-  "description": "Schema for one line of data/eval/master.jsonl or data/eval/live_subset.jsonl. Defines the exact columns evaluators and the optimizer read. Designed to contrast a naive v1 prompt-only agent against an improved v2 agent (Foundry IQ + tools) on the same fixed question set.",
+  "description": "Schema for one line of data/eval/master.jsonl or data/eval/live_subset.jsonl. Defines the exact columns evaluators and the optimizer read, including separate Tool Search meta-calls and underlying operations. Designed to contrast a naive v1 prompt-only agent against an improved v2 agent (Foundry IQ + tools) on the same question set.",
   "type": "object",
   "required": [
     "id",
@@ -62,7 +62,7 @@
     },
     "expected_tool_calls": {
       "type": "array",
-      "description": "Ordered list of tool/API invocations a correctly-behaving agent is expected to make. Omitted for pure retrieval/QA cases.",
+      "description": "Ordered list of underlying tool/API invocations a correctly-behaving agent is expected to make. Tool Search discovery wrappers belong in expected_meta_tool_calls, not here. Omitted for pure retrieval/QA cases.",
       "items": {
         "type": "object",
         "required": ["tool", "arguments"],
@@ -73,7 +73,9 @@
             "enum": [
               "getPerDiem",
               "createTripEstimate",
-              "createPreapproval"
+              "createPreapproval",
+              "code_interpreter",
+              "web_search"
             ]
           },
           "arguments": {
@@ -81,6 +83,50 @@
             "description": "Expected request arguments/query params, matched by the evaluator against the agent's actual tool call arguments."
           }
         }
+      }
+    },
+    "expected_meta_tool_calls": {
+      "type": "array",
+      "description": "Ordered Tool Search discovery/execution wrappers expected before an underlying tool call. Kept separate because evaluator samples can expose these wrappers without flattening the downstream call.",
+      "items": {
+        "type": "object",
+        "required": ["tool"],
+        "additionalProperties": false,
+        "properties": {
+          "tool": {
+            "type": "string",
+            "enum": ["tool_search", "call_tool"]
+          },
+          "query_intent": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_tool": {
+            "type": "string",
+            "enum": [
+              "getHealth",
+              "getPerDiem",
+              "createTripEstimate",
+              "createPreapproval",
+              "code_interpreter",
+              "web_search"
+            ]
+          }
+        }
+      }
+    },
+    "process_evaluator_compatible": {
+      "type": "boolean",
+      "description": "True only when this case is suitable for the selected process evaluators. Web Search and Code Interpreter cases are false because official support is limited."
+    },
+    "evaluation_methods": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Supported scoring/inspection methods for this case.",
+      "items": {
+        "type": "string",
+        "enum": ["process_evaluator", "task_level", "custom_rubric", "trace"]
       }
     },
     "v1_expected_outcome": {

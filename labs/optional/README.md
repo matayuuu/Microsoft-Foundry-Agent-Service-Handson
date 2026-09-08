@@ -1,6 +1,6 @@
 # 選択ラボ（Optional labs）
 
-このディレクトリは、[Lab 0〜Lab 8](../00-overview.md) の 3 時間 50 分の本編には**含まれない**
+このディレクトリは、[Lab 0〜Lab 9](../00-overview.md) の 4 時間 30 分の本編には**含まれない**
 選択（optional）教材です。追加のライセンス、追加の Azure/Microsoft 365/Fabric テナント権限、
 または preview 機能の管理者設定が必要になるため、本編の参加者体験からは意図的に切り離されて
 います（[README の「Core と optional の境界」](../../README.md#core-と-optional-の境界)、
@@ -10,7 +10,7 @@
 > [!IMPORTANT]
 > 本編のセットアップ（`./scripts/setup.sh`）・Terraform（`infra/`）・コアスクリプト
 > （`scripts/deploy_hosted_agent.py` など）は、このディレクトリのどのラボからも
-> **変更されません**。ここに書かれた手順を実施しなくても、本編の Lab 0〜Lab 8 と
+> **変更されません**。ここに書かれた手順を実施しなくても、本編の Lab 0〜Lab 9 と
 > `./scripts/destroy.sh` によるクリーンアップは完全に成立します。
 >
 > 反対に、本編の resource group **Owner** ロールだけでは、Fabric IQ・Work IQ・
@@ -31,7 +31,7 @@
 |---|---|---|---|
 | [Fabric IQ](fabric-iq.md) | Contoso 出張・経費データを Fabric の ontology / Fabric data agent / Power BI semantic model として公開し、Foundry agent から自然言語で問い合わせる | Preview | Fabric 容量（有償 F2 以上または Power BI Premium P1 以上）、Fabric 管理者、Foundry User + Foundry Project Manager ロール |
 | [Work IQ](work-iq.md) | Foundry agent から Microsoft 365 Copilot の Work IQ を A2A 経由で呼び出す（架空プロンプトのみ） | Public preview | Copilot Credits の従量課金 または コネクタライセンス、Entra Global Administrator による 1 回限りのテナント設定 |
-| [Advanced Hosted Agent](advanced-hosted-agent.md) | Lab 7 の source deploy に加え、ACR コンテナデプロイ・カスタムパッケージ・複数プロトコル・Tool Search・Skills を扱う | GA/Preview 混在 | Azure Container Registry（任意）、`azd` Foundry 拡張機能 |
+| [Advanced Hosted Agent](advanced-hosted-agent.md) | Lab 8 の source deploy に加え、ACR コンテナデプロイ・カスタムパッケージ・複数プロトコル・Tool Search・Skills を扱う | GA/Preview 混在 | Azure Container Registry（任意）、`azd` Foundry 拡張機能 |
 | [A2A・Routines・Publish](a2a-routines-publish.md) | Foundry agent を A2A エンドポイントとして公開し、Routines で定期実行し、Teams/Microsoft 365 に publish する | Preview（A2A・Routines） | Entra アプリ登録、Azure Bot Service Contributor、Microsoft 365 管理者承認 |
 | [CI/CD と継続評価](cicd-continuous-evaluation.md) | GitHub OIDC（フェデレーション ID）を使った、クライアントシークレットなしの CI/CD 設計と継続評価ゲート | 設計ドキュメントのみ（実働ワークフローなし） | GitHub リポジトリの OIDC 設定、最小権限のロール割り当て |
 | [azd 付録](azd-appendix.md) | `azd auth login` と `microsoft.foundry` 拡張機能を使った、Hosted Agent のもう一つのデプロイ経路 | GA/Preview 混在 | `azd` 本体、`microsoft.foundry` 拡張機能 |
@@ -42,7 +42,7 @@
 
 1. [Fabric IQ](fabric-iq.md) / [Work IQ](work-iq.md) — 本編 Lab 4 の Toolbox の延長として、
    外部データソースをツール化する追加パターン。
-2. [Advanced Hosted Agent](advanced-hosted-agent.md) — 本編 Lab 7 の source deploy の延長。
+2. [Advanced Hosted Agent](advanced-hosted-agent.md) — 本編 Lab 8 の source deploy の延長。
 3. [A2A・Routines・Publish](a2a-routines-publish.md) — Advanced Hosted Agent で有効化した
    protocol を Teams/Microsoft 365 に配布する話。
 4. [CI/CD と継続評価](cicd-continuous-evaluation.md) — ここまでの手動運用を自動化する設計。

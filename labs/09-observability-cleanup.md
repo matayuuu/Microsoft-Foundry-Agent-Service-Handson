@@ -1,4 +1,4 @@
-# Lab 8 — Observability と cleanup（10分）
+# Lab 9 — Observability と cleanup（10分）
 
 ## ゴール
 
@@ -28,33 +28,43 @@ Trace が見えない場合は数分待って browser を再読み込みしま�
 
 - Model の input / output と token 数
 - Foundry IQ の retrieval
-- `travel_ops_api` の tool call と引数
+- `tool_search` → `call_tool` → `travel_ops_api` の選択と引数
 - 各 span の latency と status
 
 ## 3. Hosted Agent の trace を確認する
 
-1. `contoso-travel-hosted-planner` の **Traces** で、Lab 7 の実行時刻に対応する
+1. `contoso-travel-hosted-planner` の **Traces** で、Lab 8 の実行時刻に対応する
    **Trace ID** を選択します。再デプロイしている場合は、上部の Version も確認します。
 
 2. 詳細画面を右上の拡大ボタンで広げ、**Trajectories** の **Find in trace** に
    `invoke_agent` と入力します。
-3. `policy_agent`、`planner_agent`、`reviewer_agent` が順番に並び、成功していることを確認します。
+3. `intake_agent`、`travel_harness_agent`、`reviewer_agent` が順番に並び、
+   成功していることを確認します。
 
-![invoke_agent で絞り込み、3つの担当と処理時間を確認する](../docs/images/lab08-hosted-agent-trace.png)
+![Lab 9 で invoke_agent に絞り込み、3つの担当と処理時間を確認する](../docs/images/lab08-hosted-agent-trace.png)
 
 先頭の名前なしの `invoke_agent` はホストの受付処理です。
 出張を検討する担当は、名前が付いた上の **3 agent** です。
 
 4. `reviewer_agent` を選択し、**Input + Output** の **Output** を読みます。
-   Lab 7 の最終回答と、航空券を含まない小計・シミュレーションの注意文を見比べます。
+   Lab 8 の最終回答と、Foundry IQ の根拠、tool 結果、シミュレーションの注意文を見比べます。
 
-5. **Find in trace** を `workflow.run` に変更し、workflow 全体も成功していることを確認します。
+5. `travel_harness_agent` の配下で `load_skill`、`knowledge_base_retrieve`、
+   `tool_search`、`call_tool` と選択された Travel Ops / Code Interpreter の call を確認します。
+   標準依頼では不要な `createPreapproval` と Web Search が実行されていないことも確認します。
+
+6. **Find in trace** を `workflow.run` に変更し、workflow 全体も成功していることを確認します。
    検索欄を空に戻せば全 span に戻ります。必要に応じて **Graph view** でも構造を確認できます。
+
+Prompt Agent の trace では 1 つの Agent が knowledge / tool を選ぶ流れ、Hosted workflow
+では intake → Harness → reviewer の participant 間の引き継ぎが追加される点を比較してください。
 
 ## 完了チェック
 
-- `policy_agent`、`planner_agent`、`reviewer_agent` の model call が順番に表示される
+- `intake_agent`、`travel_harness_agent`、`reviewer_agent` の処理が順番に表示される
 - 最後の output が reviewer の回答になっている
+- Harness 内で Skill、Foundry IQ、Tool Search、選択された実 tool の処理を区別できる
+- 不要な事前承認シミュレーションと Web Search が実行されていない
 - `workflow.run` と 3 つの `invoke_agent` が **Success** になっている
 
 Cold start の最初に state store の `GET` が 1 回だけ `404` になり、直後の `POST` が
@@ -99,7 +109,7 @@ Azure の cleanup が完了したら、Codespace の稼働も止めます。
 2. **Ctrl+Shift+P**（macOS は **Cmd+Shift+P**）で Command Palette を開きます。
 3. `Codespaces: Stop Current Codespace` と入力し、同名の項目を選択します。
 
-![Command Palette から Codespaces: Stop Current Codespace を選択する](../docs/images/lab08-stop-codespace.png)
+![Lab 9 で Command Palette から Codespaces: Stop Current Codespace を選択する](../docs/images/lab08-stop-codespace.png)
 
 4. 停止処理が終わり、**Codespace is stopped** と表示されることを確認します。
    **Stopping codespace...** の表示が続く場合は、ブラウザーを再読み込みして確認します。

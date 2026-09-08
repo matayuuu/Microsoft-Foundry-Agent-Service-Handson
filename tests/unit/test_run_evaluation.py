@@ -152,6 +152,35 @@ def test_dataset_content_version_changes_with_content(tmp_path: Path) -> None:
     )
 
 
+def test_process_evaluator_gate_accepts_live_compatible_cases() -> None:
+    cases = [{"id": "eval-001", "process_evaluator_compatible": True}]
+
+    run_evaluation.validate_process_evaluator_compatibility(cases, ["builtin.task_adherence"])
+
+
+def test_process_evaluator_gate_rejects_limited_tool_cases() -> None:
+    cases = [
+        {
+            "id": "eval-012",
+            "process_evaluator_compatible": True,
+            "expected_tool_calls": [{"tool": "web_search", "arguments": {}}],
+        }
+    ]
+
+    with pytest.raises(run_evaluation.WorkshopContextError, match="eval-012"):
+        run_evaluation.validate_process_evaluator_compatibility(
+            cases, ["builtin.tool_input_accuracy"]
+        )
+
+
+def test_process_evaluator_gate_allows_task_level_builtins() -> None:
+    cases = [{"id": "eval-012", "process_evaluator_compatible": False}]
+
+    run_evaluation.validate_process_evaluator_compatibility(
+        cases, ["builtin.coherence", "builtin.violence"]
+    )
+
+
 # ---------------------------------------------------------------------------
 # build_rubric_definition / rubric_matches
 # ---------------------------------------------------------------------------
@@ -197,6 +226,8 @@ def test_build_data_source_config_is_custom_with_query_required() -> None:
 
     assert config["type"] == "custom"
     assert "query" in config["item_schema"]["required"]
+    assert "expected_meta_tool_calls" in config["item_schema"]["properties"]
+    assert "expected_tool_calls" in config["item_schema"]["properties"]
 
 
 def test_build_testing_criteria_includes_rubric_first() -> None:

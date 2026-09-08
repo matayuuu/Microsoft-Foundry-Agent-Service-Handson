@@ -2,7 +2,7 @@
 """scripts/deploy_hosted_agent.py
 
 Deploys the Microsoft Agent Framework Hosted Agent in ``src/hosted-agent/`` to
-the workshop's Microsoft Foundry project, used in labs/07-hosted-multi-agent.md.
+the workshop's Microsoft Foundry project, used in labs/08-hosted-multi-agent.md.
 
 What this does, per docs/architecture.md ("Terraform owns Azure
 infrastructure; Python SDK wrappers own Foundry data-plane objects") and the
@@ -20,22 +20,18 @@ the installed 2.5.x SDK -- retrieved 2026-08-21):
 3. Validates that the required entry point/dependency/domain files are
    present in the zip and that ``--cpu``/``--memory`` form one of the three
    documented Hosted Agent tiers, before making any network call.
-4. Auto-injects ``FOUNDRY_MODEL`` into the container's
-   environment variables from the ``primary_model_deployment_name``
-   Terraform output, unless a participant already supplied it via
-   ``--env FOUNDRY_MODEL=...``. ``FOUNDRY_PROJECT_ENDPOINT``
-   is never set here -- the Hosted Agent platform injects it automatically
-   (see ``src/hosted-agent/workflow.py``'s ``_default_chat_client``).
+4. Auto-injects the model, Azure AI Search endpoint, knowledge-base name, and
+   Toolbox name into the container environment. ``FOUNDRY_PROJECT_ENDPOINT``
+   is never set here because the Hosted Agent platform injects it.
 5. Calls ``create_version_from_code`` with a ``HostedAgentDefinition`` using
    ``CodeConfiguration(runtime="python_3_13", entry_point=["python",
    "main.py"], dependency_resolution=REMOTE_BUILD)`` and
    ``protocol_versions=[responses@1.0.0]`` (port 8088, per
    ``src/hosted-agent/main.py``). Every call creates a new, immutable agent
    version -- this script never mutates an existing version.
-6. Grants the Hosted Agent runtime identity **Monitoring Metrics Publisher**
-   on the workshop Application Insights resource. The assignment stays inside
-   the supplied resource group and enables Agent Framework child spans to be
-   exported without an instrumentation key.
+6. Grants the Hosted Agent runtime identity resource-scoped access to query
+   Foundry IQ, read Toolbox Skills, and export Agent Framework traces. All
+   assignments stay inside the supplied resource group.
 7. Polls ``get_version`` with a bounded timeout (never an unbounded loop)
    until the version reaches ``active`` or ``failed``, then prints both a
    human-readable summary and (with ``--output json``) a machine-readable
@@ -131,6 +127,7 @@ DEFAULT_CPU, DEFAULT_MEMORY = "1", "2Gi"
 REQUIRED_SOURCE_FILES: tuple[str, ...] = (
     "main.py",
     "requirements.txt",
+    "travel_agents.py",
     "workflow.py",
 )
 
@@ -141,6 +138,8 @@ DEFAULT_POLL_INTERVAL_SECONDS = 5.0
 DEFAULT_TIMEOUT_SECONDS = 600.0
 APPLICATION_INSIGHTS_ID_OUTPUT = "application_insights_id"
 MONITORING_METRICS_PUBLISHER_ROLE_ID = "3913510d-42f4-4e42-8a64-420c390055eb"
+SEARCH_INDEX_DATA_READER_ROLE_ID = "1407120a-92aa-4202-b7e9-c0e197c71c8f"
+FOUNDRY_USER_ROLE_ID = "53ca6127-db72-4b80-b1b0-d745d6d5456d"
 ARM_TOKEN_SCOPE = "https://management.azure.com/.default"
 ROLE_ASSIGNMENTS_API_VERSION = "2022-04-01"
 
@@ -245,19 +244,22 @@ def validate_required_files(source_dir: Path, files: list[Path]) -> None:
 
 FOUNDRY_MODEL_VAR = "FOUNDRY_MODEL"
 PRIMARY_MODEL_DEPLOYMENT_OUTPUT = "primary_model_deployment_name"
+SEARCH_SERVICE_ENDPOINT_VAR = "AZURE_AI_SEARCH_SERVICE_ENDPOINT"
+SEARCH_SERVICE_ENDPOINT_OUTPUT = "search_service_endpoint"
+KNOWLEDGE_BASE_NAME_VAR = "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME"
+DEFAULT_KNOWLEDGE_BASE_NAME = "contoso-travel-knowledge-lab"
+TOOLBOX_NAME_VAR = "TOOLBOX_NAME"
+DEFAULT_TOOLBOX_NAME = "contoso-travel-toolbox"
 
 
 def resolve_environment_variables(
     explicit_env: dict[str, str], *, context: dict[str, Any]
 ) -> dict[str, str]:
-    """Merge ``--env`` overrides with the model deployment name auto-injected
-    from Terraform.
+    """Merge ``--env`` overrides with the workshop's runtime dependencies.
 
-    ``FOUNDRY_MODEL`` is required at runtime by every participant in
-    ``src/hosted-agent/workflow.py``, so it is auto-set here from the
-    ``primary_model_deployment_name`` Terraform output rather than requiring
-    every participant to look it up and pass ``--env`` by hand. An explicit
-    ``--env FOUNDRY_MODEL=...`` always wins.
+    The model and Search endpoint come from Terraform outputs. The knowledge
+    base and Toolbox use the fixed names participants create in Labs 3 and 4.
+    An explicit ``--env KEY=VALUE`` always wins for that key.
 
     ``FOUNDRY_PROJECT_ENDPOINT`` is intentionally never set here: the Hosted
     Agent platform injects it into the container automatically once
@@ -265,10 +267,16 @@ def resolve_environment_variables(
     fingerprint" reference), so setting it explicitly would be redundant at
     best and could shadow the platform's own value at worst.
     """
-    if FOUNDRY_MODEL_VAR in explicit_env:
-        return dict(explicit_env)
-    model_deployment_name = terraform_output(context, PRIMARY_MODEL_DEPLOYMENT_OUTPUT)
-    return {**explicit_env, FOUNDRY_MODEL_VAR: model_deployment_name}
+    resolved = dict(explicit_env)
+    if FOUNDRY_MODEL_VAR not in resolved:
+        resolved[FOUNDRY_MODEL_VAR] = terraform_output(context, PRIMARY_MODEL_DEPLOYMENT_OUTPUT)
+    if SEARCH_SERVICE_ENDPOINT_VAR not in resolved:
+        resolved[SEARCH_SERVICE_ENDPOINT_VAR] = terraform_output(
+            context, SEARCH_SERVICE_ENDPOINT_OUTPUT
+        )
+    resolved.setdefault(KNOWLEDGE_BASE_NAME_VAR, DEFAULT_KNOWLEDGE_BASE_NAME)
+    resolved.setdefault(TOOLBOX_NAME_VAR, DEFAULT_TOOLBOX_NAME)
+    return resolved
 
 
 def validate_cpu_memory(cpu: str, memory: str) -> None:
@@ -322,25 +330,25 @@ def instance_principal_id(version: Any) -> str | None:
     return principal_id if isinstance(principal_id, str) and principal_id else None
 
 
-def build_monitoring_role_assignment(
-    *, application_insights_id: str, principal_id: str
+def build_resource_role_assignment(
+    *,
+    resource_id: str,
+    principal_id: str,
+    role_id: str,
 ) -> tuple[str, dict[str, Any]]:
-    """Build the deterministic ARM request for keyless trace ingestion."""
-    resource_id = application_insights_id.rstrip("/")
+    """Build a deterministic, resource-scoped ARM role assignment."""
+    resource_id = resource_id.rstrip("/")
     segments = resource_id.strip("/").split("/")
     if len(segments) < 2 or segments[0].casefold() != "subscriptions":
-        raise WorkshopContextError(
-            f"invalid Application Insights resource ID: {application_insights_id!r}"
-        )
+        raise WorkshopContextError(f"invalid Azure resource ID: {resource_id!r}")
     subscription_id = segments[1]
     role_definition_id = (
         f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/"
-        f"roleDefinitions/{MONITORING_METRICS_PUBLISHER_ROLE_ID}"
+        f"roleDefinitions/{role_id}"
     )
     assignment_name = uuid.uuid5(
         uuid.NAMESPACE_URL,
-        f"{resource_id.casefold()}|{principal_id.casefold()}|"
-        f"{MONITORING_METRICS_PUBLISHER_ROLE_ID}",
+        f"{resource_id.casefold()}|{principal_id.casefold()}|{role_id}",
     )
     url = (
         f"https://management.azure.com{resource_id}/providers/"
@@ -357,17 +365,31 @@ def build_monitoring_role_assignment(
     return url, body
 
 
-def grant_monitoring_metrics_publisher(
+def build_monitoring_role_assignment(
+    *, application_insights_id: str, principal_id: str
+) -> tuple[str, dict[str, Any]]:
+    """Build the keyless trace-ingestion role assignment."""
+    return build_resource_role_assignment(
+        resource_id=application_insights_id,
+        principal_id=principal_id,
+        role_id=MONITORING_METRICS_PUBLISHER_ROLE_ID,
+    )
+
+
+def grant_resource_role(
     *,
     credential: Any,
-    application_insights_id: str,
+    resource_id: str,
     principal_id: str,
+    role_id: str,
+    role_name: str,
     request: Callable[..., Any] = httpx.put,
 ) -> None:
-    """Idempotently grant the runtime identity permission to export traces."""
-    url, body = build_monitoring_role_assignment(
-        application_insights_id=application_insights_id,
+    """Idempotently grant one resource-scoped role to the runtime identity."""
+    url, body = build_resource_role_assignment(
+        resource_id=resource_id,
         principal_id=principal_id,
+        role_id=role_id,
     )
     access_token = credential.get_token(ARM_TOKEN_SCOPE)
     try:
@@ -382,7 +404,7 @@ def grant_monitoring_metrics_publisher(
         )
     except httpx.HTTPError as exc:
         raise WorkshopContextError(
-            "could not reach Azure Resource Manager while granting Monitoring Metrics Publisher"
+            f"could not reach Azure Resource Manager while granting {role_name}"
         ) from exc
     if response.status_code in {200, 201}:
         return
@@ -398,8 +420,78 @@ def grant_monitoring_metrics_publisher(
     message = error.get("message") if isinstance(error, Mapping) else None
     detail = f"{code}: {message}" if code or message else "no error detail"
     raise WorkshopContextError(
-        "could not grant Monitoring Metrics Publisher to the Hosted Agent "
+        f"could not grant {role_name} to the Hosted Agent "
         f"runtime identity (HTTP {response.status_code}, {detail})"
+    )
+
+
+def grant_monitoring_metrics_publisher(
+    *,
+    credential: Any,
+    application_insights_id: str,
+    principal_id: str,
+    request: Callable[..., Any] = httpx.put,
+) -> None:
+    """Idempotently grant permission to export traces."""
+    grant_resource_role(
+        credential=credential,
+        resource_id=application_insights_id,
+        principal_id=principal_id,
+        role_id=MONITORING_METRICS_PUBLISHER_ROLE_ID,
+        role_name="Monitoring Metrics Publisher",
+        request=request,
+    )
+
+
+def search_service_resource_id(context: dict[str, Any]) -> str:
+    """Build the workshop Search resource ID from non-secret context values."""
+    subscription_id = context.get("subscription_id")
+    resource_group = context.get("resource_group_name")
+    if not isinstance(subscription_id, str) or not subscription_id:
+        raise WorkshopContextError("context is missing subscription_id")
+    if not isinstance(resource_group, str) or not resource_group:
+        raise WorkshopContextError("context is missing resource_group_name")
+    search_name = terraform_output(context, "search_service_name")
+    return (
+        f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/"
+        f"Microsoft.Search/searchServices/{search_name}"
+    )
+
+
+def foundry_account_resource_id(context: dict[str, Any]) -> str:
+    """Return the parent Foundry account ID from the project resource ID."""
+    project_id = terraform_output(context, "foundry_project_id").rstrip("/")
+    marker = "/projects/"
+    if marker not in project_id:
+        raise WorkshopContextError(f"invalid Foundry project resource ID: {project_id!r}")
+    return project_id.rsplit(marker, 1)[0]
+
+
+def configure_runtime_identity_access(
+    *,
+    credential: Any,
+    context: dict[str, Any],
+    principal_id: str,
+) -> None:
+    """Grant the three least-scope roles needed by the Hosted workflow."""
+    grant_resource_role(
+        credential=credential,
+        resource_id=search_service_resource_id(context),
+        principal_id=principal_id,
+        role_id=SEARCH_INDEX_DATA_READER_ROLE_ID,
+        role_name="Search Index Data Reader",
+    )
+    grant_resource_role(
+        credential=credential,
+        resource_id=foundry_account_resource_id(context),
+        principal_id=principal_id,
+        role_id=FOUNDRY_USER_ROLE_ID,
+        role_name="Foundry User",
+    )
+    grant_monitoring_metrics_publisher(
+        credential=credential,
+        application_insights_id=terraform_output(context, APPLICATION_INSIGHTS_ID_OUTPUT),
+        principal_id=principal_id,
     )
 
 
@@ -647,11 +739,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             telemetry_principal_id = instance_principal_id(created)
             if telemetry_principal_id is not None:
-                grant_monitoring_metrics_publisher(
+                configure_runtime_identity_access(
                     credential=credential,
-                    application_insights_id=terraform_output(
-                        context, APPLICATION_INSIGHTS_ID_OUTPUT
-                    ),
+                    context=context,
                     principal_id=telemetry_principal_id,
                 )
             version = poll_version(
@@ -666,11 +756,9 @@ def main(argv: list[str] | None = None) -> int:
                         "Hosted Agent version became terminal without an instance identity; "
                         "cannot configure Application Insights trace ingestion."
                     )
-                grant_monitoring_metrics_publisher(
+                configure_runtime_identity_access(
                     credential=credential,
-                    application_insights_id=terraform_output(
-                        context, APPLICATION_INSIGHTS_ID_OUTPUT
-                    ),
+                    context=context,
                     principal_id=telemetry_principal_id,
                 )
     except HttpResponseError as exc:

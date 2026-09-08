@@ -22,7 +22,9 @@ retrieved 2026-08-21):
    the synthetic dataset and rubric available to the Portal-only Labs 5 and 6.
 4. Without ``--prepare-only``, creates an evaluation
    (``client.evals.create``) pairing that rubric with sensible built-in
-   evaluators (task adherence, coherence, and one content-safety evaluator),
+   evaluators (task adherence, coherence, and one content-safety evaluator).
+   Before a live run, it rejects process-evaluator combinations containing
+   rows marked incompatible (notably Web Search and Code Interpreter).
    then creates an
    agent-target run (``client.evals.runs.create`` with
    ``data_source.type == "azure_ai_target_completions"`` and
@@ -104,6 +106,17 @@ _TOOL_CALL_AWARE_EVALUATORS = {"builtin.task_adherence"}
 # Built-in evaluators that score raw content and take no judge deployment
 # (content-safety evaluators run their own dedicated safety model).
 _NO_JUDGE_DEPLOYMENT_EVALUATORS = {"builtin.violence"}
+_PROCESS_EVALUATORS = {
+    "builtin.task_adherence",
+    "builtin.task_completion",
+    "builtin.task_navigation_efficiency",
+    "builtin.tool_call_accuracy",
+    "builtin.tool_call_success",
+    "builtin.tool_input_accuracy",
+    "builtin.tool_output_utilization",
+    "builtin.tool_selection",
+}
+_LIMITED_PROCESS_TOOL_NAMES = {"code_interpreter", "web_search"}
 
 
 # ---------------------------------------------------------------------------
@@ -158,6 +171,37 @@ def dataset_content_version(dataset_path: Path) -> str:
     """
     digest = hashlib.sha256(dataset_path.read_bytes()).hexdigest()
     return digest[:12]
+
+
+def validate_process_evaluator_compatibility(
+    cases: Sequence[dict[str, Any]], builtin_evaluators: Sequence[str]
+) -> None:
+    """Fail before Azure calls when process evaluators cannot score a row reliably.
+
+    Tool Search can expose ``tool_search``/``call_tool`` in ``sample.tool_calls``
+    while keeping the downstream call nested in Conversation/Trace. In addition,
+    Foundry documents limited process-evaluator support for Web Search and Code
+    Interpreter. Such cases stay useful for task-level/custom-rubric/Trace review,
+    but must not be mixed into a process-evaluator run.
+    """
+    selected_process = sorted(set(builtin_evaluators) & _PROCESS_EVALUATORS)
+    if not selected_process:
+        return
+    incompatible = []
+    for case in cases:
+        expected_tools = {call.get("tool") for call in case.get("expected_tool_calls", [])}
+        if (
+            not case.get("process_evaluator_compatible", True)
+            or expected_tools & _LIMITED_PROCESS_TOOL_NAMES
+        ):
+            incompatible.append(case["id"])
+    if incompatible:
+        raise WorkshopContextError(
+            "process evaluators "
+            f"{', '.join(selected_process)} cannot run against incompatible cases "
+            f"{', '.join(incompatible)}. Use task-level/custom-rubric/Trace evaluation, "
+            "or choose the process-compatible live subset."
+        )
 
 
 def build_rubric_definition(
@@ -271,6 +315,10 @@ def build_data_source_config() -> dict[str, Any]:
                 "expected_behavior": {"type": "string"},
                 "requires_citation": {"type": "boolean"},
                 "category": {"type": "string"},
+                "expected_meta_tool_calls": {"type": "array"},
+                "expected_tool_calls": {"type": "array"},
+                "process_evaluator_compatible": {"type": "boolean"},
+                "evaluation_methods": {"type": "array"},
             },
             "required": ["query", "expected_behavior"],
         },
@@ -591,7 +639,9 @@ def main(argv: list[str] | None = None) -> int:
         if not args.prepare_only and not judge_deployment:
             judge_deployment = terraform_output(context, "optimizer_model_deployment_name")
         schema = json.loads(args.schema.read_text(encoding="utf-8"))
-        load_eval_cases(args.dataset, schema)  # validate up front; fail before touching Azure
+        cases = load_eval_cases(args.dataset, schema)  # fail before touching Azure
+        if not args.prepare_only:
+            validate_process_evaluator_compatibility(cases, builtin_evaluators)
         dataset_version = dataset_content_version(args.dataset)
     except (WorkshopContextError, OSError, json.JSONDecodeError) as exc:
         print(f"run_evaluation.py: {exc}", file=sys.stderr)

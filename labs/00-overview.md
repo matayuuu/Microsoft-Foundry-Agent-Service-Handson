@@ -3,7 +3,8 @@
 ## ゴール
 
 架空の Contoso 社を題材に、**規程を調べ、費用を計算できる出張・経費アシスタント**を作ります。
-さらに、役割の異なる 3 つの Agent をコードでつなぎ、回答を引き継ぐ workflow を体験します。
+さらに、同じ Foundry IQ・Toolbox・Skills をコードから再利用し、Harness Agent を
+workflow の担当として組み込む流れを体験します。
 
 使う規程・旅程・質問集はすべて教材の合成データです。実際の予約や承認は行いません。
 
@@ -17,22 +18,24 @@
 
 ## 学習の流れ
 
-![準備から Prompt Agent の拡張・評価、独立した3 Agentの workflow、実行履歴の確認と cleanup まで](../docs/images/workshop-learning-flow.svg)
+![準備から Prompt Agent の拡張・評価、Harness Agent と Hosted workflow、trace 比較と cleanup まで](../docs/images/workshop-learning-flow.svg)
 
-**Lab 2〜6 は同じ Prompt Agent を育てる演習**です。
-**Lab 7 は別のアシスタントをコードで作る独立した演習**で、前の Lab の
-Foundry IQ / Toolbox / Travel Ops API には接続しません。
+**Lab 2〜6 は同じ Prompt Agent を育てる演習**です。**Lab 7 はその Foundry IQ、
+Toolbox、Skills をコードから plain Agent に接続し、Harness Agent に発展させます。**
+**Lab 8 は同じ checked-in Harness factory を sequential workflow の participant として
+再利用し、workflow 全体を Hosted Agent として deploy します。**
 
 | Lab | 体験すること | 到達点 |
 |---|---|---|
 | [Lab 1](01-setup.md) | 共通の Azure 環境を準備する | 自分の Foundry project を開ける |
 | [Lab 2](02-prompt-agent.md) | Prompt Agent を作り、Azure AI Search を接続する | 1 つの規程 index を直接検索できる |
 | [Lab 3](03-rag-foundry-iq.md) | Foundry IQ を接続し、直接検索と比較する | 複数の規程を根拠に回答できる |
-| [Lab 4](04-tools-toolbox.md) | API と Skills を Toolbox にまとめる | 検索に加えて費用計算を使える |
+| [Lab 4](04-tools-toolbox.md) | API・Code Interpreter・Web Search・Skills を Toolbox にまとめる | Tool Search で必要な機能を選んで実行できる |
 | [Lab 5](05-evaluation.md) | 同じ質問集で Agent を評価する | 点数と判定理由から改善点を見つける |
 | [Lab 6](06-optimization.md) | 指示文の改善候補を比較する | 採用するか、元の設定を維持するか判断する |
-| [Lab 7](07-hosted-multi-agent.md) | 3 Agent の workflow を作り、Hosted Agent にする | 規程確認 → 計画 → レビューの引き継ぎを追える |
-| [Lab 8](08-observability-cleanup.md) | Trace を確認し、環境を片付ける | 実行の流れを確認し、演習用 resources を削除できる |
+| [Lab 7](07-agent-framework-harness.md) | plain Agent と Harness Agent をコードで比較する | Foundry IQ・Toolbox・Skills と plan / todo / memory の役割を追える |
+| [Lab 8](08-hosted-multi-agent.md) | Harness Agent を workflow に組み込んで deploy する | intake → Harness → reviewer の引き継ぎを追える |
+| [Lab 9](09-observability-cleanup.md) | Trace を比較し、環境を片付ける | Prompt / Hosted の実行の流れを比較し、演習用 resources を削除できる |
 
 Azure 構成の詳細は [アーキテクチャ](../docs/architecture.md)を参照してください。
 
@@ -43,7 +46,7 @@ Azure 構成の詳細は [アーキテクチャ](../docs/architecture.md)を参�
 
 > [!WARNING]
 > モデル・評価・最適化・Azure resources・Codespaces の利用には料金が発生します。
-> 終了時は [Lab 8](08-observability-cleanup.md) の cleanup と Codespace の停止を行ってください。
+> 終了時は [Lab 9](09-observability-cleanup.md) の cleanup と Codespace の停止を行ってください。
 > ブラウザーを閉じるだけでは、リソースは削除されません。
 
 実在する個人・顧客・予約の情報や、認証情報・Terraform state は入力・共有しないでください。

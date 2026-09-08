@@ -1,4 +1,4 @@
-"""Execute the learning cells with real orchestration and a network-free client."""
+"""Execute the Lab 8 workflow notebook with network-free participants."""
 
 from __future__ import annotations
 
@@ -7,39 +7,43 @@ import asyncio
 import inspect
 import json
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
-from xml.etree import ElementTree
 
 import IPython.display
 import pytest
+import travel_agents
 import workflow
 from agent_framework import WorkflowViz
 from fakes import (
-    PLANNER_RESPONSE,
-    POLICY_RESPONSE,
+    HARNESS_RESPONSE,
+    INTAKE_RESPONSE,
     REVIEWER_RESPONSE,
     ScriptedChatClient,
+    build_scripted_harness_agent,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-NOTEBOOK_PATH = REPO_ROOT / "notebooks" / "07-hosted-agent.ipynb"
+NOTEBOOK_PATH = REPO_ROOT / "notebooks" / "08-hosted-agent.ipynb"
+
+
+class _Credential:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
 
 
 async def execute_cells(
     namespace: dict[str, Any],
     *,
-    only: set[str] | None = None,
     stop_after: str | None = None,
 ) -> None:
     notebook = json.loads(NOTEBOOK_PATH.read_text(encoding="utf-8"))
     for cell in notebook["cells"]:
-        # Running pytest from inside pytest would recursively invoke this test.
         if cell["cell_type"] != "code" or cell["id"] == "test-workflow":
-            continue
-        if only is not None and cell["id"] not in only:
             continue
         code = compile(
             "".join(cell["source"]),
@@ -62,17 +66,16 @@ def notebook_namespace(
 ) -> dict[str, Any]:
     source = tmp_path / "src" / "hosted-agent"
     source.mkdir(parents=True)
-    shutil.copyfile(REPO_ROOT / "src" / "hosted-agent" / "workflow.py", source / "workflow.py")
+    source.joinpath("workflow.py").write_text("# marker\n", encoding="utf-8")
     context_dir = tmp_path / ".workshop"
     context_dir.mkdir()
     context_dir.joinpath("context.json").write_text(
         json.dumps(
             {
                 "terraform_outputs": {
-                    "foundry_project_endpoint": {
-                        "value": "https://example.invalid/api/projects/test"
-                    },
+                    "foundry_project_endpoint": {"value": "https://project.example.invalid"},
                     "primary_model_deployment_name": {"value": "synthetic-model"},
+                    "search_service_endpoint": {"value": "https://search.example.invalid"},
                     "foundry_project_name": {"value": "synthetic-project"},
                 }
             }
@@ -81,157 +84,98 @@ def notebook_namespace(
     )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "path", sys.path.copy())
-    monkeypatch.setenv(workflow.FOUNDRY_PROJECT_ENDPOINT_ENV, "unused")
-    monkeypatch.setenv(workflow.FOUNDRY_MODEL_ENV, "unused")
-    monkeypatch.setattr(workflow, "create_chat_client", lambda: chat_client)
+    credential = _Credential()
+    harness_agent = build_scripted_harness_agent(chat_client)
+    monkeypatch.setattr(travel_agents, "create_credential", lambda: credential)
+    monkeypatch.setattr(
+        travel_agents,
+        "create_chat_client",
+        lambda supplied: chat_client if supplied is credential else None,
+    )
+    monkeypatch.setattr(
+        travel_agents,
+        "build_environment_harness_agent",
+        lambda **kwargs: (
+            harness_agent
+            if kwargs["default_mode"] == "execute"
+            and kwargs["hosted"] is True
+            and kwargs["file_memory_store"] is not None
+            else None
+        ),
+    )
     displayed: list[Any] = []
     monkeypatch.setattr(IPython.display, "display", displayed.append)
-    return {"displayed": displayed}
+    return {
+        "credential": credential,
+        "displayed": displayed,
+        "harness_agent": harness_agent,
+    }
 
 
-def test_notebook_executes_agents_graph_observation_and_cases_in_order(
+def test_notebook_runs_shared_harness_in_sequential_order(
     notebook_namespace: dict[str, Any],
     chat_client: ScriptedChatClient,
     monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(shutil, "which", lambda _: None)
 
     asyncio.run(execute_cells(notebook_namespace))
 
-    assert chat_client.created_agents == ["policy_agent", "planner_agent", "reviewer_agent"]
-    assert notebook_namespace["execution_order"] == [
-        "policy_agent",
-        "planner_agent",
+    assert notebook_namespace["expected_order"] == [
+        "intake_agent",
+        "travel_harness_agent",
         "reviewer_agent",
     ]
+    assert notebook_namespace["execution_order"] == notebook_namespace["expected_order"]
     assert notebook_namespace["intermediate_answers"] == {
-        "policy_agent": POLICY_RESPONSE,
-        "planner_agent": PLANNER_RESPONSE,
+        "intake_agent": INTAKE_RESPONSE,
+        "travel_harness_agent": HARNESS_RESPONSE,
     }
     assert notebook_namespace["answer"] == REVIEWER_RESPONSE
-    assert len(notebook_namespace["final_chunks"]) >= 2
-    assert "".join(notebook_namespace["final_chunks"]) == REVIEWER_RESPONSE
-    # These scripted answers exercise the cells, not the model's policy judgement.
-    assert notebook_namespace["case_results"] == {
-        "入力不足": REVIEWER_RESPONSE,
-        "海外・business": REVIEWER_RESPONSE,
-    }
-    requests = [workflow.SAMPLE_REQUEST] + [
-        case["request"] for case in notebook_namespace["test_cases"]
+    assert [call["messages"] for call in chat_client.calls] == [
+        [workflow.SAMPLE_REQUEST],
+        [workflow.SAMPLE_REQUEST, INTAKE_RESPONSE],
+        [workflow.SAMPLE_REQUEST, INTAKE_RESPONSE, HARNESS_RESPONSE],
     ]
-    assert len(chat_client.calls) == 9
-    for index, request in enumerate(requests):
-        policy, planner, reviewer = chat_client.calls[index * 3 : index * 3 + 3]
-        assert policy["messages"] == [request]
-        assert planner["messages"] == [request, POLICY_RESPONSE]
-        assert reviewer["messages"] == [request, POLICY_RESPONSE, PLANNER_RESPONSE]
-        assert [call["instructions"] for call in (policy, planner, reviewer)] == [
-            workflow.POLICY_AGENT_INSTRUCTIONS,
-            workflow.PLANNER_AGENT_INSTRUCTIONS,
-            workflow.REVIEWER_AGENT_INSTRUCTIONS,
-        ]
-
-    console = capsys.readouterr().out
-    assert "グラフ画像は未生成" in console
-    for name in chat_client.created_agents:
-        assert f"開始: {name}" in console
-    for name in ("policy_agent", "planner_agent"):
-        assert f"--- {name} の途中回答 ---" in console
-    assert "--- reviewer_agent の途中回答 ---" not in console
-
-    deployed_workflow = workflow.build_workflow(chat_client=ScriptedChatClient())
-    assert notebook_namespace["mermaid_graph"] == WorkflowViz(deployed_workflow).to_mermaid()
-    deployed_agent = deployed_workflow.as_agent(name=workflow.WORKFLOW_NAME)
-    assert asyncio.run(deployed_agent.run(workflow.SAMPLE_REQUEST)).text == REVIEWER_RESPONSE
-
-    asyncio.run(execute_cells(notebook_namespace, only={"invoke-workflow", "assert-output"}))
-    assert len(chat_client.calls) == 12
-    assert chat_client.calls[9]["messages"] == [workflow.SAMPLE_REQUEST]
-    assert "".join(notebook_namespace["final_chunks"]) == REVIEWER_RESPONSE
+    deployed = workflow.build_workflow(
+        chat_client=ScriptedChatClient(),
+        harness_agent=build_scripted_harness_agent(ScriptedChatClient()),
+        observe_intermediate=True,
+    )
+    assert "travel_harness_agent" in WorkflowViz(deployed).to_mermaid()
+    assert notebook_namespace["credential"].closed is True
 
 
-@pytest.mark.skipif(shutil.which("dot") is None, reason="Graphviz is installed by Codespace setup")
-def test_notebook_renders_its_actual_graph_as_inline_svg(
-    notebook_namespace: dict[str, Any],
-    chat_client: ScriptedChatClient,
-) -> None:
-    asyncio.run(execute_cells(notebook_namespace, stop_after="visualize-workflow"))
+def test_notebook_uses_shared_harness_factory_before_building_workflow() -> None:
+    notebook = json.loads(NOTEBOOK_PATH.read_text(encoding="utf-8"))
+    cell_ids = [cell["id"] for cell in notebook["cells"]]
 
-    images = [
-        item for item in notebook_namespace["displayed"] if isinstance(item, IPython.display.SVG)
+    expected_sequence = [
+        "configure-environment",
+        "create-participants",
+        "build-workflow",
+        "visualize-workflow",
+        "invoke-workflow",
+        "assert-output",
+        "inspect-deployment-source",
+        "test-workflow",
+        "close-resources",
+        "deploy-next",
     ]
-    assert len(images) == 1
-    root = ElementTree.fromstring(images[0].data)
-    assert root.tag == "{http://www.w3.org/2000/svg}svg"
-    labels = "".join(root.itertext())
-    for name in ("policy_agent", "planner_agent", "reviewer_agent"):
-        assert name in labels
-    edges = root.findall(".//{http://www.w3.org/2000/svg}path")
-    assert len(edges) >= 3
-    assert chat_client.calls == []
+    positions = [cell_ids.index(cell_id) for cell_id in expected_sequence]
 
-
-def test_notebook_does_not_keep_a_stale_answer_after_model_failure(
-    notebook_namespace: dict[str, Any],
-    chat_client: ScriptedChatClient,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(shutil, "which", lambda _: None)
-    asyncio.run(execute_cells(notebook_namespace, stop_after="assert-output"))
-    assert notebook_namespace["answer"] == REVIEWER_RESPONSE
-
-    def fail_response(_: str) -> str:
-        raise RuntimeError("Synthetic model failure")
-
-    monkeypatch.setattr(chat_client, "_response_for", fail_response)
-    with pytest.raises(RuntimeError, match="Synthetic model failure"):
-        asyncio.run(execute_cells(notebook_namespace, only={"invoke-workflow"}))
-    assert notebook_namespace["answer"] is None
-    assert notebook_namespace["final_chunks"] == []
-
-
-def test_notebook_surfaces_graphviz_errors(
-    notebook_namespace: dict[str, Any],
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    monkeypatch.setattr(shutil, "which", lambda _: "synthetic-dot")
-
-    def fail_render(args: list[str], **_: Any) -> subprocess.CompletedProcess[str]:
-        assert args == ["synthetic-dot", "-Tsvg"]
-        return subprocess.CompletedProcess(args, 1, "", "Synthetic SVG rendering failure")
-
-    monkeypatch.setattr(subprocess, "run", fail_render)
-    with pytest.raises(subprocess.CalledProcessError):
-        asyncio.run(execute_cells(notebook_namespace, stop_after="visualize-workflow"))
-    assert "Synthetic SVG rendering failure" in capsys.readouterr().out
-    assert notebook_namespace["displayed"] == []
-
-
-def test_notebook_detects_omitted_notice_without_rewriting_the_answer(
-    notebook_namespace: dict[str, Any],
-    chat_client: ScriptedChatClient,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(shutil, "which", lambda _: None)
-    reviewer_answer = "規程確認\n概算\n次のアクション"
-
-    def omit_notice(instructions: str) -> str:
-        if instructions == workflow.REVIEWER_AGENT_INSTRUCTIONS:
-            return reviewer_answer
-        return ScriptedChatClient._response_for(instructions)
-
-    monkeypatch.setattr(chat_client, "_response_for", omit_notice)
-    asyncio.run(execute_cells(notebook_namespace, stop_after="invoke-workflow"))
-    assert notebook_namespace["answer"] == reviewer_answer
-    with pytest.raises(AssertionError):
-        asyncio.run(execute_cells(notebook_namespace, only={"assert-output"}))
+    assert positions == sorted(positions)
+    text = NOTEBOOK_PATH.read_text(encoding="utf-8")
+    assert "build_environment_harness_agent" in text
+    assert 'default_mode=\\"execute\\"' in text
+    assert "intermediate_output_from" in text
+    assert "deploy_hosted_agent.py" in text
 
 
 def test_notebook_explains_missing_setup(
     notebook_namespace: dict[str, Any],
 ) -> None:
     Path(".workshop", "context.json").unlink()
+
     with pytest.raises(FileNotFoundError, match="Lab 1"):
-        asyncio.run(execute_cells(notebook_namespace, only={"configure-environment"}))
+        asyncio.run(execute_cells(notebook_namespace, stop_after="configure-environment"))

@@ -5,20 +5,32 @@ from __future__ import annotations
 from typing import Any
 
 from agent_framework import Agent
+from travel_agents import HARNESS_AGENT_INSTRUCTIONS, HARNESS_AGENT_NAME
 from workflow import (
-    PLANNER_AGENT_INSTRUCTIONS,
-    POLICY_AGENT_INSTRUCTIONS,
+    INTAKE_AGENT_INSTRUCTIONS,
     REVIEWER_AGENT_INSTRUCTIONS,
     SIMULATION_NOTICE,
 )
 
-POLICY_RESPONSE = "規程確認: 必要情報は揃っており、国内出張のため economy を利用します。"
-PLANNER_RESPONSE = "出張案: 食事 6,000 円、宿泊 15,000 円、航空券は要見積もりです。"
-REVIEWER_RESPONSE = (
-    "規程確認: 国内出張規程内です。\n"
-    "概算: 食事 6,000 円、宿泊 15,000 円、航空券は要見積もりです。\n"
-    f"次のアクション: 正式な予約手続きを確認してください。\n{SIMULATION_NOTICE}"
+INTAKE_RESPONSE = "受付整理: 東京から大阪、2026-09-10〜2026-09-11、1名、economy、予算100,000円。"
+HARNESS_RESPONSE = (
+    "Foundry IQ の規程を確認し、Travel Ops API で45,000円と算出しました。"
+    "Code Interpreter による予算消化率は45%です。"
 )
+REVIEWER_RESPONSE = (
+    "規程確認: Foundry IQ の引用を確認しました。\n"
+    "概算: Travel Ops API の見積もりは45,000円、予算消化率は45%です。\n"
+    f"次のアクション: 見積もり内容を確認してください。\n{SIMULATION_NOTICE}"
+)
+
+
+def build_scripted_harness_agent(client: ScriptedChatClient) -> Agent:
+    """Build a plain test double at the Harness Agent's SupportsAgentRun boundary."""
+    return Agent(
+        client=client,
+        name=HARNESS_AGENT_NAME,
+        instructions=HARNESS_AGENT_INSTRUCTIONS,
+    )
 
 
 class ScriptedChatClient:
@@ -73,10 +85,10 @@ class ScriptedChatClient:
 
     @staticmethod
     def _response_for(instructions: str) -> str:
-        if instructions == POLICY_AGENT_INSTRUCTIONS:
-            return POLICY_RESPONSE
-        if instructions == PLANNER_AGENT_INSTRUCTIONS:
-            return PLANNER_RESPONSE
+        if instructions == INTAKE_AGENT_INSTRUCTIONS:
+            return INTAKE_RESPONSE
+        if HARNESS_AGENT_INSTRUCTIONS in instructions:
+            return HARNESS_RESPONSE
         if instructions == REVIEWER_AGENT_INSTRUCTIONS:
             return REVIEWER_RESPONSE
         raise AssertionError(f"Unexpected agent instructions: {instructions}")

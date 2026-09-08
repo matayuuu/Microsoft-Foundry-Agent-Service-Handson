@@ -23,7 +23,18 @@ NOTEBOOKS = {
             "total_estimate",
         ],
     },
-    "07-hosted-agent.ipynb": {
+    "07-agent-framework-harness.ipynb": {
+        "kernel": "foundry-hosted-agent",
+        "required_text": [
+            "build_plain_travel_agent",
+            "create_harness_agent",
+            "Foundry IQ",
+            "Toolbox",
+            "todos",
+            "Lab 8",
+        ],
+    },
+    "08-hosted-agent.ipynb": {
         "kernel": "foundry-hosted-agent",
         "required_text": [
             "chat_client.as_agent",
@@ -76,24 +87,20 @@ def test_codespace_installs_both_notebook_kernels() -> None:
 
 def test_hosted_notebook_builds_and_tests_before_deployment_guidance() -> None:
     notebook = json.loads(
-        (REPO_ROOT / "notebooks" / "07-hosted-agent.ipynb").read_text(encoding="utf-8")
+        (REPO_ROOT / "notebooks" / "08-hosted-agent.ipynb").read_text(encoding="utf-8")
     )
     cell_ids = [cell["id"] for cell in notebook["cells"]]
     assert len(cell_ids) == len(set(cell_ids))
     learning_sequence = [
         "configure-environment",
-        "create-client",
-        "create-policy-agent",
-        "create-planner-agent",
-        "create-reviewer-agent",
+        "create-participants",
         "build-workflow",
         "visualize-workflow",
-        "set-request",
         "invoke-workflow",
         "assert-output",
-        "test-input-variants",
-        "test-workflow",
         "inspect-deployment-source",
+        "test-workflow",
+        "close-resources",
         "deploy-next",
     ]
     positions = [cell_ids.index(cell_id) for cell_id in learning_sequence]

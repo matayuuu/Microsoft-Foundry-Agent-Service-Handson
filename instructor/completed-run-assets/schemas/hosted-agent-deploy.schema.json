@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "instructor/completed-run-assets/schemas/hosted-agent-deploy.schema.json",
   "title": "Simulated/reference Hosted Agent deployment (instructor fallback asset)",
-  "description": "Schema for instructor/completed-run-assets/hosted-agent-deploy.simulated.json. Mirrors the JSON shape documented in labs/07-hosted-multi-agent.md for `python scripts/deploy_hosted_agent.py --output json`, plus mandatory labeling fields that mark the asset as not a real Foundry deployment.",
+  "description": "Schema for instructor/completed-run-assets/hosted-agent-deploy.simulated.json. Mirrors the JSON shape documented in labs/08-hosted-multi-agent.md for `python scripts/deploy_hosted_agent.py --output json`, plus mandatory labeling fields that mark the asset as not a real Foundry deployment.",
   "type": "object",
   "required": [
     "asset_status",
