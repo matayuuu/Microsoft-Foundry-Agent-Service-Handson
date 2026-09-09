@@ -16,14 +16,16 @@ participant_object_id = ""
 # published by the Travel Ops API workstream's GitHub Actions workflow.
 travel_api_image_ref = "ghcr.io/example-org/travel-ops-api@sha256:0000000000000000000000000000000000000000000000000000000000000000"
 
-# Model deployment overrides. Both chat model versions have NO default and
-# MUST be supplied -- run scripts/preflight.sh first to discover versions
-# that are actually available in your subscription/region; do not guess them.
+# Model deployment overrides. Run scripts/preflight.sh first to discover
+# versions that are actually available in your subscription/region; do not
+# guess them. The evaluation model is optional so setup can continue without
+# it when Sol quota is unavailable.
 primary_model_name    = "gpt-5.6-luna"
 primary_model_version = "REPLACE_WITH_PREFLIGHT_VERIFIED_VERSION"
 
-optimizer_model_name    = "gpt-5.5"
-optimizer_model_version = "REPLACE_WITH_PREFLIGHT_VERIFIED_VERSION"
+enable_evaluation_model = true
+evaluation_model_name    = "gpt-5.6-sol"
+evaluation_model_version = "REPLACE_WITH_PREFLIGHT_VERIFIED_VERSION"
 
 embedding_model_name    = "text-embedding-3-small"
 embedding_model_version = "1"

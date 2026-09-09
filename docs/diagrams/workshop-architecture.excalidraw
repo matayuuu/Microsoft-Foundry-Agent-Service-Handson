@@ -213,7 +213,7 @@
       "y": 395,
       "width": 550,
       "height": 65,
-      "text": "Model deployments\nprimary · gpt-4.1     optimizer · gpt-5     text-embedding-3-small\nPrompt Agent              Foundry IQ            Search vectors",
+      "text": "Model deployments\nprimary · gpt-5.6-luna     evaluation · gpt-5.6-sol     embedding\nAgents / IQ / Optimizer          Lab 5 only             Search vectors",
       "fontSize": 14,
       "fontFamily": 2,
       "strokeColor": "#000000",

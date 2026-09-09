@@ -236,11 +236,11 @@ def test_build_testing_criteria_includes_rubric_first() -> None:
     # plain dicts, so criteria are asserted with subscript access, not
     # attribute access.
     criteria = run_evaluation.build_testing_criteria(
-        rubric_evaluator_name="contoso-travel-rubric", judge_deployment="gpt-5.5"
+        rubric_evaluator_name="contoso-travel-rubric", judge_deployment="gpt-5.6-sol"
     )
 
     assert criteria[0]["evaluator_name"] == "contoso-travel-rubric"
-    assert criteria[0]["initialization_parameters"] == {"deployment_name": "gpt-5.5"}
+    assert criteria[0]["initialization_parameters"] == {"deployment_name": "gpt-5.6-sol"}
 
 
 def test_build_testing_criteria_includes_default_builtins() -> None:
@@ -557,10 +557,10 @@ def fake_evaluation_client(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return client
 
 
-@pytest.mark.parametrize("context_judge", ["gpt-5.5", "custom-context-judge"])
+@pytest.mark.parametrize("context_judge", ["gpt-5.6-sol", "custom-context-judge"])
 @pytest.mark.parametrize("explicit_judge", [None, "explicit-judge"])
 @pytest.mark.parametrize("explicit_endpoint", [False, True])
-def test_main_resolves_optimizer_judge_and_preserves_explicit_override(
+def test_main_resolves_evaluation_judge_and_preserves_explicit_override(
     fake_evaluation_client: MagicMock,
     tmp_path: Path,
     context_judge: str,
@@ -575,7 +575,7 @@ def test_main_resolves_optimizer_judge_and_preserves_explicit_override(
                 "terraform_outputs": {
                     "foundry_project_endpoint": {"value": endpoint},
                     "primary_model_deployment_name": {"value": "gpt-5.6-luna"},
-                    "optimizer_model_deployment_name": {"value": context_judge},
+                    "evaluation_model_deployment_name": {"value": context_judge},
                 }
             }
         ),
@@ -619,7 +619,7 @@ def test_explicit_endpoint_can_run_without_context_when_judge_is_not_needed_from
     assert fake_evaluation_client.get_openai_client.called is not prepare_only
 
 
-def test_missing_optimizer_output_fails_before_azure_calls(
+def test_missing_evaluation_output_fails_before_azure_calls(
     fake_evaluation_client: MagicMock, tmp_path: Path, capsys: pytest.CaptureFixture
 ) -> None:
     context_path = tmp_path / "context.json"
@@ -635,5 +635,5 @@ def test_missing_optimizer_output_fails_before_azure_calls(
         encoding="utf-8",
     )
     assert run_evaluation.main(["--context", str(context_path)]) == 2
-    assert "optimizer_model_deployment_name" in capsys.readouterr().err
+    assert "evaluation_model_deployment_name" in capsys.readouterr().err
     fake_evaluation_client.__enter__.assert_not_called()

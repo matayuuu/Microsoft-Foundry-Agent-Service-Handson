@@ -55,8 +55,8 @@
 ### Foundry IQ のモデルを選べない
 
 Portal のモデル選択欄に表示されるデプロイを選びます。このハンズオンでは
-`.workshop/context.json` の `optimizer_model_deployment_name` を使います。
-通常は `gpt-5.5` です。エージェント自体の `gpt-5.6-luna` とは別の選択です。
+`.workshop/context.json` の `primary_model_deployment_name` を使います。
+通常は `gpt-5.6-luna` です。評価専用の `gpt-5.6-sol` は選びません。
 エージェントのモデル選択欄に表示されるデプロイが、IQ の選択欄にも表示されるとは限りません。
 
 ### Web search などが最初から追加されている
@@ -227,16 +227,18 @@ Lab 5 ではこの変更を保存したエージェントのバージョンを�
 
 ### Optimizer が改善候補を生成しない
 
-`.workshop/context.json` の `optimizer_model_deployment_name` の値を選んでいるか確認します。
+`.workshop/context.json` の `primary_model_deployment_name` の値を
+**Optimization model** と **Evaluation model** の両方に選んでいるか確認します。
 **Criteria** は組み込み評価器ではなく **Contoso Travel Rubric** を選択します。
 サービス側のエラーの場合は実行を増やさず講師へ連絡します。
 
 ### 評価モデルとエージェントのモデルが違う
 
 この教材では意図した設定です。回答する Prompt / Hosted Agent は `gpt-5.6-luna`、
-Foundry IQ の検索計画、回答を採点する LLM 評価用モデル、改善案を作る Optimizer は `gpt-5.5` を使います。
+Foundry IQ と Lab 6 の Optimizer は `gpt-5.6-luna` を使います。
+`gpt-5.6-sol` を使うのは Lab 5 の設定可能な LLM judge だけです。
 Lab 6 の **Evaluation model** と **Optimization model** は、どちらも
-`optimizer_model_deployment_name` の値を選択します。
+`primary_model_deployment_name` の値を選択します。
 
 ## Hosted Agent
 

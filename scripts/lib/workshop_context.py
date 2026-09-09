@@ -86,7 +86,14 @@ def terraform_output(context: dict[str, Any], key: str) -> str:
             f"Available outputs: {available}. Re-run ./scripts/setup.sh if this "
             "environment predates an infra change."
         )
-    return str(entry["value"])
+    value = entry["value"]
+    if value is None or value == "":
+        raise WorkshopContextError(
+            f"terraform output '{key}' is unavailable in .workshop/context.json. "
+            "The optional deployment was not provisioned; follow the lab's skip guidance "
+            "or re-run ./scripts/setup.sh after quota becomes available."
+        )
+    return str(value)
 
 
 def project_endpoint(context: dict[str, Any]) -> str:

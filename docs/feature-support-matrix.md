@@ -39,8 +39,8 @@ UI が利用できない根拠として解釈しないでください。
 | 項目 | 要件 |
 |---|---|
 | リージョン | East US 2。文書化されている代替候補の第一選択は Sweden Central |
-| Prompt Agent / Hosted Agent | 共有の `gpt-5.6-luna` デプロイ。`primary_model_deployment_name` |
-| Foundry IQ のクエリ計画 / 設定可能な LLM 評価用モデル / Agent Optimizer | 共有の `gpt-5.5` デプロイ。`optimizer_model_deployment_name` |
+| Prompt / Hosted Agent、Foundry IQ、Agent Optimizer | 共有の `gpt-5.6-luna` デプロイ。`primary_model_deployment_name` |
+| Lab 5 の設定可能な LLM 評価用モデル | オプションの `gpt-5.6-sol` デプロイ。`evaluation_model_deployment_name`。未デプロイ時は Lab 5 だけスキップ |
 | 埋め込み | `text-embedding-3-small`、デプロイ名 `embedding` |
 | Search | Azure AI Search Basic 以上 |
 | ID | 参加者が既存のリソースグループの Owner であること。Foundry のロールはそのリソースグループ内で付与 |
@@ -52,13 +52,12 @@ UI が利用できない根拠として解釈しないでください。
 - モデルの役割は、**2026-09-06** に新しいポータルで確認しました。必須構成ではデプロイを
   厳密に 3 つ作成します。チャットモデルのバージョンと同一 SKU のクォータ確認情報は、
   事前チェックで取得し、固定値を使用したりモデル名から推測したりしません。
-  ナレッジベースの **Chat completions** モデル選択欄には、検索の労力が **Medium** の場合も、
-  デプロイ済みの GPT-5.5 が表示され、Luna は表示されませんでした。
-  エージェントのモデル選択欄には Luna が表示され、エージェントの推論は成功しました。
+  ナレッジベースと Optimizer のモデル選択欄では Luna を選択します。
   これらは確認したポータルでの観察結果であり、すべての Search API のモデル対応について
   一般化した主張ではありません。
-- GPT-5.5 は、Foundry IQ のクエリ計画、ルーブリック / 設定可能な LLM 評価用モデル、
-  Optimizer の 2 つのモデル選択で使用します。Violence など、サービスが管理する評価器は
+- Sol は Lab 5 のルーブリック / 設定可能な LLM 評価用モデルだけで使用します。
+  Foundry IQ と Optimizer の 2 つのモデル選択には Luna を使用します。Violence など、
+  サービスが管理する評価器は
   それぞれ固有のモデルを引き続き使用します。
 - Foundry Tool Catalog と Toolboxes は一般提供されていますが、個々のツールは
   プレビューの場合があります。

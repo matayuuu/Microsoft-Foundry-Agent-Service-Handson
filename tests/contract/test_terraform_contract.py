@@ -229,21 +229,29 @@ def test_travel_api_image_ref_variable_requires_immutable_digest() -> None:
     assert "@sha256" in match.group(0)
 
 
-@pytest.mark.parametrize("role", ["primary", "optimizer"])
-def test_chat_model_version_has_no_default(role: str) -> None:
+def test_primary_model_version_has_no_default() -> None:
     text = _read("variables.tf")
 
-    match = re.search(rf'variable\s+"{role}_model_version"\s*\{{(.*?)\n\}}', text, re.DOTALL)
+    match = re.search(r'variable\s+"primary_model_version"\s*\{(.*?)\n\}', text, re.DOTALL)
     assert match is not None
     assert "default" not in match.group(1)
+
+
+def test_optional_evaluation_model_requires_a_version_only_when_enabled() -> None:
+    text = _read("variables.tf")
+
+    match = re.search(r'variable\s+"evaluation_model_version"\s*\{(.*?)\n\}', text, re.DOTALL)
+    assert match is not None
+    assert 'default     = ""' in match.group(1)
+    assert "!var.enable_evaluation_model" in match.group(1)
 
 
 @pytest.mark.parametrize(
     ("role", "model", "deployment", "capacity"),
     [
-        ("primary", "gpt-5.6-luna", "gpt-5.6-luna", 40),
-        ("optimizer", "gpt-5.5", "gpt-5.5", 100),
-        ("embedding", "text-embedding-3-small", "embedding", 40),
+        ("primary", "gpt-5.6-luna", "gpt-5.6-luna", 20),
+        ("evaluation", "gpt-5.6-sol", "gpt-5.6-sol", 100),
+        ("embedding", "text-embedding-3-small", "embedding", 20),
     ],
 )
 def test_model_defaults_deployment_ids_and_output_keys_agree(
@@ -268,38 +276,37 @@ def test_model_defaults_deployment_ids_and_output_keys_agree(
     )
     assert deployment_block is not None
     assert re.search(rf'name\s*=\s*"{deployment}"', deployment_block.group(1))
+    address = f"azapi_resource.{role}_model_deployment"
+    if role == "evaluation":
+        address += r"\[0\]"
     recovery_block = re.search(
-        rf'address\s*=\s*"azapi_resource\.{role}_model_deployment"(.*?)\n\s*\}}',
+        rf'address\s*=\s*"{address}"(.*?)\n\s*\}}',
         _read("state_recovery.tf"),
         re.DOTALL,
     )
     assert recovery_block is not None
     assert f'/deployments/{deployment}"' in recovery_block.group(1)
-    assert re.search(
-        rf'output "{role}_model_deployment_name" \{{\s*'
-        rf"value = azapi_resource\.{role}_model_deployment\.name\s*\}}",
-        _read("outputs.tf"),
-    )
+    assert f'output "{role}_model_deployment_name"' in _read("outputs.tf")
 
 
-def test_exactly_three_model_deployments_and_existing_model_outputs() -> None:
+def test_three_declared_model_deployments_and_existing_model_outputs() -> None:
     deployments = re.findall(r'resource "azapi_resource" "(\w+_model_deployment)"', _all_tf_text())
     outputs = re.findall(r'output "(\w+_model_deployment_name)"', _read("outputs.tf"))
     assert set(deployments) == {
         "primary_model_deployment",
-        "optimizer_model_deployment",
+        "evaluation_model_deployment",
         "embedding_model_deployment",
     }
     assert len(deployments) == 3
     assert set(outputs) == {
-        f"{role}_model_deployment_name" for role in ("primary", "optimizer", "embedding")
+        f"{role}_model_deployment_name" for role in ("primary", "evaluation", "embedding")
     }
     assert len(outputs) == 3
 
 
 def test_tfvars_example_requires_discovered_chat_versions() -> None:
     text = _read("terraform.tfvars.example")
-    for role in ("primary", "optimizer"):
+    for role in ("primary", "evaluation"):
         assert re.search(
             rf'{role}_model_version\s*=\s*"REPLACE_WITH_PREFLIGHT_VERIFIED_VERSION"', text
         )
@@ -310,7 +317,7 @@ def test_model_deployments_are_serialized_after_project_creation() -> None:
 
     assert "depends_on = [azapi_resource.project]" in text
     assert "depends_on = [azapi_resource.primary_model_deployment]" in text
-    assert "depends_on = [azapi_resource.optimizer_model_deployment]" in text
+    assert "depends_on = [azapi_resource.evaluation_model_deployment]" in text
 
 
 def test_embedding_model_uses_cross_region_global_standard_sku() -> None:

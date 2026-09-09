@@ -13,12 +13,12 @@
      `Microsoft.Search`、`Microsoft.Insights`、`Microsoft.OperationalInsights`、
      `Microsoft.App`）がすべての対象 region
      （`eastus2`、`swedencentral`）で `Registered` であること。
-  2. 想定参加者・チーム数に対して `gpt-5.6-luna`（40K TPM/team）、`gpt-5.5`（100K TPM/team）、
-     `text-embedding-3-small`（40K TPM/team）の model quota/capacity が両 region の
+  2. 想定参加者・チーム数に対して `gpt-5.6-luna`（20K TPM/team）、`gpt-5.6-sol`（100K TPM/team）、
+     `text-embedding-3-small`（20K TPM/team）の model quota/capacity が両 region の
      少なくとも一方で足りていること。
-     Luna は Prompt/Hosted Agent、GPT-5.5 は Foundry IQ の検索計画・LLM judge・Optimizer で共有します。
-     合計 3 deployment を用途ごとに重複計上せず、初期容量で同時実行をリハーサルします。
-     GPT-5.5 は 20 units での評価中に HTTP 429 が発生したため、既定を 100 に変更しました。
+     Luna は Prompt/Hosted Agent、Foundry IQ、Optimizer で共有し、Sol は Lab 5 の judge 専用です。
+     最大 3 deployment を用途ごとに重複計上せず、初期容量で同時実行をリハーサルします。
+     評価モデルは 20 units での評価中に HTTP 429 が発生したため、Sol の既定を 100 にしました。
      これは既存 quota 内での GlobalStandard throughput の割り当てであり、
      subscription quota 上限の引き上げや、固定額のトークン料金の購入ではありません。
      実際の利用には課金され、100 でも 429 がなくなる保証はないため、実環境で再確認します。
@@ -32,10 +32,9 @@
 
 - 自分用の resource group で `./scripts/preflight.sh` → `./scripts/setup.sh` を通し、
   `.workshop/context.json` が生成されることを確認します。
-- 2026-09-06 に確認した new Portal の knowledge-base model picker は、Medium でも
-  配置済みの GPT-5.5 のみを表示し、Luna は表示しませんでした。Agent は
-  `primary_model_deployment_name`（Luna）、Foundry IQ・設定可能な judge・Optimizer の
-  両モデル選択は `optimizer_model_deployment_name`（GPT-5.5）を使います。
+- Agent、Foundry IQ、Optimizer の両モデル選択は
+  `primary_model_deployment_name`（Luna）を使います。Lab 5 の設定可能な judge だけは
+  `evaluation_model_deployment_name`（Sol）を使います。
   Model catalog と Portal picker の対応は同一視せず、当日もそれぞれ確認します。
   サービス管理の Violence などには judge を指定しません。
 - Lab 5（評価）・Lab 6（Optimizer）・Lab 7（Harness Agent）・Lab 8（Hosted Agent デプロイ）を一度通しで
@@ -73,8 +72,10 @@
 ### 00:10–00:30 Lab 1 — 環境構築
 
 - **チェックポイント**: 各参加者の `.workshop/context.json` が生成されている
-  （`primary_model_deployment_name`、`optimizer_model_deployment_name`、
+  （`primary_model_deployment_name`、`evaluation_model_deployment_name`、
   `foundry_project_endpoint` などの出力が存在する）。
+- **Sol 不足時**: `evaluation_model_deployment_name` が `null` でも構築成功です。
+  Lab 5 だけをスキップし、Lab 6 以降は Luna で進行します。
 - **つまずきやすい点**: `az login --use-device-code` のブラウザ承認忘れ、
   resource group 名の入力ミス。[docs/participant/troubleshooting.md](../docs/participant/troubleshooting.md)
   を画面共有できるようにしておく。
@@ -120,7 +121,7 @@
 
 ### 02:10–02:35 Lab 5 — Agent evaluation
 
-- **モデルの確認**: 対象 Agent は Luna のまま、設定可能な LLM judge は GPT-5.5。
+- **モデルの確認**: 対象 Agent は Luna のまま、設定可能な LLM judge は Sol。
   少数の rubric 判定と理由を人の判断と照合し、モデル名だけで評価の正しさを断定しません。
 - **チェックポイント**: Portal の本編 run は TaskAdherence、TaskCompletion、
   Contoso Travel Rubric の 3 evaluator を使う。`eval-009` の raw sample と Trace で
@@ -132,6 +133,9 @@
   を画面共有し、「本来この形の JSON が返ってくる」と説明したうえで、
   [labs/05-evaluation.md](../labs/05-evaluation.md) の `report_url` 以降の解説（Portal
   での結果確認の見方）に進む。実行自体は各自の宿題として案内する。
+- **Sol 未デプロイの場合**: Lab 5 の手動実行は省略し、completed-run-assets で結果の読み方を
+  説明して Lab 6 へ進む。Lab 6 は Optimization / Evaluation model の両方に Luna を選び、
+  Max candidates = 1 として実行する。
 
 ### 02:35–02:55 Lab 6 — Agent Optimizer
 

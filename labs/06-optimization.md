@@ -12,16 +12,12 @@ baseline より良い候補だけを agent に反映します。
 > Agent と tool を dataset の各行で繰り返し実行するため、
 > model と外部 tool の料金が発生します。
 
-## 0. Lab 5 の compatibility gate を再確認する
+## 0. 評価条件を確認する
 
-Lab 5 の実 run で確認した `sample.output_items` / `sample.tool_calls`、Conversation、Trace の
-メモを開きます。少なくとも `eval-009` で、Tool Search の
-`tool_search → call_tool` と downstream の `createTripEstimate` を別々に識別できていることを
-確認します。downstream call が `sample.tool_calls` に flatten されるとは仮定しません。
-
-確認できていない場合は
-[Lab 5 の結果確認](05-evaluation.md#8-結果を読む)へ戻り、実 run で gate を通してから
-進みます。Optimizer の mapping や採点基準を、想定した shape に合わせて先に固定しないでください。
+Lab 5 を実行できた場合は、`sample.output_items` / `sample.tool_calls`、Conversation、Trace の
+メモを確認します。Sol をデプロイできず Lab 5 をスキップした場合も、この Lab は実行できます。
+ここでは process evaluator を使わず、登録済みの task-level rubric だけで比較するためです。
+downstream call が `sample.tool_calls` に flatten されるとは仮定しません。
 
 ## 使用する値
 
@@ -29,8 +25,8 @@ Lab 5 の実 run で確認した `sample.output_items` / `sample.tool_calls`、C
 jq -r '
   .terraform_outputs
   | {
-      evaluation_model: .optimizer_model_deployment_name.value,
-      optimization_model: .optimizer_model_deployment_name.value
+      evaluation_model: .primary_model_deployment_name.value,
+      optimization_model: .primary_model_deployment_name.value
     }
 ' .workshop/context.json
 ```
@@ -48,20 +44,20 @@ jq -r '
 | 項目 | 値 |
 |---|---|
 | Version | Lab 4 までの変更を保存した最新の version |
-| Optimization model | `optimizer_model_deployment_name` の値（通常 `gpt-5.5`） |
-| Max candidates | `2` |
-| Evaluation model | `optimizer_model_deployment_name` の値（通常 `gpt-5.5`） |
+| Optimization model | `primary_model_deployment_name` の値（通常 `gpt-5.6-luna`） |
+| Max candidates | `1` |
+| Evaluation model | `primary_model_deployment_name` の値（通常 `gpt-5.6-luna`） |
 | Compare across models | Off |
 
-**Evaluation model** の初期値が `gpt-5.6-luna` なら、選択欄を開いて
-**gpt-5.5** に変更します。`embedding` は選びません。
+両方のモデルに **gpt-5.6-luna** を選びます。`gpt-5.6-sol` と `embedding` は選びません。
+候補数はトークン消費を抑えるため **1** に限定します。
 
 設定を確認して **Next** を押します。
 
 ![対象 version、2つのモデル、候補数、モデル比較 Off を設定する](../docs/images/lab06-target-settings.png)
 
 **Optimization model** は改善案を作る役、**Evaluation model** は回答を採点する役です。
-この演習では両方に同じ `gpt-5.5` deployment を選びます。
+この演習では両方に同じ `gpt-5.6-luna` deployment を選びます。
 評価対象の Agent 自体は `gpt-5.6-luna` のままで、ここでは変更しません。
 
 ## 3. Dataset を選択する
@@ -109,7 +105,7 @@ Run detail の status が **Succeeded** になるまで待ちます。同じ run
 3. 表の右端の **Score details** にある `evalrun_...` のリンクを開きます。
    確認したい candidate の行を選んでください。
 
-**Max candidates = 2** では、生成した候補 2 つに baseline を加えた 3 行が表示される場合があります。
+**Max candidates = 1** では、生成した候補 1 つに baseline を加えた 2 行が表示される場合があります。
 
 `system_prompt` の変更と回答を読み、次を確認します。
 

@@ -8,13 +8,25 @@ Microsoft Foundry Portal で、setup 済みの合成 test data を使い
 Lab 4 までで作った Agent に同じ質問集を実行し、**回答と tool の使い方から改善点を見つけます。**
 
 回答する Agent と、回答を採点するモデルは別の役割です。このハンズオンでは
-Agent に `gpt-5.6-luna`、設定可能な LLM judge（採点役）に `gpt-5.5` を使います。
+Agent に `gpt-5.6-luna`、設定可能な LLM judge（採点役）に `gpt-5.6-sol` を使います。
 
 > [!WARNING]
 > Agent invocation と LLM evaluator には料金が発生します。
 > この Lab では 7 件の合成データに限定します。
 
 Lab 4 の MCP 自動承認設定まで保存した Agent を使います。
+
+## 0. 評価用 Sol の有無を確認する
+
+```bash
+jq -r '.terraform_outputs.evaluation_model_deployment_name.value // "unavailable"' \
+  .workshop/context.json
+```
+
+`gpt-5.6-sol` が表示された場合だけ、この Lab を実行します。
+`unavailable` の場合は上限緩和が未反映でもハンズオンを継続できる設計です。
+この Lab をスキップして [Lab 6](06-optimization.md) へ進んでください。
+Lab 6 は Luna と登録済み dataset / rubric だけで実行できます。
 
 ## 1. Evaluation を作成する
 
@@ -72,8 +84,8 @@ Tool の選択と引数は Conversation / Trace で確認します。実行後�
 
 ## 5. Criteria を選択する
 
-1. **Judge model** で **Deployments** の **gpt-5.5** を選択します。
-   `optimizer_model_deployment_name` の値です。初期選択が Luna なら変更してください。
+1. **Judge model** で **Deployments** の **gpt-5.6-sol** を選択します。
+   `evaluation_model_deployment_name` の値です。初期選択が Luna なら変更してください。
 
 2. 初期選択の評価器から、次の **2 つだけ**を残します。
    不要なチップの **×** で外せます。**Quality** と **Safety** の評価器は、
@@ -94,14 +106,14 @@ TaskAdherence と custom rubric には、最終文章だけでなく top-level �
 `sample.output_items` を渡します。downstream operation の評価に使うわけではありません。
 
 1. **TaskAdherence** のチップを開き、**Response** を `{{sample.output_items}}` に
-   変更して **Update** を押します。Judge model は `gpt-5.5`、
+   変更して **Update** を押します。Judge model は `gpt-5.6-sol`、
    Query は `{{item.query}}`、Tool definitions は `{{sample.tool_definitions}}` のままです。
 
 ![TaskAdherence の Response は output_items にする](../docs/images/lab05-task-adherence-mapping.png)
 
-2. **TaskCompletion** は `gpt-5.5`、Query = `{{item.query}}`、
+2. **TaskCompletion** は `gpt-5.6-sol`、Query = `{{item.query}}`、
    Response = `{{sample.output_text}}` を確認します。Threshold などは既定のままです。
-3. **Contoso Travel Rubric** は Judge model = `gpt-5.5`、
+3. **Contoso Travel Rubric** は Judge model = `gpt-5.6-sol`、
    Query = `{{item.query}}`、Response = `{{sample.output_items}}` にします。
 4. Judge model と評価器が 3 つであることを再確認して、**Next** を押します。
 

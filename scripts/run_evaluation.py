@@ -566,7 +566,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "LLM judge deployment for the rubric and configurable built-ins "
-            "(default: context.json optimizer_model_deployment_name)"
+            "(default: context.json evaluation_model_deployment_name)"
         ),
     )
     parser.add_argument(
@@ -637,7 +637,7 @@ def main(argv: list[str] | None = None) -> int:
         endpoint = args.project_endpoint or project_endpoint(context)
         judge_deployment = args.judge_deployment
         if not args.prepare_only and not judge_deployment:
-            judge_deployment = terraform_output(context, "optimizer_model_deployment_name")
+            judge_deployment = terraform_output(context, "evaluation_model_deployment_name")
         schema = json.loads(args.schema.read_text(encoding="utf-8"))
         cases = load_eval_cases(args.dataset, schema)  # fail before touching Azure
         if not args.prepare_only:

@@ -38,30 +38,31 @@ the repository root `AGENTS.md` for full ownership boundaries.
     expose. Pinned to ARM API version **2026-05-01** (the current GA,
     non-preview version for these resource types as of the 2026-08-21
     retrieval date recorded in `foundry_account.tf`).
-- **Model deployments are variable-driven, not guessed.** Three deployments
-  (`gpt-5.6-luna` = Prompt/Hosted Agents, `gpt-5.5` = Foundry IQ, LLM judges, and Optimizer,
+- **Model deployments are variable-driven, not guessed.** Up to three deployments
+  (`gpt-5.6-luna` = Prompt/Hosted Agents, Foundry IQ, and Optimizer,
+  optional `gpt-5.6-sol` = Lab 5 configurable LLM judges,
   `embedding` = text-embedding-3-small) have overridable
   model-name/version/sku/capacity variables; deployment names are fixed.
-  `primary_model_version` and `optimizer_model_version` intentionally have no
-  defaults: `scripts/preflight.sh` must discover each version and quota `usageName`
+  `primary_model_version` intentionally has no default; the Sol version is required
+  only when `enable_evaluation_model` is true. `scripts/preflight.sh` discovers each version and quota `usageName`
   from the same required-SKU entry returned by `az cognitiveservices model list`.
-  Default capacities are 40/100/40K TPM, checked against live regional headroom.
-  The shared GPT-5.5 allocation is 100 after throttling at 20 during a Portal
+  Default capacities are 20/100/20K TPM, checked against live regional headroom.
+  The evaluation-only Sol allocation is 100 after throttling at 20 during a Portal
   evaluation. This is GlobalStandard deployment throughput drawn from existing
   quota, not a subscription quota increase or fixed token-spend commitment.
   Consumption remains billable, and 100 does not guarantee zero HTTP 429 responses.
   Capacity overrides still use the existing Terraform variables; the preflight
   expectations must match any intentionally overridden allocation.
-  The output keys `primary_model_deployment_name`, `optimizer_model_deployment_name`,
-  and `embedding_model_deployment_name` remain unchanged; no extra deployment/output
-  is needed for the shared uses.
+  The output keys are `primary_model_deployment_name`,
+  `evaluation_model_deployment_name`, and `embedding_model_deployment_name`.
+  The evaluation output is null when Sol quota is unavailable.
 - **State is local by default and treated as sensitive.** No backend block
   is declared in `versions.tf`, so Terraform defaults to a local state file
   (already gitignored). `backend.remote.tf.example` documents how an
   organizer can opt into a shared Azure Blob backend; it is inert until
   copied to `backend.tf`.
 - **No secret outputs.** `outputs.tf` only exposes resource/service names,
-  endpoints (including the Foundry project endpoint and its three model
+  endpoints (including the Foundry project endpoint and its model
   deployment names), and the container app's public FQDN -- never keys,
   connection strings, or tokens.
 
@@ -96,8 +97,8 @@ terraform -chdir=infra validate
 
 These are also what `make terraform-validate` runs. `terraform validate`
 does not evaluate custom variable `validation` blocks for variables without
-a default and no `-var`/tfvars supplied, so the two required chat model versions
-do not block a bare `validate` run; they are
+a default and no `-var`/tfvars supplied, so the required Luna model version
+does not block a bare `validate` run; it is
 enforced at `plan`/`apply` time once `scripts/preflight.sh` supplies a real
 value.
 
@@ -108,11 +109,9 @@ value.
   time. `outputs.tf` and `scripts/setup.sh` print the guaranteed-correct
   generic portal URL plus resource names/IDs a participant can use to
   navigate manually.
-- Exact Luna/GPT-5.5 versions are intentionally not hardcoded. Both must be
-  resolved by `scripts/preflight.sh` against the live subscription/region.
-  Model catalog/quota checks do not prove Portal picker support. In the new Portal
-  checked on 2026-09-06, the knowledge-base Chat completions model picker offered
-  the deployed GPT-5.5 but not Luna, so query planning uses the optimizer deployment.
-- Renaming old `primary`/`optimizer` deployments can replace resources.
+- Exact Luna/Sol versions are intentionally not hardcoded. Luna must be
+  resolved by `scripts/preflight.sh`; Sol is enabled only when the same check confirms
+  its 100K allocation. Model catalog/quota checks do not prove Portal picker support.
+- Renaming old `primary`/`optimizer` deployments to `primary`/`evaluation` can replace resources.
   Review the plan and update saved consumers; retain state and cleanup inputs
   until cleanup succeeds. Recovery uses the exact current deployment IDs.

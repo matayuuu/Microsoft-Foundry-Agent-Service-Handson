@@ -27,7 +27,7 @@ jq -r '
       search_connection: "contoso-travel-search",
       policy_search_index: "contoso-travel-policy",
       approval_search_index: "contoso-travel-approval",
-      knowledge_model: .optimizer_model_deployment_name.value
+      knowledge_model: .primary_model_deployment_name.value
     }
 ' .workshop/context.json
 ```
@@ -47,13 +47,13 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
    | 項目 | 値 |
    |---|---|
    | Name | `contoso-travel-knowledge-lab` |
-   | Chat completions model | `optimizer_model_deployment_name` の値（通常 `gpt-5.5`） |
+   | Chat completions model | `primary_model_deployment_name` の値（通常 `gpt-5.6-luna`） |
    | Retrieval reasoning effort | **Medium** |
    | Output mode | **Extractive data** |
 
    ![Foundry IQ knowledge base の基本設定](../docs/images/lab03-knowledge-base.png)
 
-**Chat completions model** は **Deployments** の `gpt-5.5` を選びます。
+**Chat completions model** は **Deployments** の `gpt-5.6-luna` を選びます。
 **Retrieval reasoning effort** は初期値の Minimal から **Medium** に変更します。
 **Description** と **Retrieval instructions** は、この演習では空のままで構いません。
 

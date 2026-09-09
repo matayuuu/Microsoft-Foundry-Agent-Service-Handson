@@ -8,7 +8,7 @@ locals {
   ai_services_id             = "${local.workshop_resource_group_id}/providers/Microsoft.CognitiveServices/accounts/${local.ai_services_account_name}"
   project_id                 = "${local.ai_services_id}/projects/${var.project_name}"
 
-  state_recovery_targets = [
+  state_recovery_targets = concat([
     {
       address           = "azapi_resource.ai_services"
       id                = local.ai_services_id
@@ -30,13 +30,15 @@ locals {
       owner_id          = local.ai_services_id
       owner_api_version = "2026-05-01"
     },
+    ], var.enable_evaluation_model ? [
     {
-      address           = "azapi_resource.optimizer_model_deployment"
-      id                = "${local.ai_services_id}/deployments/gpt-5.5"
+      address           = "azapi_resource.evaluation_model_deployment[0]"
+      id                = "${local.ai_services_id}/deployments/gpt-5.6-sol"
       api_version       = "2026-05-01"
       owner_id          = local.ai_services_id
       owner_api_version = "2026-05-01"
     },
+    ] : [], [
     {
       address           = "azapi_resource.embedding_model_deployment"
       id                = "${local.ai_services_id}/deployments/embedding"
@@ -93,5 +95,5 @@ locals {
       owner_id          = local.project_id
       owner_api_version = "2026-05-01"
     },
-  ]
+  ])
 }

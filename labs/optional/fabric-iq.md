@@ -62,7 +62,7 @@ Fabric IQ は、その地域で **Power BI のみが Fabric ワークロード�
 | Fabric item | 用途 | 追加要件 |
 |---|---|---|
 | **Ontology** | エンティティ・プロパティ・関係性に基づく質問 | — |
-| **Power BI semantic model** | メジャー・階層に基づく分析的な質問 | 複雑なメジャー推論には `gpt-5.4` や `opus 4.7` 等の新しいモデルを推奨 |
+| **Power BI semantic model** | メジャー・階層に基づく分析的な質問 | この環境ではほかの LLM 操作と同じ `gpt-5.6-luna` を使用 |
 | **Fabric data agent** | 会話形式の Q&A、長時間実行のクエリ | 有償 F2 以上または Power BI Premium P1 以上の容量上に公開済み。テナント設定で cross-geo processing/storage が必要な場合は有効化。data agent とそのデータソースは**同一リージョンの容量**上にあること |
 
 さらに、呼び出し元ユーザーまたはサービスプリンシパルが、対象の item と各データソースへの

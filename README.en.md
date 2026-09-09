@@ -45,9 +45,11 @@ These are examples of what to verify, not fixed wording that the model must repr
   Run workshop commands in the **Codespace Terminal**, not your PC's PowerShell or terminal.
 
 The workshop uses **three model deployments** (named model instances you can call):
-Prompt / Hosted Agents share **Luna (`gpt-5.6-luna`)**;
-Foundry IQ query planning, configurable evaluation judges, and Optimizer share **`gpt-5.5`**;
+**Luna (`gpt-5.6-luna`)** is shared by Prompt/Hosted Agents, Foundry IQ, and Optimizer;
+**Sol (`gpt-5.6-sol`)** is used only by the configurable evaluation judges in Lab 5;
 **`text-embedding-3-small`**, deployed as `embedding`, converts text into numbers for search.
+If Sol quota is unavailable, its deployment and Lab 5 can be skipped while every Luna-based
+lab remains available.
 [Lab 0](labs/00-overview.md) explains the names used in the Portal and generated configuration.
 
 ## Prerequisites

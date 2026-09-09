@@ -84,10 +84,10 @@ def test_terraform_output_returns_value() -> None:
     ("key", "deployment"),
     [
         ("primary_model_deployment_name", "gpt-5.6-luna"),
-        ("optimizer_model_deployment_name", "gpt-5.5"),
+        ("evaluation_model_deployment_name", "gpt-5.6-sol"),
         ("embedding_model_deployment_name", "embedding"),
         ("primary_model_deployment_name", "custom-agent-deployment"),
-        ("optimizer_model_deployment_name", "custom-judge-deployment"),
+        ("evaluation_model_deployment_name", "custom-judge-deployment"),
     ],
 )
 def test_model_deployment_output_uses_context_without_fixed_defaults(
@@ -102,6 +102,13 @@ def test_terraform_output_raises_with_available_keys_listed() -> None:
 
     with pytest.raises(ctx.WorkshopContextError, match="foo"):
         ctx.terraform_output(context, "missing_key")
+
+
+def test_terraform_output_rejects_unprovisioned_optional_output() -> None:
+    context = {"terraform_outputs": {"evaluation_model_deployment_name": {"value": None}}}
+
+    with pytest.raises(ctx.WorkshopContextError, match="optional deployment was not provisioned"):
+        ctx.terraform_output(context, "evaluation_model_deployment_name")
 
 
 def test_project_endpoint_reads_foundry_project_endpoint_output() -> None:

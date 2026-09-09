@@ -102,9 +102,9 @@ variable "travel_api_memory" {
 # Model deployments
 #
 # Three deployments are provisioned on the Foundry AIServices account:
-#   1. primary model              -> gpt-5.6-luna (Prompt/Hosted Agent)
-#   2. optimizer/query/eval model -> gpt-5.5 (Foundry IQ + LLM judges + Agent Optimizer)
-#   3. embedding model            -> text-embedding-3-small (Foundry IQ / Azure AI Search vectors)
+#   1. primary model    -> gpt-5.6-luna (Prompt/Hosted Agent, Foundry IQ, Agent Optimizer)
+#   2. evaluation model -> gpt-5.6-sol (optional; Lab 5 LLM judges only)
+#   3. embedding model  -> text-embedding-3-small (Foundry IQ / Azure AI Search vectors)
 #
 # Exact version/SKU/capacity are overridable and MUST be checked by
 # scripts/preflight.sh (via `az cognitiveservices model list`) against the
@@ -113,7 +113,7 @@ variable "travel_api_memory" {
 # ---------------------------------------------------------------------------
 
 variable "primary_model_name" {
-  description = "Model name for the deployment shared by Prompt Agent and Hosted Agent."
+  description = "Model name for the deployment shared by Prompt/Hosted Agents, Foundry IQ query planning, and Agent Optimizer."
   type        = string
   default     = "gpt-5.6-luna"
 }
@@ -130,30 +130,42 @@ variable "primary_model_sku" {
 }
 
 variable "primary_model_capacity" {
-  description = "Deployment capacity (TPM in thousands) shared by Prompt Agent and Hosted Agent."
+  description = "Deployment capacity (TPM in thousands) shared by Prompt/Hosted Agents, Foundry IQ query planning, and Agent Optimizer."
   type        = number
-  default     = 40
+  default     = 20
 }
 
-variable "optimizer_model_name" {
-  description = "Model name for the deployment shared by Foundry IQ query planning, configurable LLM evaluation judges, and Agent Optimizer. Verify Portal query-planning, evaluator, and Optimizer support before overriding."
+variable "enable_evaluation_model" {
+  description = "Whether to deploy the optional gpt-5.6-sol model used only by Lab 5 evaluation judges. setup.sh disables it when preflight cannot confirm quota so the remaining labs can continue."
+  type        = bool
+  default     = false
+}
+
+variable "evaluation_model_name" {
+  description = "Model name for the optional deployment used only by configurable LLM evaluation judges in Lab 5."
   type        = string
-  default     = "gpt-5.5"
+  default     = "gpt-5.6-sol"
 }
 
-variable "optimizer_model_version" {
-  description = "Model version for the shared Foundry IQ query-planning, evaluation, and Agent Optimizer deployment. Verify availability with `az cognitiveservices model list --location <location>` before apply -- this is intentionally not guessed and must be confirmed by preflight."
+variable "evaluation_model_version" {
+  description = "Model version for the optional evaluation-only deployment. setup.sh supplies the version discovered by preflight when enable_evaluation_model is true."
   type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.enable_evaluation_model || length(trimspace(var.evaluation_model_version)) > 0
+    error_message = "evaluation_model_version must be set when enable_evaluation_model is true."
+  }
 }
 
-variable "optimizer_model_sku" {
-  description = "Deployment SKU for the optimizer/query/evaluation model."
+variable "evaluation_model_sku" {
+  description = "Deployment SKU for the optional evaluation-only model."
   type        = string
   default     = "GlobalStandard"
 }
 
-variable "optimizer_model_capacity" {
-  description = "Deployment capacity (TPM in thousands) shared by Foundry IQ query planning, configurable LLM judges, and Agent Optimizer."
+variable "evaluation_model_capacity" {
+  description = "Deployment capacity (TPM in thousands) for Lab 5 configurable LLM judges."
   type        = number
   default     = 100
 }
@@ -179,7 +191,7 @@ variable "embedding_model_sku" {
 variable "embedding_model_capacity" {
   description = "Deployment capacity (TPM in thousands) for the embedding model."
   type        = number
-  default     = 40
+  default     = 20
 }
 
 variable "embedding_dimensions" {

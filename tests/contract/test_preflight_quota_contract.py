@@ -12,16 +12,15 @@ entries key on `name.value` matching that exact usageName string and report
 
 They assert the behaviors AGENTS.md and the follow-up hardening pass require:
 
-* The specific SKU (GlobalStandard for all three models) and per-model
-  capacity (40/100/40, matching infra/variables.tf) are what gates region
-  resolution -- not a generic cross-bucket floor.
+* The specific SKU (GlobalStandard for all three deployments) and per-model
+  capacity (20/100/20, matching infra/variables.tf) are what gates region
+  resolution for required models and optional Sol availability.
 * `usageName` is read from the model's own `skus[]` entry, never
   reconstructed from the model name. Synthetic aliases retain the historic
   gpt-4.1 missing-hyphen regression without claiming Luna's live quota name.
-* A region is resolved only when EVERY required model's specific usageName
-  bucket has enough headroom; otherwise resolution fails over to the next
-  candidate region, or fails outright (never silently proceeds on unknown or
-  insufficient headroom).
+* A region is resolved only when every required Luna/embedding usageName
+  bucket has enough headroom. Missing Sol capacity leaves its resolved
+  version empty and produces a warning without blocking the remaining labs.
 * The report surfaces per-model SKU/usageName/capacity evidence.
 
 Requires `bash` and `jq` on PATH; skipped automatically otherwise (this
@@ -158,9 +157,9 @@ def _usage_entry(usage_name: str, limit: float, current: float) -> dict:
 # recommendations. Deliberately reuse legacy buckets to catch constructed
 # usageName strings: live preflight must read Azure's own SKU entry.
 PRIMARY_MODEL = "gpt-5.6-luna"
-OPTIMIZER_MODEL = "gpt-5.5"
+EVALUATION_MODEL = "gpt-5.6-sol"
 GPT41_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt4.1"
-GPT5_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt-5"
+SOL_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt-5.6-sol"
 EMBEDDING_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.text-embedding-3-small"
 
 FULL_MODELS_FIXTURE = [
@@ -169,7 +168,7 @@ FULL_MODELS_FIXTURE = [
         "2025-04-14",
         [("Standard", "OpenAI.Standard.gpt4.1"), ("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry(OPTIMIZER_MODEL, "2025-08-07", [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
+    _model_entry(EVALUATION_MODEL, "2026-08-01", [("GlobalStandard", SOL_GLOBALSTANDARD_USAGE)]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -180,15 +179,15 @@ FULL_MODELS_FIXTURE = [
     ),
 ]
 
-# Same three models, but the optimizer never exposes a GlobalStandard SKU in
-# this (fake) region -- exercises the "required SKU missing" failure path.
-MODELS_MISSING_GPT5_SKU_FIXTURE = [
+# Same three models, but the optional evaluation model never exposes a
+# GlobalStandard SKU in this fake region.
+MODELS_MISSING_SOL_SKU_FIXTURE = [
     _model_entry(
         PRIMARY_MODEL,
         "2025-04-14",
         [("Standard", "OpenAI.Standard.gpt4.1"), ("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry(OPTIMIZER_MODEL, "2025-08-07", [("Standard", "OpenAI.Standard.gpt-5")]),
+    _model_entry(EVALUATION_MODEL, "2026-08-01", [("Standard", "OpenAI.Standard.gpt-5.6-sol")]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -211,7 +210,7 @@ MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
         "2025-01-01",
         [("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry(OPTIMIZER_MODEL, "2025-08-07", [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
+    _model_entry(EVALUATION_MODEL, "2026-08-01", [("GlobalStandard", SOL_GLOBALSTANDARD_USAGE)]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -219,9 +218,9 @@ MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
     ),
 ]
 
-# The optimizer has two GlobalStandard-supporting versions; the newer one
-# ("2025-08-07") is NOT flagged isDefaultVersion, while the older
-# ("2025-06-01") IS. The fix must prefer isDefaultVersion=true over pure
+# The evaluation model has two GlobalStandard-supporting versions; the newer
+# one ("2026-08-01") is NOT flagged isDefaultVersion, while the older
+# ("2026-06-01") IS. The fix must prefer isDefaultVersion=true over pure
 # lexicographic-highest-version.
 MODELS_ISDEFAULTVERSION_PREFERRED_FIXTURE = [
     _model_entry(
@@ -231,15 +230,15 @@ MODELS_ISDEFAULTVERSION_PREFERRED_FIXTURE = [
         is_default_version=True,
     ),
     _model_entry(
-        OPTIMIZER_MODEL,
-        "2025-08-07",
-        [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)],
+        EVALUATION_MODEL,
+        "2026-08-01",
+        [("GlobalStandard", SOL_GLOBALSTANDARD_USAGE)],
         is_default_version=False,
     ),
     _model_entry(
-        OPTIMIZER_MODEL,
-        "2025-06-01",
-        [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)],
+        EVALUATION_MODEL,
+        "2026-06-01",
+        [("GlobalStandard", SOL_GLOBALSTANDARD_USAGE)],
         is_default_version=True,
     ),
     _model_entry(
@@ -253,20 +252,28 @@ MODELS_ISDEFAULTVERSION_PREFERRED_FIXTURE = [
 
 def _sufficient_usage_fixture() -> list[dict]:
     return [
-        _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),  # headroom 100 >= 40
-        _usage_entry(GPT5_GLOBALSTANDARD_USAGE, limit=120.0, current=20.0),  # headroom 100 == 100
+        _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),  # headroom 100 >= 20
+        _usage_entry(SOL_GLOBALSTANDARD_USAGE, limit=120.0, current=20.0),  # headroom 100 == 100
         _usage_entry(
             EMBEDDING_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0
-        ),  # headroom 100 >= 40
+        ),  # headroom 100 >= 20
     ]
 
 
-def _insufficient_gpt5_usage_fixture() -> list[dict]:
+def _insufficient_sol_usage_fixture() -> list[dict]:
     return [
         _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),
         _usage_entry(
-            GPT5_GLOBALSTANDARD_USAGE, limit=120.0, current=21.0
+            SOL_GLOBALSTANDARD_USAGE, limit=120.0, current=21.0
         ),  # headroom 99 < 100 required, despite limit exceeding the allocation
+        _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),
+    ]
+
+
+def _insufficient_primary_usage_fixture() -> list[dict]:
+    return [
+        _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=20.0, current=1.0),
+        _usage_entry(SOL_GLOBALSTANDARD_USAGE, limit=120.0, current=20.0),
         _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),
     ]
 
@@ -346,25 +353,25 @@ def test_resolves_preferred_region_with_sufficient_capacity_evidence(
     assert report["resolved_location"] == "eastus2"
 
     evidence = report["resolved_model_capacity_evidence"]
-    assert set(evidence) == {PRIMARY_MODEL, OPTIMIZER_MODEL, "text-embedding-3-small"}
+    assert set(evidence) == {PRIMARY_MODEL, EVALUATION_MODEL, "text-embedding-3-small"}
     assert set(report["resolved_model_versions"]) == set(evidence)
     assert evidence[PRIMARY_MODEL] == {
         "sku": "GlobalStandard",
         "usage_name": GPT41_GLOBALSTANDARD_USAGE,
-        "required_capacity_k": 40,
+        "required_capacity_k": 20,
     }
-    assert evidence[OPTIMIZER_MODEL] == {
+    assert evidence[EVALUATION_MODEL] == {
         "sku": "GlobalStandard",
-        "usage_name": GPT5_GLOBALSTANDARD_USAGE,
+        "usage_name": SOL_GLOBALSTANDARD_USAGE,
         "required_capacity_k": 100,
     }
     assert evidence["text-embedding-3-small"] == {
         "sku": "GlobalStandard",
         "usage_name": EMBEDDING_GLOBALSTANDARD_USAGE,
-        "required_capacity_k": 40,
+        "required_capacity_k": 20,
     }
     assert report["resolved_model_versions"][PRIMARY_MODEL] == "2025-04-14"
-    assert report["resolved_model_versions"][OPTIMIZER_MODEL] == "2025-08-07"
+    assert report["resolved_model_versions"][EVALUATION_MODEL] == "2026-08-01"
 
 
 def test_falls_back_to_swedencentral_when_eastus2_headroom_insufficient(
@@ -378,7 +385,7 @@ def test_falls_back_to_swedencentral_when_eastus2_headroom_insufficient(
                 tmp_path, "models-eastus2.json", FULL_MODELS_FIXTURE
             ),
             "FAKE_USAGE_EASTUS2": _write_json(
-                tmp_path, "usage-eastus2.json", _insufficient_gpt5_usage_fixture()
+                tmp_path, "usage-eastus2.json", _insufficient_primary_usage_fixture()
             ),
             "FAKE_MODELS_SWEDENCENTRAL": _write_json(
                 tmp_path, "models-sc.json", FULL_MODELS_FIXTURE
@@ -393,13 +400,13 @@ def test_falls_back_to_swedencentral_when_eastus2_headroom_insufficient(
     assert report["overall_status"] == "pass"
     # The eastus2 shortfall must be visible as an explicit failed check, not
     # silently swallowed.
-    eastus2_gpt5_checks = [
-        c for c in report["checks"] if c["name"] == f"quota-usage:{OPTIMIZER_MODEL}/eastus2"
+    eastus2_primary_checks = [
+        c for c in report["checks"] if c["name"] == f"quota-usage:{PRIMARY_MODEL}/eastus2"
     ]
-    assert eastus2_gpt5_checks, "expected an explicit optimizer quota-usage check"
-    assert eastus2_gpt5_checks[0]["status"] == "fail"
-    assert "headroom=99K" in eastus2_gpt5_checks[0]["detail"]
-    assert "< required 100K" in eastus2_gpt5_checks[0]["detail"]
+    assert eastus2_primary_checks, "expected an explicit Luna quota-usage check"
+    assert eastus2_primary_checks[0]["status"] == "fail"
+    assert "headroom=19K" in eastus2_primary_checks[0]["detail"]
+    assert "< required 20K" in eastus2_primary_checks[0]["detail"]
 
 
 def test_fails_without_resolving_when_no_region_has_sufficient_capacity(
@@ -413,13 +420,13 @@ def test_fails_without_resolving_when_no_region_has_sufficient_capacity(
                 tmp_path, "models-eastus2.json", FULL_MODELS_FIXTURE
             ),
             "FAKE_USAGE_EASTUS2": _write_json(
-                tmp_path, "usage-eastus2.json", _insufficient_gpt5_usage_fixture()
+                tmp_path, "usage-eastus2.json", _insufficient_primary_usage_fixture()
             ),
             "FAKE_MODELS_SWEDENCENTRAL": _write_json(
                 tmp_path, "models-sc.json", FULL_MODELS_FIXTURE
             ),
             "FAKE_USAGE_SWEDENCENTRAL": _write_json(
-                tmp_path, "usage-sc.json", _insufficient_gpt5_usage_fixture()
+                tmp_path, "usage-sc.json", _insufficient_primary_usage_fixture()
             ),
         },
     )
@@ -428,24 +435,22 @@ def test_fails_without_resolving_when_no_region_has_sufficient_capacity(
     assert report["overall_status"] == "fail"
 
 
-def test_fails_when_required_sku_is_not_offered_rather_than_guessing_usage_name(
+def test_optional_sol_sku_shortfall_warns_without_blocking_region_resolution(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    """The optimizer exposes only a 'Standard' SKU in both fake regions -- never the
-    required 'GlobalStandard'. The script must not fall back to guessing a
-    usageName string from the model name; it must fail that model/region."""
+    """Sol exposes only Standard, so setup must continue without its optional deployment."""
     report = _run_preflight(
         fake_az_bin,
         tmp_path,
         {
             "FAKE_MODELS_EASTUS2": _write_json(
-                tmp_path, "models-eastus2.json", MODELS_MISSING_GPT5_SKU_FIXTURE
+                tmp_path, "models-eastus2.json", MODELS_MISSING_SOL_SKU_FIXTURE
             ),
             "FAKE_USAGE_EASTUS2": _write_json(
                 tmp_path, "usage-eastus2.json", _sufficient_usage_fixture()
             ),
             "FAKE_MODELS_SWEDENCENTRAL": _write_json(
-                tmp_path, "models-sc.json", MODELS_MISSING_GPT5_SKU_FIXTURE
+                tmp_path, "models-sc.json", MODELS_MISSING_SOL_SKU_FIXTURE
             ),
             "FAKE_USAGE_SWEDENCENTRAL": _write_json(
                 tmp_path, "usage-sc.json", _sufficient_usage_fixture()
@@ -453,12 +458,47 @@ def test_fails_when_required_sku_is_not_offered_rather_than_guessing_usage_name(
         },
     )
 
-    assert report["resolved_location"] == ""
+    assert report["resolved_location"] == "eastus2"
+    assert report["overall_status"] == "warn"
+    assert report["resolved_model_versions"][EVALUATION_MODEL] == ""
     sku_checks = [
-        c for c in report["checks"] if c["name"].startswith(f"model-sku:{OPTIMIZER_MODEL}/")
+        c for c in report["checks"] if c["name"].startswith(f"model-sku:{EVALUATION_MODEL}/")
     ]
-    assert sku_checks, "expected an explicit optimizer model-sku failure"
-    assert all(c["status"] == "fail" for c in sku_checks)
+    assert sku_checks, "expected an explicit Sol model-sku warning"
+    assert all(c["status"] == "warn" for c in sku_checks)
+
+
+def test_optional_sol_quota_shortfall_does_not_force_region_fallback(
+    fake_az_bin: Path, tmp_path: Path
+) -> None:
+    report = _run_preflight(
+        fake_az_bin,
+        tmp_path,
+        {
+            "FAKE_MODELS_EASTUS2": _write_json(
+                tmp_path, "models-eastus2.json", FULL_MODELS_FIXTURE
+            ),
+            "FAKE_USAGE_EASTUS2": _write_json(
+                tmp_path, "usage-eastus2.json", _insufficient_sol_usage_fixture()
+            ),
+            "FAKE_MODELS_SWEDENCENTRAL": _write_json(
+                tmp_path, "models-sc.json", FULL_MODELS_FIXTURE
+            ),
+            "FAKE_USAGE_SWEDENCENTRAL": _write_json(
+                tmp_path, "usage-sc.json", _sufficient_usage_fixture()
+            ),
+        },
+    )
+
+    assert report["resolved_location"] == "eastus2"
+    assert report["overall_status"] == "warn"
+    assert report["resolved_model_versions"][EVALUATION_MODEL] == ""
+    sol_check = next(
+        c for c in report["checks"] if c["name"] == f"quota-usage:{EVALUATION_MODEL}/eastus2"
+    )
+    assert sol_check["status"] == "warn"
+    assert "headroom=99K" in sol_check["detail"]
+    assert "< required 100K" in sol_check["detail"]
 
 
 def test_fails_when_usage_list_call_itself_fails_rather_than_assuming_sufficient(
@@ -488,7 +528,10 @@ def test_fails_when_usage_list_call_itself_fails_rather_than_assuming_sufficient
     assert eastus2_checks, (
         "expected quota-usage checks for eastus2 even when the usage-list call failed"
     )
-    assert all(c["status"] == "fail" for c in eastus2_checks)
+    statuses = {c["name"]: c["status"] for c in eastus2_checks}
+    assert statuses[f"quota-usage:{PRIMARY_MODEL}/eastus2"] == "fail"
+    assert statuses["quota-usage:text-embedding-3-small/eastus2"] == "fail"
+    assert statuses[f"quota-usage:{EVALUATION_MODEL}/eastus2"] == "warn"
     assert report["overall_status"] == "pass"
 
 
@@ -506,7 +549,7 @@ def test_unused_fallback_failure_does_not_fail_successful_preferred_region(
                 tmp_path, "usage-eastus2.json", _sufficient_usage_fixture()
             ),
             "FAKE_MODELS_SWEDENCENTRAL": _write_json(
-                tmp_path, "models-sc.json", MODELS_MISSING_GPT5_SKU_FIXTURE
+                tmp_path, "models-sc.json", MODELS_MISSING_SOL_SKU_FIXTURE
             ),
             "FAKE_USAGE_SWEDENCENTRAL": _write_json(
                 tmp_path, "usage-sc.json", _sufficient_usage_fixture()
@@ -519,9 +562,9 @@ def test_unused_fallback_failure_does_not_fail_successful_preferred_region(
     fallback_check = next(
         check
         for check in report["checks"]
-        if check["name"] == f"model-sku:{OPTIMIZER_MODEL}/swedencentral"
+        if check["name"] == f"model-sku:{EVALUATION_MODEL}/swedencentral"
     )
-    assert fallback_check["status"] == "fail"
+    assert fallback_check["status"] == "warn"
 
 
 def test_resolves_the_sku_supporting_version_not_the_highest_overall_version(
@@ -568,7 +611,7 @@ def test_resolves_the_sku_supporting_version_not_the_highest_overall_version(
 def test_prefers_isdefaultversion_over_lexicographically_highest_version(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    """The optimizer has two SKU-supporting versions; the higher one is NOT flagged
+    """The evaluation model has two SKU-supporting versions; the higher one is NOT flagged
     isDefaultVersion, but an older one is. The fix must prefer the
     isDefaultVersion=true entry over the pure lexicographic-highest
     fallback, and say so in the check evidence."""
@@ -592,23 +635,20 @@ def test_prefers_isdefaultversion_over_lexicographically_highest_version(
     )
 
     assert report["resolved_location"] == "eastus2"
-    assert report["resolved_model_versions"][OPTIMIZER_MODEL] == "2025-06-01"
-    gpt5_pass_checks = [
-        c for c in report["checks"] if c["name"] == f"model:{OPTIMIZER_MODEL}/eastus2"
+    assert report["resolved_model_versions"][EVALUATION_MODEL] == "2026-06-01"
+    sol_pass_checks = [
+        c for c in report["checks"] if c["name"] == f"model:{EVALUATION_MODEL}/eastus2"
     ]
-    assert gpt5_pass_checks and gpt5_pass_checks[0]["status"] == "pass"
-    assert "resolved version='2025-06-01' (isDefaultVersion=true)" in gpt5_pass_checks[0]["detail"]
+    assert sol_pass_checks and sol_pass_checks[0]["status"] == "pass"
+    assert "resolved version='2026-06-01' (isDefaultVersion=true)" in sol_pass_checks[0]["detail"]
 
 
-@pytest.mark.parametrize(
-    ("required_model", "legacy_model"), [(PRIMARY_MODEL, "gpt-4.1"), (OPTIMIZER_MODEL, "gpt-5")]
-)
-def test_legacy_chat_models_do_not_satisfy_current_deployment_requirements(
-    fake_az_bin: Path, tmp_path: Path, required_model: str, legacy_model: str
+def test_legacy_primary_model_does_not_satisfy_current_deployment_requirements(
+    fake_az_bin: Path, tmp_path: Path
 ) -> None:
     models = json.loads(json.dumps(FULL_MODELS_FIXTURE))
-    next(entry["model"] for entry in models if entry["model"]["name"] == required_model)["name"] = (
-        legacy_model
+    next(entry["model"] for entry in models if entry["model"]["name"] == PRIMARY_MODEL)["name"] = (
+        "gpt-4.1"
     )
     report = _run_preflight(
         fake_az_bin,
@@ -622,5 +662,28 @@ def test_legacy_chat_models_do_not_satisfy_current_deployment_requirements(
     assert report["overall_status"] == "fail"
     assert report["resolved_location"] == ""
     assert all(value == "" for value in report["resolved_model_versions"].values())
-    check = next(c for c in report["checks"] if c["name"] == f"model:{required_model}/eastus2")
+    check = next(c for c in report["checks"] if c["name"] == f"model:{PRIMARY_MODEL}/eastus2")
     assert check["status"] == "fail"
+
+
+def test_missing_optional_sol_preserves_core_workshop_path(
+    fake_az_bin: Path, tmp_path: Path
+) -> None:
+    models = json.loads(json.dumps(FULL_MODELS_FIXTURE))
+    next(entry["model"] for entry in models if entry["model"]["name"] == EVALUATION_MODEL)[
+        "name"
+    ] = "legacy-evaluation-model"
+    report = _run_preflight(
+        fake_az_bin,
+        tmp_path,
+        {
+            "FAKE_MODELS_EASTUS2": _write_json(tmp_path, "models.json", models),
+            "FAKE_USAGE_EASTUS2": _write_json(tmp_path, "usage.json", _sufficient_usage_fixture()),
+        },
+    )
+
+    assert report["overall_status"] == "warn"
+    assert report["resolved_location"] == "eastus2"
+    assert report["resolved_model_versions"][EVALUATION_MODEL] == ""
+    check = next(c for c in report["checks"] if c["name"] == f"model:{EVALUATION_MODEL}/eastus2")
+    assert check["status"] == "warn"

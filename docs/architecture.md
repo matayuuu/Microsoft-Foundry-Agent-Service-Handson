@@ -62,8 +62,8 @@ Terraform と SDK ラッパーが同じオブジェクトを管理してはい�
 
 - プロジェクト管理を有効にした Microsoft Foundry アカウント（`AIServices`）
 - Microsoft Foundry プロジェクト
-- Prompt Agent / Hosted Agent の推論用の `gpt-5.6-luna` デプロイ
-- Foundry IQ のクエリ計画、設定可能な LLM 評価用モデル、Agent Optimizer 用の `gpt-5.5` デプロイ
+- Prompt / Hosted Agent、Foundry IQ、Agent Optimizer が共有する `gpt-5.6-luna` デプロイ
+- Lab 5 の設定可能な LLM 評価用モデルだけに使う、オプションの `gpt-5.6-sol` デプロイ
 - 初期データを投入するベクトルインデックス用に、`embedding` という名前でデプロイする `text-embedding-3-small`
 - Azure AI Search Basic（レプリカ 1、パーティション 1）
 - Log Analytics とワークスペースベースの Application Insights
@@ -72,26 +72,24 @@ Terraform と SDK ラッパーが同じオブジェクトを管理してはい�
 正確なモデルバージョン、デプロイ SKU、容量は入力値として指定します。
 参加者の開始前に、サブスクリプション管理者向けの事前チェックでこれらを検証します。
 
-デプロイ数は厳密に 3 つです。`primary_model_deployment_name` は引き続き
-`gpt-5.6-luna` を、`optimizer_model_deployment_name` は `gpt-5.5` を示し、
-埋め込みモデルの出力値は変更しません。Foundry IQ はプライマリではなく、
-Optimizer 用のデプロイを共有します。評価では引き続き Luna を使用する対象エージェントを
-呼び出し、設定可能な評価用モデルには GPT-5.5 を使用します。サービスが管理する
+デプロイは Luna と埋め込みの 2 つが必須で、Sol を利用できる場合は合計 3 つです。
+`primary_model_deployment_name` は `gpt-5.6-luna` を示し、Foundry IQ と
+Optimizer もこのデプロイを共有します。`evaluation_model_deployment_name` は
+Lab 5 専用の `gpt-5.6-sol` を示しますが、クォータ不足時は `null` です。
+評価では Luna を使用する対象エージェントを呼び出し、設定可能な評価用モデルだけに
+Sol を使用します。サービスが管理する
 安全性評価器には、判定モデルのデプロイを上書きする設定を渡しません。
-2 つのチャットモデルのバージョンには Terraform の既定値を設けていません。
+Luna のバージョンには Terraform の既定値を設けず、Sol は有効化時だけバージョンを必須にします。
 事前チェックで、各モデルのバージョンとクォータの `usageName` を、
 それぞれ同一の必須 SKU カタログエントリから取得します。
 
-既定の容量はそれぞれ 40/100/40K TPM ですが、実環境の事前チェック結果に従います。
-共有する GPT-5.5 の割り当ては、ポータルでの評価中に 20 でスロットリングが発生したため
+既定の容量はそれぞれ 20/100/20K TPM ですが、実環境の事前チェック結果に従います。
+評価専用 Sol の割り当ては、ポータルでの評価中に 20 でスロットリングが発生したため
 引き上げました。これは既存のクォータ内で GlobalStandard のスループットを割り当てるものであり、
 サブスクリプションのクォータ上限を引き上げたり、トークン利用料を固定額にしたりするものではありません。
 実際の使用量には引き続き課金され、100 単位でも HTTP 429 応答が発生しない保証はありません。
 共有用途の容量は、ラボごとではなくデプロイごとに 1 回だけ計上します。
-2026-09-06 に確認した新しいポータルでは、ナレッジベースの Chat completions モデル選択欄に
-デプロイ済みの GPT-5.5 が表示されましたが、Luna は表示されませんでした。
-検索の労力が **Medium** の場合も同様です。このハンズオンでは、エージェントには
-Luna を使用したまま、クエリ計画には選択可能な GPT-5.5 のデプロイを使用します。
+Foundry IQ と Optimizer のモデル選択欄でも Luna を選びます。
 モデルカタログに掲載されているだけでは、選択 UI や API との互換性は確認できません。
 [Search のモデルと API の要件](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
 を実際のポータルの選択欄と照合してください。

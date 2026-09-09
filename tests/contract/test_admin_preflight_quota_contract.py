@@ -11,8 +11,8 @@ report `limit`/`currentValue` in thousands of TPM).
 They assert the behavior this hardening pass requires:
 
 * `--participant-count` defaults to 1 and multiplies each model's
-  per-environment required capacity (gpt-5.6-luna 40K, gpt-5.5 100K,
-  text-embedding-3-small 40K) by the participant count to get the
+  per-environment required capacity (gpt-5.6-luna 20K, gpt-5.6-sol 100K,
+  text-embedding-3-small 20K) by the participant count to get the
   AGGREGATE requirement the whole event needs from a single region's quota
   pool -- not just one environment's worth.
 * Headroom that is sufficient for one environment but not for N
@@ -196,23 +196,21 @@ def _search_usage_fixture(limit: int, current: int) -> dict:
     }
 
 
-# Synthetic chat versions/aliases, not verified live Luna/GPT5.5 values.
+# Synthetic chat versions/aliases, not verified live Luna/Sol values.
 # Historic bucket names exercise the rule that usageName cannot be derived.
 PRIMARY_MODEL = "gpt-5.6-luna"
-OPTIMIZER_MODEL = "gpt-5.5"
+EVALUATION_MODEL = "gpt-5.6-sol"
 GPT41_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt4.1"
-GPT5_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt-5"
+SOL_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt-5.6-sol"
 EMBEDDING_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.text-embedding-3-small"
 
 FULL_MODELS_FIXTURE = [
     _model_entry(
         PRIMARY_MODEL,
         "2025-04-14",
-        [("Standard", "OpenAI.Standard.gpt4.1"),
-         ("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
+        [("Standard", "OpenAI.Standard.gpt4.1"), ("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry(OPTIMIZER_MODEL, "2025-08-07",
-                 [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
+    _model_entry(EVALUATION_MODEL, "2026-08-01", [("GlobalStandard", SOL_GLOBALSTANDARD_USAGE)]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -230,15 +228,13 @@ FULL_MODELS_FIXTURE = [
 # SKU-supporting version, never the highest version paired with a usageName
 # scraped from a different (non-SKU-supporting) entry.
 MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
-    _model_entry(PRIMARY_MODEL, "2025-04-14",
-                 [("Standard", "OpenAI.Standard.gpt4.1")]),
+    _model_entry(PRIMARY_MODEL, "2025-04-14", [("Standard", "OpenAI.Standard.gpt4.1")]),
     _model_entry(
         PRIMARY_MODEL,
         "2025-01-01",
         [("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry(OPTIMIZER_MODEL, "2025-08-07",
-                 [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
+    _model_entry(EVALUATION_MODEL, "2026-08-01", [("GlobalStandard", SOL_GLOBALSTANDARD_USAGE)]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -248,17 +244,14 @@ MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
 
 
 def _usage_fixture_with_headroom(
-    headroom_k: float, *, optimizer_headroom_k: float | None = None
+    headroom_k: float, *, evaluation_headroom_k: float | None = None
 ) -> list[dict]:
-    if optimizer_headroom_k is None:
-        optimizer_headroom_k = headroom_k
+    if evaluation_headroom_k is None:
+        evaluation_headroom_k = headroom_k
     return [
-        _usage_entry(GPT41_GLOBALSTANDARD_USAGE,
-                     limit=headroom_k, current=0.0),
-        _usage_entry(GPT5_GLOBALSTANDARD_USAGE,
-                     limit=optimizer_headroom_k, current=0.0),
-        _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE,
-                     limit=headroom_k, current=0.0),
+        _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
+        _usage_entry(SOL_GLOBALSTANDARD_USAGE, limit=evaluation_headroom_k, current=0.0),
+        _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
     ]
 
 
@@ -268,8 +261,7 @@ def fake_az_bin(tmp_path: Path) -> Path:
     bin_dir.mkdir()
     az_path = bin_dir / "az"
     az_path.write_text(FAKE_AZ_SCRIPT, encoding="utf-8", newline="\n")
-    az_path.chmod(az_path.stat().st_mode | stat.S_IEXEC |
-                  stat.S_IXGRP | stat.S_IXOTH)
+    az_path.chmod(az_path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
     return bin_dir
 
 
@@ -287,8 +279,7 @@ def _run_admin_preflight(
     env["FAKE_SUBSCRIPTION_ID"] = "22222222-2222-2222-2222-222222222222"
     env.update(env_overrides)
     return subprocess.run(
-        [BASH, str(ADMIN_PREFLIGHT_SH), "--subscription",
-         env["FAKE_SUBSCRIPTION_ID"], *args],
+        [BASH, str(ADMIN_PREFLIGHT_SH), "--subscription", env["FAKE_SUBSCRIPTION_ID"], *args],
         env=env,
         capture_output=True,
         text=True,
@@ -309,7 +300,7 @@ def _report(result: subprocess.CompletedProcess[str]) -> dict:
 def test_defaults_participant_count_to_one_and_reports_it(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    # Headroom of 100K is exactly sufficient for the optimizer's 100K single-
+    # Headroom of 100K is exactly sufficient for Sol's 100K single-
     # environment requirement, but would fail for any count > 1.
     result = _run_admin_preflight(
         fake_az_bin,
@@ -335,46 +326,46 @@ def test_defaults_participant_count_to_one_and_reports_it(
         c for c in report["checks"] if c["name"] == f"model-sku:{PRIMARY_MODEL}/eastus2"
     )
     assert gpt41_eastus2["status"] == "pass"
-    assert "40K * 1 participant(s) = 40K" in gpt41_eastus2["detail"]
-    model_checks = [c for c in report["checks"]
-                    if c["name"].startswith("model-sku:")]
+    assert "20K * 1 participant(s) = 20K" in gpt41_eastus2["detail"]
+    model_checks = [c for c in report["checks"] if c["name"].startswith("model-sku:")]
     assert {c["name"].split(":")[1].split("/")[0] for c in model_checks} == {
         PRIMARY_MODEL,
-        OPTIMIZER_MODEL,
+        EVALUATION_MODEL,
         "text-embedding-3-small",
     }
     # Three deployments, each checked in two regions.
     assert len(model_checks) == 6
     assert all(c["status"] == "pass" for c in model_checks)
-    optimizer_check = next(
-        c for c in model_checks if c["name"] == f"model-sku:{OPTIMIZER_MODEL}/eastus2"
+    evaluation_check = next(
+        c for c in model_checks if c["name"] == f"model-sku:{EVALUATION_MODEL}/eastus2"
     )
-    assert "100K * 1 participant(s) = 100K" in optimizer_check["detail"]
+    assert "100K * 1 participant(s) = 100K" in evaluation_check["detail"]
 
 
 def test_aggregate_capacity_scales_with_participant_count(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    # Headroom of 90K covers 2 participants' worth of primary (2*40=80) but
-    # not 3 (3*40=120). Optimizer headroom of 250K likewise covers 2*100,
+    # Headroom of 50K covers 2 participants' worth of primary (2*20=40) but
+    # not 3 (3*20=60). Sol headroom of 250K likewise covers 2*100,
     # not 3*100 -- proves both requirements scale with participant count.
     env = {
         "FAKE_MODELS_EASTUS2": _write_json(tmp_path, "models-e.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_EASTUS2": _write_json(
-            tmp_path, "usage-e.json", _usage_fixture_with_headroom(
-                90.0, optimizer_headroom_k=250.0)
+            tmp_path,
+            "usage-e.json",
+            _usage_fixture_with_headroom(50.0, evaluation_headroom_k=250.0),
         ),
         "FAKE_MODELS_SWEDENCENTRAL": _write_json(tmp_path, "models-s.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_SWEDENCENTRAL": _write_json(
-            tmp_path, "usage-s.json", _usage_fixture_with_headroom(
-                90.0, optimizer_headroom_k=250.0)
+            tmp_path,
+            "usage-s.json",
+            _usage_fixture_with_headroom(50.0, evaluation_headroom_k=250.0),
         ),
     }
 
     report_2 = _report(
         _run_admin_preflight(
-            fake_az_bin, tmp_path, [
-                "--participant-count", "2", "--format", "json"], env
+            fake_az_bin, tmp_path, ["--participant-count", "2", "--format", "json"], env
         )
     )
     assert report_2["participant_count"] == 2
@@ -382,17 +373,16 @@ def test_aggregate_capacity_scales_with_participant_count(
         c for c in report_2["checks"] if c["name"] == f"model-sku:{PRIMARY_MODEL}/eastus2"
     )
     assert gpt41_2["status"] == "pass"
-    assert "40K * 2 participant(s) = 80K" in gpt41_2["detail"]
-    optimizer_2 = next(
-        c for c in report_2["checks"] if c["name"] == f"model-sku:{OPTIMIZER_MODEL}/eastus2"
+    assert "20K * 2 participant(s) = 40K" in gpt41_2["detail"]
+    evaluation_2 = next(
+        c for c in report_2["checks"] if c["name"] == f"model-sku:{EVALUATION_MODEL}/eastus2"
     )
-    assert optimizer_2["status"] == "pass"
-    assert "100K * 2 participant(s) = 200K" in optimizer_2["detail"]
+    assert evaluation_2["status"] == "pass"
+    assert "100K * 2 participant(s) = 200K" in evaluation_2["detail"]
 
     report_3 = _report(
         _run_admin_preflight(
-            fake_az_bin, tmp_path, [
-                "--participant-count", "3", "--format", "json"], env
+            fake_az_bin, tmp_path, ["--participant-count", "3", "--format", "json"], env
         )
     )
     assert report_3["participant_count"] == 3
@@ -400,14 +390,14 @@ def test_aggregate_capacity_scales_with_participant_count(
         c for c in report_3["checks"] if c["name"] == f"model-sku:{PRIMARY_MODEL}/eastus2"
     )
     assert gpt41_3["status"] == "warn"
-    assert "40K * 3 participant(s) = 120K" in gpt41_3["detail"]
+    assert "20K * 3 participant(s) = 60K" in gpt41_3["detail"]
     assert "BELOW" in gpt41_3["detail"]
-    optimizer_3 = next(
-        c for c in report_3["checks"] if c["name"] == f"model-sku:{OPTIMIZER_MODEL}/eastus2"
+    evaluation_3 = next(
+        c for c in report_3["checks"] if c["name"] == f"model-sku:{EVALUATION_MODEL}/eastus2"
     )
-    assert optimizer_3["status"] == "warn"
-    assert "100K * 3 participant(s) = 300K" in optimizer_3["detail"]
-    assert "BELOW" in optimizer_3["detail"]
+    assert evaluation_3["status"] == "warn"
+    assert "100K * 3 participant(s) = 300K" in evaluation_3["detail"]
+    assert "BELOW" in evaluation_3["detail"]
 
 
 def test_search_basic_service_count_quota_scales_with_participant_count(
@@ -418,35 +408,26 @@ def test_search_basic_service_count_quota_scales_with_participant_count(
         "FAKE_USAGE_EASTUS2": _write_json(
             tmp_path, "usage-e.json", _usage_fixture_with_headroom(500.0)
         ),
-        "FAKE_MODELS_SWEDENCENTRAL": _write_json(
-            tmp_path, "models-s.json", FULL_MODELS_FIXTURE
-        ),
+        "FAKE_MODELS_SWEDENCENTRAL": _write_json(tmp_path, "models-s.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_SWEDENCENTRAL": _write_json(
             tmp_path, "usage-s.json", _usage_fixture_with_headroom(500.0)
         ),
         "FAKE_SEARCH_USAGE_EASTUS2": _write_json(
-            tmp_path, "search-e.json", _search_usage_fixture(
-                limit=12, current=10)
+            tmp_path, "search-e.json", _search_usage_fixture(limit=12, current=10)
         ),
         "FAKE_SEARCH_USAGE_SWEDENCENTRAL": _write_json(
-            tmp_path, "search-s.json", _search_usage_fixture(
-                limit=12, current=9)
+            tmp_path, "search-s.json", _search_usage_fixture(limit=12, current=9)
         ),
     }
 
     report = _report(
         _run_admin_preflight(
-            fake_az_bin, tmp_path, [
-                "--participant-count", "3", "--format", "json"], env
+            fake_az_bin, tmp_path, ["--participant-count", "3", "--format", "json"], env
         )
     )
-    eastus2 = next(
-        c for c in report["checks"] if c["name"] == "search-service-quota:basic/eastus2"
-    )
+    eastus2 = next(c for c in report["checks"] if c["name"] == "search-service-quota:basic/eastus2")
     swedencentral = next(
-        c
-        for c in report["checks"]
-        if c["name"] == "search-service-quota:basic/swedencentral"
+        c for c in report["checks"] if c["name"] == "search-service-quota:basic/swedencentral"
     )
     assert eastus2["status"] == "warn"
     assert "headroom=2 (limit=12, current=10)" in eastus2["detail"]
@@ -490,8 +471,7 @@ def test_markdown_report_shows_participant_count(fake_az_bin: Path, tmp_path: Pa
         ),
     }
     result = _run_admin_preflight(
-        fake_az_bin, tmp_path, ["--participant-count",
-                                "4", "--format", "markdown"], env
+        fake_az_bin, tmp_path, ["--participant-count", "4", "--format", "markdown"], env
     )
     assert result.returncode == 0, result.stderr
     assert "Participant/team count (aggregate quota target): `4`" in result.stdout

@@ -41,8 +41,9 @@ output "primary_model_deployment_name" {
   value = azapi_resource.primary_model_deployment.name
 }
 
-output "optimizer_model_deployment_name" {
-  value = azapi_resource.optimizer_model_deployment.name
+output "evaluation_model_deployment_name" {
+  description = "Optional gpt-5.6-sol deployment used only by Lab 5 evaluation judges; null when quota was unavailable during setup."
+  value       = try(azapi_resource.evaluation_model_deployment[0].name, null)
 }
 
 output "embedding_model_deployment_name" {
