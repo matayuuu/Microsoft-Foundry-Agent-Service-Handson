@@ -28,13 +28,13 @@ variable "resource_group_name" {
 }
 
 variable "location" {
-  description = "Azure region for all workshop resources. Only eastus2 (default) and swedencentral (fallback) are supported: these are the two regions scripts/preflight.sh checks for Foundry model quota. Requesting another region will not be validated by preflight."
+  description = "Azure region for all workshop resources. Recommended: japaneast (default), australiaeast, or centralus. Legacy eastus2 and swedencentral values remain accepted for existing environments."
   type        = string
-  default     = "eastus2"
+  default     = "japaneast"
 
   validation {
-    condition     = contains(["eastus2", "swedencentral"], var.location)
-    error_message = "location must be one of: eastus2, swedencentral."
+    condition     = contains(["japaneast", "australiaeast", "centralus", "eastus2", "swedencentral"], var.location)
+    error_message = "location must be one of: japaneast, australiaeast, centralus, eastus2, swedencentral."
   }
 }
 
