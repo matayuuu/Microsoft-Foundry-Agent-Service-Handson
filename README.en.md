@@ -1,6 +1,10 @@
 [日本語](README.md) | **English**
 
+![Build agents. Go beyond prompts. — 10 Microsoft Foundry labs, about 4 hours including a break. From Portal to Python and a Hosted workflow](docs/images/workshop-cover.svg)
+
 # Microsoft Foundry Agent Service Hands-on
+
+**Start with conversation. Add evidence, tools, and an orchestrated workflow.**
 
 “What is the hotel allowance for a trip to Osaka?” “Can you calculate the travel costs?”
 Build an AI assistant for these requests from employees of the fictional company Contoso.
@@ -10,15 +14,29 @@ the answers. No prior AI agent development experience is required.
 The step-by-step labs use **Japanese explanations and the English UI of Foundry (new)
 in dark mode**.
 
+[**Start the workshop →**](labs/00-overview.md) · [Prerequisites](docs/participant/prerequisites.md) · [Agenda](#agenda) · [Help](#help)
+
+## Learning path
+
+**Grow one Prompt Agent, then bring its resources into code.**
+Labs 0–1 prepare the environment. Labs 2–6 work mainly in the Portal; Labs 7–8 use Python
+Notebooks. Lab 9 compares traces and cleans up.
+
 ![Learning flow: Labs 0–1 prepare the environment, Labs 2–6 extend one Prompt Agent, Lab 7 reuses its Foundry IQ, Toolbox, and Skills in a plain Agent and then a Harness Agent, Lab 8 deploys that Harness factory in a sequential workflow, and Lab 9 compares traces and cleans up](docs/images/workshop-learning-flow.svg)
 
-[Editable learning-flow diagram](docs/diagrams/workshop-learning-flow.excalidraw)
+[Full-size diagram (SVG)](docs/images/workshop-learning-flow.svg) · [Editable source (Excalidraw)](docs/diagrams/workshop-learning-flow.excalidraw)
 
-The left-hand path extends **one Prompt Agent in Labs 2–6**. The right-hand path reuses those
-remote resources in code: Lab 7 progresses from a plain Agent to a Harness Agent, and Lab 8
-places the same checked-in Harness factory between intake and review participants and deploys
-the workflow. Lab 9 compares Prompt and Hosted traces. All data is synthetic; the workshop
-does not make real bookings, approvals, or reimbursements.
+<details>
+<summary>Implementation notes for Labs 7–8</summary>
+
+Lab 7 reuses Foundry IQ, Toolbox, and Skills, progressing from a plain Agent to a Harness
+Agent. Lab 8 places the same checked-in factory between intake and review participants and
+deploys the sequential workflow. Lab 8 does not depend on Lab 7 session state.
+
+</details>
+
+All content uses **synthetic data**. The workshop does not make real bookings, approvals,
+or reimbursements.
 
 ## What you will learn
 
@@ -69,6 +87,8 @@ Lab 1 provides the Azure setup commands. Check each lab's completion conditions 
 following its next-lab link.
 
 ## Agenda
+
+**10 labs · About 4 hours (including a 10-minute break)**
 
 | Lab | Topic | Estimated time |
 |---|---|---:|

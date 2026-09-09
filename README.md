@@ -1,21 +1,38 @@
 **日本語** | [English](README.en.md)
 
+![Build agents. Go beyond prompts. — Microsoft Foundry の 10 Labs、休憩込み約 4 時間。Portal から Python、Hosted workflow へ](docs/images/workshop-cover.svg)
+
 # Microsoft Foundry Agent Service Hands-on
+
+**会話から始めて、根拠を調べ、API を使い、workflow として動かす。**
 
 「大阪への出張で、ホテルはいくらまで使える？」「旅費の内訳を計算してほしい」。
 架空の Contoso 社の社員から届く、こうした相談に答える AI アシスタントを作ります。
 最初は会話だけの状態から始め、規程を調べる、API で計算する、回答を評価して改善する、
 という順に機能を追加します。AI Agent の開発経験は不要です。
 
+[**ハンズオンを始める →**](labs/00-overview.md) · [参加条件](docs/participant/prerequisites.md) · [Agenda](#agenda) · [困ったとき](#困ったとき)
+
+## 学習の流れ
+
+**ひとつの Prompt Agent を育て、その資産をコードへ引き継ぐ。**
+Lab 0・1 で準備し、Lab 2〜6 は主に Portal、Lab 7・8 は Python の Notebook で進めます。
+Lab 9 で trace を比較し、リソースを片付けます。
+
 ![学習の流れ。Lab 0・1 で準備し、Lab 2〜6 で一つの Prompt Agent を拡張する。Lab 7 で同じ Foundry IQ・Toolbox・Skills を使う Agent と Harness Agent をコードで比較し、Lab 8 で Harness Agent を workflow に組み込んでデプロイし、Lab 9 で trace の比較と片付けを行う](docs/images/workshop-learning-flow.svg)
 
-[学習の流れを Excalidraw で編集する](docs/diagrams/workshop-learning-flow.excalidraw)
+[拡大表示（SVG）](docs/images/workshop-learning-flow.svg) · [編集用ファイル（Excalidraw）](docs/diagrams/workshop-learning-flow.excalidraw)
 
-図の左側は **同じ Prompt Agent を育てる Lab 2〜6**、右側はその資産をコードから再利用する
-**Lab 7〜8** です。Lab 7 は plain Agent から Harness Agent へ発展させ、Lab 8 は同じ
-checked-in factory を sequential workflow の participant としてデプロイします。Lab 9 で
-Prompt Agent と Hosted workflow の trace を比較します。すべての題材は合成データで、
-実際の予約・承認・精算は行いません。
+<details>
+<summary>Lab 7・8 の実装について</summary>
+
+Lab 7 は同じ Foundry IQ・Toolbox・Skills を使い、plain Agent から Harness Agent へ
+発展させます。Lab 8 は同じ checked-in factory を sequential workflow の participant
+としてデプロイします。Lab 8 は Lab 7 の session state には依存しません。
+
+</details>
+
+すべての題材は**合成データ**です。実際の予約・承認・精算は行いません。
 
 ## 何ができるようになるか
 
@@ -69,6 +86,8 @@ Codespace の準備を行います。Azure 環境構築のコマンドは Lab 1 
 各 Lab の完了チェックを確認してから、末尾の「次の Lab」へ進んでください。
 
 ## Agenda
+
+**全 10 Labs · 約 4 時間（休憩 10 分を含む）**
 
 | Lab | 内容 | 所要時間（目安） |
 |---|---|---:|

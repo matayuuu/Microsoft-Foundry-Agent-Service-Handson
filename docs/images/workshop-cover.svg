@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="420" viewBox="0 0 1440 420" role="img" aria-labelledby="cover-title cover-description">
+  <title id="cover-title">Microsoft Foundry Agent Service Hands-on — Build agents. Go beyond prompts.</title>
+  <desc id="cover-description">架空の Contoso 社の出張・経費アシスタントを作るハンズオン。10 Labs、休憩込み約 4 時間。Foundry Portal で作る Prompt Agent から、Python の Harness Agent、Hosted workflow へ進む。</desc>
+  <defs>
+    <radialGradient id="glow" cx="82%" cy="38%" r="65%">
+      <stop offset="0" stop-color="#183a50"/>
+      <stop offset="1" stop-color="#091321"/>
+    </radialGradient>
+    <pattern id="cover-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 H 0 V 40" fill="none" stroke="#b7d3f0" stroke-opacity=".045"/>
+    </pattern>
+    <style>
+      text { fill: #e9f1fa; font-family: "Bahnschrift", "Aptos Display", "Segoe UI", sans-serif; }
+      .mono { font-family: "Cascadia Code", Consolas, monospace; }
+      .muted { fill: #a2b4c8; }
+      .cyan { fill: #55dbd0; }
+      .wire { fill: none; stroke: #55dbd0; stroke-width: 1.5; }
+    </style>
+  </defs>
+  <rect width="1440" height="420" rx="16" fill="url(#glow)"/>
+  <rect width="1440" height="420" rx="16" fill="url(#cover-grid)"/>
+  <rect x=".5" y=".5" width="1439" height="419" rx="16" fill="none" stroke="#30475f"/>
+
+  <path d="M 64 55 H 80 M 72 47 V 63" stroke="#55dbd0" stroke-width="1.5"/>
+  <text class="mono muted" x="96" y="62" font-size="18" letter-spacing="2">HANDS-ON / CONTOSO TRAVEL</text>
+  <text x="64" y="168" font-size="78" font-weight="600" letter-spacing="-2">Build agents.</text>
+  <text class="cyan" x="64" y="254" font-size="70" font-weight="600" letter-spacing="-2">Go beyond prompts.</text>
+  <text class="mono muted" x="68" y="300" font-size="19" letter-spacing="1">MICROSOFT FOUNDRY AGENT SERVICE</text>
+
+  <g aria-hidden="true">
+    <path d="M 1080 115 V 143 H 976 V 174 M 1072 210 H 1252 V 263" class="wire"/>
+    <path d="M 966 160 L 976 170 L 986 160 M 1242 249 L 1252 259 L 1262 249" class="wire"/>
+    <path d="M 960 75 H 918 V 110 M 1344 307 H 1380 V 272" fill="none" stroke="#476078"/>
+    <rect x="976" y="55" width="208" height="60" rx="6" fill="#102137" stroke="#89b8ff"/>
+    <rect x="872" y="178" width="208" height="64" rx="6" fill="#102b3a" stroke="#55dbd0"/>
+    <rect x="1148" y="267" width="208" height="60" rx="6" fill="#102137" stroke="#89b8ff"/>
+    <circle cx="1000" cy="85" r="4" fill="#89b8ff"/>
+    <circle cx="896" cy="210" r="4" fill="#55dbd0"/>
+    <circle cx="1172" cy="297" r="4" fill="#89b8ff"/>
+    <text class="mono" x="1020" y="92" font-size="20" letter-spacing="1">PROMPT</text>
+    <text class="mono cyan" x="916" y="217" font-size="20" letter-spacing="1">HARNESS</text>
+    <text class="mono" x="1192" y="304" font-size="20" letter-spacing="1">WORKFLOW</text>
+    <path d="M 1230 70 H 1356 M 1230 82 H 1308 M 872 275 H 994 M 872 287 H 946" fill="none" stroke="#30475f"/>
+  </g>
+
+  <path d="M 64 350 H 1376" fill="none" stroke="#30475f"/>
+  <text class="mono" x="64" y="390" font-size="20">10 LABS</text>
+  <path d="M 220 374 V 394 M 466 374 V 394" stroke="#476078"/>
+  <text class="mono muted" x="252" y="390" font-size="20">~4 HOURS</text>
+  <text class="mono muted" x="498" y="390" font-size="20">PORTAL → PYTHON</text>
+  <text class="mono muted" x="1376" y="390" font-size="18" text-anchor="end" letter-spacing="1">SYNTHETIC DATA ONLY</text>
+</svg>
