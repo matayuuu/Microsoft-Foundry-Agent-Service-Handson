@@ -1,5 +1,5 @@
 """Hermetic, mocked-`az` contract tests for scripts/admin-preflight.sh's
-`--participant-count` aggregate quota reporting.
+`--participant-count` aggregate model and Search quota reporting.
 
 These tests never call real Azure. They install a tiny fake `az` shell shim
 on PATH (fixture: fake_az), reusing the same canned-JSON-fixture approach as
@@ -22,6 +22,8 @@ They assert the behavior this hardening pass requires:
 * The aggregate math (per-environment capacity * count = required) is
   visible in the check detail text, and `participant_count` is echoed back
   in the JSON report.
+* Azure AI Search Basic service-count headroom is compared with the same
+    participant count in both supported regions.
 * `--participant-count` rejects non-positive-integer values before any
   Azure call is made.
 
@@ -127,6 +129,28 @@ case "${sub1} ${sub2}" in
       cat "${val}"
     fi
     ;;
+    "rest --method")
+        url="$(find_arg_value --url)"
+        if [[ "${url}" == *"/locations/eastus2/usages?"* ]]; then
+            var="FAKE_SEARCH_USAGE_EASTUS2"
+        elif [[ "${url}" == *"/locations/swedencentral/usages?"* ]]; then
+            var="FAKE_SEARCH_USAGE_SWEDENCENTRAL"
+        else
+            echo "fake-az: unexpected REST URL: ${url}" >&2
+            exit 1
+        fi
+        val="${!var:-}"
+        if [[ "${val}" == "FAIL" ]]; then
+            exit 1
+        elif [[ -z "${val}" ]]; then
+            cat <<'JSON'
+{"value": [{"name": {"value": "basic"}, "currentValue": 0,
+  "limit": 100, "unit": "Count"}]}
+JSON
+        else
+            cat "${val}"
+        fi
+        ;;
   "policy assignment")
     echo "[]"
     ;;
@@ -159,6 +183,19 @@ def _usage_entry(usage_name: str, limit: float, current: float) -> dict:
     return {"name": {"value": usage_name}, "limit": limit, "currentValue": current}
 
 
+def _search_usage_fixture(limit: int, current: int) -> dict:
+    return {
+        "value": [
+            {
+                "name": {"value": "basic", "localizedValue": "B - Basic"},
+                "limit": limit,
+                "currentValue": current,
+                "unit": "Count",
+            }
+        ]
+    }
+
+
 # Synthetic chat versions/aliases, not verified live Luna/GPT5.5 values.
 # Historic bucket names exercise the rule that usageName cannot be derived.
 PRIMARY_MODEL = "gpt-5.6-luna"
@@ -171,9 +208,11 @@ FULL_MODELS_FIXTURE = [
     _model_entry(
         PRIMARY_MODEL,
         "2025-04-14",
-        [("Standard", "OpenAI.Standard.gpt4.1"), ("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
+        [("Standard", "OpenAI.Standard.gpt4.1"),
+         ("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry(OPTIMIZER_MODEL, "2025-08-07", [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
+    _model_entry(OPTIMIZER_MODEL, "2025-08-07",
+                 [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -191,13 +230,15 @@ FULL_MODELS_FIXTURE = [
 # SKU-supporting version, never the highest version paired with a usageName
 # scraped from a different (non-SKU-supporting) entry.
 MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
-    _model_entry(PRIMARY_MODEL, "2025-04-14", [("Standard", "OpenAI.Standard.gpt4.1")]),
+    _model_entry(PRIMARY_MODEL, "2025-04-14",
+                 [("Standard", "OpenAI.Standard.gpt4.1")]),
     _model_entry(
         PRIMARY_MODEL,
         "2025-01-01",
         [("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry(OPTIMIZER_MODEL, "2025-08-07", [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
+    _model_entry(OPTIMIZER_MODEL, "2025-08-07",
+                 [("GlobalStandard", GPT5_GLOBALSTANDARD_USAGE)]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -212,9 +253,12 @@ def _usage_fixture_with_headroom(
     if optimizer_headroom_k is None:
         optimizer_headroom_k = headroom_k
     return [
-        _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
-        _usage_entry(GPT5_GLOBALSTANDARD_USAGE, limit=optimizer_headroom_k, current=0.0),
-        _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
+        _usage_entry(GPT41_GLOBALSTANDARD_USAGE,
+                     limit=headroom_k, current=0.0),
+        _usage_entry(GPT5_GLOBALSTANDARD_USAGE,
+                     limit=optimizer_headroom_k, current=0.0),
+        _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE,
+                     limit=headroom_k, current=0.0),
     ]
 
 
@@ -224,11 +268,12 @@ def fake_az_bin(tmp_path: Path) -> Path:
     bin_dir.mkdir()
     az_path = bin_dir / "az"
     az_path.write_text(FAKE_AZ_SCRIPT, encoding="utf-8", newline="\n")
-    az_path.chmod(az_path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+    az_path.chmod(az_path.stat().st_mode | stat.S_IEXEC |
+                  stat.S_IXGRP | stat.S_IXOTH)
     return bin_dir
 
 
-def _write_json(tmp_path: Path, name: str, payload: list[dict]) -> str:
+def _write_json(tmp_path: Path, name: str, payload: object) -> str:
     path = tmp_path / name
     path.write_text(json.dumps(payload), encoding="utf-8")
     return str(path)
@@ -242,7 +287,8 @@ def _run_admin_preflight(
     env["FAKE_SUBSCRIPTION_ID"] = "22222222-2222-2222-2222-222222222222"
     env.update(env_overrides)
     return subprocess.run(
-        [BASH, str(ADMIN_PREFLIGHT_SH), "--subscription", env["FAKE_SUBSCRIPTION_ID"], *args],
+        [BASH, str(ADMIN_PREFLIGHT_SH), "--subscription",
+         env["FAKE_SUBSCRIPTION_ID"], *args],
         env=env,
         capture_output=True,
         text=True,
@@ -290,13 +336,15 @@ def test_defaults_participant_count_to_one_and_reports_it(
     )
     assert gpt41_eastus2["status"] == "pass"
     assert "40K * 1 participant(s) = 40K" in gpt41_eastus2["detail"]
-    model_checks = [c for c in report["checks"] if c["name"].startswith("model-sku:")]
+    model_checks = [c for c in report["checks"]
+                    if c["name"].startswith("model-sku:")]
     assert {c["name"].split(":")[1].split("/")[0] for c in model_checks} == {
         PRIMARY_MODEL,
         OPTIMIZER_MODEL,
         "text-embedding-3-small",
     }
-    assert len(model_checks) == 6  # Three deployments, each checked in two regions.
+    # Three deployments, each checked in two regions.
+    assert len(model_checks) == 6
     assert all(c["status"] == "pass" for c in model_checks)
     optimizer_check = next(
         c for c in model_checks if c["name"] == f"model-sku:{OPTIMIZER_MODEL}/eastus2"
@@ -313,17 +361,20 @@ def test_aggregate_capacity_scales_with_participant_count(
     env = {
         "FAKE_MODELS_EASTUS2": _write_json(tmp_path, "models-e.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_EASTUS2": _write_json(
-            tmp_path, "usage-e.json", _usage_fixture_with_headroom(90.0, optimizer_headroom_k=250.0)
+            tmp_path, "usage-e.json", _usage_fixture_with_headroom(
+                90.0, optimizer_headroom_k=250.0)
         ),
         "FAKE_MODELS_SWEDENCENTRAL": _write_json(tmp_path, "models-s.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_SWEDENCENTRAL": _write_json(
-            tmp_path, "usage-s.json", _usage_fixture_with_headroom(90.0, optimizer_headroom_k=250.0)
+            tmp_path, "usage-s.json", _usage_fixture_with_headroom(
+                90.0, optimizer_headroom_k=250.0)
         ),
     }
 
     report_2 = _report(
         _run_admin_preflight(
-            fake_az_bin, tmp_path, ["--participant-count", "2", "--format", "json"], env
+            fake_az_bin, tmp_path, [
+                "--participant-count", "2", "--format", "json"], env
         )
     )
     assert report_2["participant_count"] == 2
@@ -340,7 +391,8 @@ def test_aggregate_capacity_scales_with_participant_count(
 
     report_3 = _report(
         _run_admin_preflight(
-            fake_az_bin, tmp_path, ["--participant-count", "3", "--format", "json"], env
+            fake_az_bin, tmp_path, [
+                "--participant-count", "3", "--format", "json"], env
         )
     )
     assert report_3["participant_count"] == 3
@@ -356,6 +408,52 @@ def test_aggregate_capacity_scales_with_participant_count(
     assert optimizer_3["status"] == "warn"
     assert "100K * 3 participant(s) = 300K" in optimizer_3["detail"]
     assert "BELOW" in optimizer_3["detail"]
+
+
+def test_search_basic_service_count_quota_scales_with_participant_count(
+    fake_az_bin: Path, tmp_path: Path
+) -> None:
+    env = {
+        "FAKE_MODELS_EASTUS2": _write_json(tmp_path, "models-e.json", FULL_MODELS_FIXTURE),
+        "FAKE_USAGE_EASTUS2": _write_json(
+            tmp_path, "usage-e.json", _usage_fixture_with_headroom(500.0)
+        ),
+        "FAKE_MODELS_SWEDENCENTRAL": _write_json(
+            tmp_path, "models-s.json", FULL_MODELS_FIXTURE
+        ),
+        "FAKE_USAGE_SWEDENCENTRAL": _write_json(
+            tmp_path, "usage-s.json", _usage_fixture_with_headroom(500.0)
+        ),
+        "FAKE_SEARCH_USAGE_EASTUS2": _write_json(
+            tmp_path, "search-e.json", _search_usage_fixture(
+                limit=12, current=10)
+        ),
+        "FAKE_SEARCH_USAGE_SWEDENCENTRAL": _write_json(
+            tmp_path, "search-s.json", _search_usage_fixture(
+                limit=12, current=9)
+        ),
+    }
+
+    report = _report(
+        _run_admin_preflight(
+            fake_az_bin, tmp_path, [
+                "--participant-count", "3", "--format", "json"], env
+        )
+    )
+    eastus2 = next(
+        c for c in report["checks"] if c["name"] == "search-service-quota:basic/eastus2"
+    )
+    swedencentral = next(
+        c
+        for c in report["checks"]
+        if c["name"] == "search-service-quota:basic/swedencentral"
+    )
+    assert eastus2["status"] == "warn"
+    assert "headroom=2 (limit=12, current=10)" in eastus2["detail"]
+    assert "required 3 service(s)" in eastus2["detail"]
+    assert swedencentral["status"] == "pass"
+    assert "headroom=3 (limit=12, current=9)" in swedencentral["detail"]
+    assert "does not guarantee live physical SKU capacity" in swedencentral["detail"]
 
 
 def test_rejects_non_positive_participant_count_before_any_azure_call(
@@ -392,7 +490,8 @@ def test_markdown_report_shows_participant_count(fake_az_bin: Path, tmp_path: Pa
         ),
     }
     result = _run_admin_preflight(
-        fake_az_bin, tmp_path, ["--participant-count", "4", "--format", "markdown"], env
+        fake_az_bin, tmp_path, ["--participant-count",
+                                "4", "--format", "markdown"], env
     )
     assert result.returncode == 0, result.stderr
     assert "Participant/team count (aggregate quota target): `4`" in result.stdout

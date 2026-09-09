@@ -18,6 +18,13 @@ Azure Policy の確認には、サブスクリプション全体に対する権�
 
 - Azure CLI（`az`）でサインイン済みのアカウント（`az login`）。読み取り専用の確認には、
   サブスクリプション全体に対する **Reader** 以上の権限が必要です。
+- モデルのクォータ引き上げを申請する場合は、対象サブスクリプションに対する
+  **Quota Request Operator**、**Contributor**、または **Owner** など、クォータ要求を
+  作成できる権限が必要です。
+- Azure AI Search のサービス数上限の緩和を申請する場合も、対象サブスクリプションに対する
+  **Quota Request Operator**、**Contributor**、または **Owner** など、クォータ要求を
+  作成できる権限が必要です。組織でクォータ要求の作成者を制限している場合は、
+  サブスクリプション管理者へ依頼してください。
 - 未登録のリソースプロバイダーも登録する場合（`--apply`）は、
   サブスクリプション全体に対して `Microsoft.Support/register/action` などの
   プロバイダー登録操作を実行できる権限が必要です。**Contributor** ロールや
@@ -49,6 +56,22 @@ Azure Policy の確認には、サブスクリプション全体に対する権�
 | `Microsoft.Insights` | Application Insights |
 | `Microsoft.OperationalInsights` | Log Analytics |
 | `Microsoft.App` | Travel Ops API 用の Container Apps |
+
+### Azure AI Search のサービス数クォータ
+
+`Microsoft.Search/locations/usages` から、`eastus2` と `swedencentral` の **Basic SKU の
+サービス数**について、現在値、上限、空きを取得します。1環境につき1つの Search serviceを
+作るため、空きが `--participant-count` 以上かを判定します。
+
+```text
+空きサービス数 = 上限 - 現在値
+```
+
+取得できない場合、Basicの項目がない場合、または空きが不足する場合は `warn` として報告します。
+このクォータはサブスクリプションで作成できるサービス数の上限です。**リージョン内のリアルタイムな
+物理容量は表さないため、判定が `pass` でも `ResourcesForSkuUnavailable` が発生する場合があります。**
+その場合は[管理者向けトラブルシューティング](troubleshooting.md#azure-ai-search-で-insufficientresourcesavailable-が発生する)に従って、
+代替リージョンを使用してください。
 
 ### モデルのクォータ・容量
 
@@ -115,6 +138,76 @@ Azure Policy によって教材のリソースがブロックされないか、�
 レポートには環境数に加え、モデル・リージョンごとの計算式と取得した空き容量を表示します。
 `--participant-count` は正の整数で指定してください。不正な値の場合は Azure を呼び出す前に終了コード `1` で停止します。
 
+## クォータが不足した場合の上限緩和申請
+
+申請は無料ですが、承認後に作成・利用したリソースには料金が発生します。自動承認されない場合もあるため、
+開催日の数営業日前ではなく、十分な余裕を持って申請してください。申請後は
+`admin-preflight.sh` を同じ `--participant-count` で再実行して反映を確認します。
+
+### コマンドで申請内容を準備する
+
+`request-quota-increase.sh` は、対象リージョンの現在値から、モデルTPMとAzure AI Search Basicの
+**変更後の最低合計上限**を計算します。既定では読み取り専用で、Azureの設定やクォータを変更しません。
+
+```bash
+./scripts/request-quota-increase.sh \
+  --subscription "<subscription-id>" \
+  --location eastus2 \
+  --participant-count 30
+```
+
+結果には、3モデルの `usageName`、現在の使用量と上限、全環境分の必要量、申請する最低合計上限、
+Search Basicの現在数と申請上限がJSONで表示されます。
+
+スクリプトは申請を送信しません。表示されたJSONの値を確認し、モデルTPMは公式フォーム、
+Searchサービス数はAzure portalのQuotasから上限緩和を申請してください。
+
+必要な最低合計上限は次の式で求めます。
+
+```text
+モデル: 現在の使用量 + 1環境あたりの必要TPM × 同時環境数
+Search: 現在のサービス数 + 同時環境数
+```
+
+
+### モデルの TPM クォータ
+
+[Azure OpenAI クォータ増加申請フォーム](https://aka.ms/oai/stuquotarequest)から申請します。
+申請は受付順に処理され、既存クォータを継続的に使用している申請が優先されます。
+承認後もクォータ層は変わらず、割り当てられるクォータだけが増加します。詳細は
+[クォータ増加の要求](https://learn.microsoft.com/ja-jp/azure/foundry/openai/quotas-limits?tabs=bash%2Ctier1#request-quota-increases)を参照してください。
+
+<details>
+<summary>モデルTPMの申請内容</summary>
+
+1. フォームで対象サブスクリプション、リージョン、モデル、`GlobalStandard` SKUを指定します。
+2. レポートの `usageName` と同じモデル区分であることを確認します。
+3. 現在の使用量と全環境分の必要容量を足し、運用上の余裕を加えた**変更後の合計上限**を入力します。
+4. 参加者数、1環境あたりのTPM、同時開催であること、開催日、対象リージョンを申請理由に記載します。
+
+</details>
+
+### Azure AI Search Basic のサービス数上限
+
+Azure portalの[Quotas](https://portal.azure.com/#blade/Microsoft_Azure_Capacity/QuotaMenuBlade/myQuotas)から申請します。
+
+<details>
+<summary>Search Basicサービス数の申請手順</summary>
+
+1. 対象サブスクリプションを選択し、Providerで **Search** を選択します。
+2. 対象Regionで **B - Basic** の行を選択し、鉛筆アイコンの **Request adjustment** を選択します。
+3. **New limit** に、レポートの `minimum_requested_total_limit` 以上の変更後合計上限を入力します。
+4. **Submit** を選択し、申請状態を確認します。
+
+</details>
+
+Searchの上限緩和はリージョン内の物理容量を予約する申請ではありません。上限緩和後も
+`ResourcesForSkuUnavailable` が発生した場合は、時間を置くか代替リージョンを使用します。
+サービス上限については
+[Azure AI Search のサービス制限](https://learn.microsoft.com/azure/search/search-limits-quotas-capacity)、
+申請画面については
+[Azure Quotasの概要](https://learn.microsoft.com/azure/quotas/quotas-overview)を参照してください。
+
 ### 容量配分と料金の注意
 
 1環境のデプロイは3つだけです。同じデプロイを Lab ごとに重複して数えないでください。
@@ -124,6 +217,8 @@ Luna は Prompt / Hosted Agent、GPT-5.5 は Foundry IQ のクエリ計画・評
 既定の容量単位は Luna / GPT-5.5 / 埋め込みの順に **40 / 100 / 40** です。
 開催前に同時実行のリハーサルと最新のクォータ確認を行ってください。
 GPT-5.5 は20単位で7行の Portal 評価を実行した際にスロットリングが発生したため、既定値を増やしています。
+Lunaと埋め込みは10単位でも個別操作や初期データ投入が完了する可能性はありますが、
+本ハンズオン全体を同時実行した検証結果がないため、既定値は40のままです。
 詳細は[実行時の事象と追加の確認事項](troubleshooting.md#クォータに余裕があるのに-http-429-や-foundry-iq-のタイムアウトが発生する)を参照してください。
 
 `GlobalStandard` の容量は、既存のサブスクリプションのモデル・SKU 別クォータから

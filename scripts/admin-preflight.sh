@@ -283,6 +283,56 @@ for provider in "${REQUIRED_PROVIDERS[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
+# Azure AI Search Basic service-count quota
+#
+# Microsoft.Search exposes a per-SKU service-count usage record for each
+# region. This is a subscription limit, not a live signal for the physical
+# capacity behind a SKU: a passing count check can still be followed by
+# ResourcesForSkuUnavailable during creation.
+# ---------------------------------------------------------------------------
+
+SEARCH_USAGE_API_VERSION="2025-05-01"
+for loc in "${LOCATION}" "${FALLBACK_LOCATION}"; do
+  search_usage_url="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/providers/Microsoft.Search/locations/${loc}/usages?api-version=${SEARCH_USAGE_API_VERSION}"
+  search_usage_json="$(az_json az rest --method get --url "${search_usage_url}" --subscription "${SUBSCRIPTION_ID}")"
+
+  if [[ "${search_usage_json}" == "null" ]]; then
+    add_check "search-service-quota:basic/${loc}" "warn" "Could not read the Azure AI Search Basic service-count quota in ${loc}. Required ${PARTICIPANT_COUNT} service(s); quota headroom is UNKNOWN. This quota does not expose live physical SKU capacity."
+    continue
+  fi
+
+  search_quota_result="$(jq -c --argjson required "${PARTICIPANT_COUNT}" '
+    ([.value[]? | select((.name.value // "" | ascii_downcase) == "basic")] | first) as $u |
+    if $u == null then
+      {found: false}
+    else
+      {
+        found: true,
+        limit: $u.limit,
+        current: $u.currentValue,
+        headroom: ($u.limit - $u.currentValue),
+        sufficient: (($u.limit - $u.currentValue) >= $required)
+      }
+    end
+  ' <<<"${search_usage_json}")"
+  search_quota_found="$(jq -r '.found' <<<"${search_quota_result}")"
+  if [[ "${search_quota_found}" != "true" ]]; then
+    add_check "search-service-quota:basic/${loc}" "warn" "Azure AI Search usage data for ${loc} did not include the Basic SKU. Required ${PARTICIPANT_COUNT} service(s); quota headroom is UNKNOWN. This quota does not expose live physical SKU capacity."
+    continue
+  fi
+
+  search_limit="$(jq -r '.limit' <<<"${search_quota_result}")"
+  search_current="$(jq -r '.current' <<<"${search_quota_result}")"
+  search_headroom="$(jq -r '.headroom' <<<"${search_quota_result}")"
+  search_sufficient="$(jq -r '.sufficient' <<<"${search_quota_result}")"
+  if [[ "${search_sufficient}" == "true" ]]; then
+    add_check "search-service-quota:basic/${loc}" "pass" "Azure AI Search Basic service-count quota: headroom=${search_headroom} (limit=${search_limit}, current=${search_current}) >= required ${PARTICIPANT_COUNT} service(s) in ${loc}. This count quota does not guarantee live physical SKU capacity."
+  else
+    add_check "search-service-quota:basic/${loc}" "warn" "Azure AI Search Basic service-count quota: headroom=${search_headroom} (limit=${search_limit}, current=${search_current}) is BELOW the required ${PARTICIPANT_COUNT} service(s) in ${loc}. Request a service-limit increase, reduce the environment count, or split environments across regions. This count quota does not guarantee live physical SKU capacity."
+  fi
+done
+
+# ---------------------------------------------------------------------------
 # Model quota / capacity (gpt-5.6-luna, gpt-5.5, text-embedding-3-small)
 #
 # Reports headroom against the AGGREGATE requirement for the whole event:
