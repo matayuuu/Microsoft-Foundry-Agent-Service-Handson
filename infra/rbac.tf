@@ -25,13 +25,13 @@ resource "azurerm_role_assignment" "participant_foundry_project_manager" {
 }
 
 resource "azurerm_role_assignment" "participant_search_service_contributor" {
-  scope              = azurerm_search_service.workshop.id
+  scope              = local.search_service_id
   role_definition_id = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.search_service_contributor}"
   principal_id       = local.participant_object_id
 }
 
 resource "azurerm_role_assignment" "participant_search_index_data_contributor" {
-  scope              = azurerm_search_service.workshop.id
+  scope              = local.search_service_id
   role_definition_id = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.search_index_data_contributor}"
   principal_id       = local.participant_object_id
 }
@@ -65,7 +65,7 @@ resource "azurerm_role_assignment" "project_mi_foundry_user" {
 }
 
 resource "azurerm_role_assignment" "project_mi_search_index_data_contributor" {
-  scope                            = azurerm_search_service.workshop.id
+  scope                            = local.search_service_id
   role_definition_id               = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.search_index_data_contributor}"
   principal_id                     = azapi_resource.project.output.identity.principalId
   principal_type                   = "ServicePrincipal"
@@ -73,7 +73,7 @@ resource "azurerm_role_assignment" "project_mi_search_index_data_contributor" {
 }
 
 resource "azurerm_role_assignment" "project_mi_search_service_contributor" {
-  scope                            = azurerm_search_service.workshop.id
+  scope                            = local.search_service_id
   role_definition_id               = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.search_service_contributor}"
   principal_id                     = azapi_resource.project.output.identity.principalId
   principal_type                   = "ServicePrincipal"
@@ -115,7 +115,7 @@ resource "azurerm_role_assignment" "project_mi_privileged_monitoring_data_reader
 resource "azurerm_role_assignment" "search_mi_cognitive_services_openai_user" {
   scope                            = azapi_resource.ai_services.id
   role_definition_id               = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.cognitive_services_openai_user}"
-  principal_id                     = azurerm_search_service.workshop.identity[0].principal_id
+  principal_id                     = local.search_service_principal_id
   principal_type                   = "ServicePrincipal"
   skip_service_principal_aad_check = true
 }

@@ -23,10 +23,13 @@
 ./scripts/setup.sh \
   --subscription "<subscription-id>" \
   --resource-group "<resource-group>" \
-  --location swedencentral
+  --location australiaeast
 ```
 
-Sweden Central でも同じエラーになる場合は `--location japaneast` を指定します。
+推奨順は `japaneast`（既定）、`australiaeast`、`centralus` です。
+3 region の dedicated Basic がすべて失敗した場合は、同じリージョンで
+`--ai-search-serverless` を追加して Serverless Developer preview を試します。
+Serverless は従量課金で SLA がなく、Dedicated との相互移行もできません。
 
 ### セットアップが途中で失敗した
 

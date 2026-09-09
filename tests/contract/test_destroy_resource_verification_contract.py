@@ -171,6 +171,7 @@ def fixture_repo(tmp_path: Path) -> Path:
         "source_base": "https://github.com/example/workshop/blob/main",
         "terraform_inputs": {
             "travel_api_image_ref": "ghcr.io/example/travel-ops-api@sha256:" + "0" * 64,
+            "search_pricing_model": "dedicated",
             "enable_evaluation_model": True,
             "evaluation_model_version": "fixture-evaluation-version",
             "primary_model_version": "fixture-primary-version",

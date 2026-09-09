@@ -13,13 +13,16 @@ resource "azapi_resource" "search_connection" {
       isSharedToAll = true
       metadata = {
         ApiType    = "Azure"
-        ResourceId = azurerm_search_service.workshop.id
+        ResourceId = local.search_service_id
         Location   = var.location
       }
     }
   }
 
-  depends_on = [azurerm_search_service.workshop]
+  depends_on = [
+    azurerm_search_service.workshop,
+    azapi_resource.search_service_serverless,
+  ]
 }
 
 # Keyless trace ingestion and evaluation access. ProjectManagedIdentity is the

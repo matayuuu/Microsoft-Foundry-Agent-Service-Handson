@@ -46,13 +46,23 @@ locals {
       owner_id          = local.ai_services_id
       owner_api_version = "2026-05-01"
     },
+    ], var.search_pricing_model == "dedicated" ? [
     {
-      address           = "azurerm_search_service.workshop"
+      address           = "azurerm_search_service.workshop[0]"
       id                = "${local.workshop_resource_group_id}/providers/Microsoft.Search/searchServices/${local.search_service_name}"
       api_version       = "2025-05-01"
       owner_id          = "${local.workshop_resource_group_id}/providers/Microsoft.Search/searchServices/${local.search_service_name}"
       owner_api_version = "2025-05-01"
     },
+    ] : [
+    {
+      address           = "azapi_resource.search_service_serverless[0]"
+      id                = "${local.workshop_resource_group_id}/providers/Microsoft.Search/searchServices/${local.search_service_name}"
+      api_version       = "2026-03-01-preview"
+      owner_id          = "${local.workshop_resource_group_id}/providers/Microsoft.Search/searchServices/${local.search_service_name}"
+      owner_api_version = "2026-03-01-preview"
+    },
+    ], [
     {
       address           = "azurerm_log_analytics_workspace.workshop"
       id                = "${local.workshop_resource_group_id}/providers/Microsoft.OperationalInsights/workspaces/${local.log_analytics_name}"

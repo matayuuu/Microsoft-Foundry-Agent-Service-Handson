@@ -20,7 +20,7 @@
 想定する参加者・チーム数に対してサブスクリプションのクォータが不足しています。
 対応の目安は次のとおりです。
 
-1. `--location swedencentral`、`--location eastus2`、`--location japaneast` の順に別リージョンを指定して再実行します。どのリージョンでも同じ内容のハンズオンを実施できます。
+1. `--location japaneast`、`--location australiaeast`、`--location centralus` の順に別リージョンを指定して再実行します。
 2. Azure portal の **Quotas** または Azure サポートから、対象モデル・SKU のクォータ引き上げを申請します。即時には反映されないため、開催前に余裕を持って申請してください。
 3. 同時に利用する参加者・チーム数を減らすか、開催時間を分けて、既存のクォータ内に収めます。
 
@@ -97,10 +97,21 @@ Azure AI Search の空き容量はリージョンの実際の稼働状況に左�
 ./scripts/setup.sh \
   --subscription "<subscription-id>" \
   --resource-group "<resource-group>" \
-  --location swedencentral
+  --location australiaeast
 ```
 
-`swedencentral` でも失敗した場合は、`japaneast` を指定してください。
+3リージョンの Dedicated Basic がすべて失敗した場合は、Serverless Developer preview を試します。
+
+```bash
+./scripts/setup.sh \
+  --subscription "<subscription-id>" \
+  --resource-group "<resource-group>" \
+  --location japaneast \
+  --ai-search-serverless
+```
+
+Serverless は従量課金で、preview 中は SLA がありません。Dedicated からの tier 変更ではなく、
+別の pricing model として新規作成されます。
 セットアップは再実行しても安全です。ローカルの状態ファイルに記録がなくても、
 命名規則とハンズオン用タグで特定できるリソース、および完全に一致する RBAC 割り当てを安全にインポートします。
 一部だけ適用された場合も、Terraform の実行計画を更新します。
@@ -173,7 +184,7 @@ Terraform を介さずに手動で削除すると、ローカルの状態と実�
   --subscription "<subscription-id>" \
   --resource-group "<resource-group>" \
   --travel-api-image-ref "ghcr.io/<owner>/travel-ops-api@sha256:<digest>" \
-  --location "<eastus2-swedencentral-or-japaneast>" \
+  --location "<japaneast-australiaeast-or-centralus>" \
   --source-base "https://github.com/<owner>/<repo>/blob/main" \
   --primary-model-version "<version>" \
   --embedding-model-version "<version>" \

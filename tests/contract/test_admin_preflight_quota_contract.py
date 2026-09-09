@@ -278,8 +278,17 @@ def _run_admin_preflight(
     env["PATH"] = str(fake_az_bin) + os.pathsep + env.get("PATH", "")
     env["FAKE_SUBSCRIPTION_ID"] = "22222222-2222-2222-2222-222222222222"
     env.update(env_overrides)
+    effective_args = list(args)
+    if "--location" not in effective_args:
+        effective_args = ["--location", "eastus2", *effective_args]
     return subprocess.run(
-        [BASH, str(ADMIN_PREFLIGHT_SH), "--subscription", env["FAKE_SUBSCRIPTION_ID"], *args],
+        [
+            BASH,
+            str(ADMIN_PREFLIGHT_SH),
+            "--subscription",
+            env["FAKE_SUBSCRIPTION_ID"],
+            *effective_args,
+        ],
         env=env,
         capture_output=True,
         text=True,

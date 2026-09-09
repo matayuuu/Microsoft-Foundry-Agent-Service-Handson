@@ -99,6 +99,21 @@ variable "travel_api_memory" {
 }
 
 # ---------------------------------------------------------------------------
+# Azure AI Search
+# ---------------------------------------------------------------------------
+
+variable "search_pricing_model" {
+  description = "Azure AI Search pricing model: dedicated provisions Basic capacity; serverless uses the Serverless Developer preview."
+  type        = string
+  default     = "dedicated"
+
+  validation {
+    condition     = contains(["dedicated", "serverless"], var.search_pricing_model)
+    error_message = "search_pricing_model must be either 'dedicated' or 'serverless'."
+  }
+}
+
+# ---------------------------------------------------------------------------
 # Model deployments
 #
 # Three deployments are provisioned on the Foundry AIServices account:

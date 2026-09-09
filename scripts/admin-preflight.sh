@@ -13,11 +13,11 @@
 # their own resource group and therefore their own set of model
 # deployments, so N participants running concurrently need N times the
 # per-environment TPM capacity (gpt-5.6-luna 20K, gpt-5.6-sol 100K, text-embedding-3-
-# small 40K) in the SAME region/quota pool, not just enough for one
+# small 20K) in the SAME region/quota pool, not just enough for one
 # environment.
 #
 # Usage:
-#   scripts/admin-preflight.sh --subscription <sub-id> [--location eastus2]
+#   scripts/admin-preflight.sh --subscription <sub-id> [--location japaneast]
 #                               [--participant-count <n>] [--apply]
 #                               [--format json|markdown] [--output <file>]
 #
@@ -36,8 +36,8 @@ Usage: admin-preflight.sh --subscription <subscription-id> [options]
 Options:
   --subscription <id>   Azure subscription ID to inspect (required).
   --location <region>   Primary region to validate model/quota availability
-                        against. Default: eastus2. The workshop's supported
-                        fallback region swedencentral is always checked too.
+                        against. Default: japaneast. The next recommended
+                        region is checked too.
   --participant-count <n>
                         Number of participants/teams (each with their own
                         resource group and model deployments) the event must
@@ -60,7 +60,7 @@ EOF
 }
 
 SUBSCRIPTION_ID=""
-LOCATION="eastus2"
+LOCATION="japaneast"
 APPLY="false"
 FORMAT="json"
 OUTPUT_FILE=""
@@ -130,10 +130,14 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-FALLBACK_LOCATION="swedencentral"
-if [[ "${LOCATION}" == "swedencentral" ]]; then
-  FALLBACK_LOCATION="eastus2"
-fi
+FALLBACK_LOCATION="japaneast"
+case "${LOCATION}" in
+  japaneast) FALLBACK_LOCATION="australiaeast" ;;
+  australiaeast) FALLBACK_LOCATION="centralus" ;;
+  centralus) FALLBACK_LOCATION="japaneast" ;;
+  eastus2) FALLBACK_LOCATION="swedencentral" ;;
+  swedencentral) FALLBACK_LOCATION="eastus2" ;;
+esac
 
 REQUIRED_PROVIDERS=(
   "Microsoft.CognitiveServices"

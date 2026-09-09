@@ -56,6 +56,13 @@ the repository root `AGENTS.md` for full ownership boundaries.
   The output keys are `primary_model_deployment_name`,
   `evaluation_model_deployment_name`, and `embedding_model_deployment_name`.
   The evaluation output is null when Sol quota is unavailable.
+- **Azure AI Search supports two pricing models.** Dedicated Basic is the default.
+  `scripts/setup.sh --ai-search-serverless` selects the Serverless Developer preview,
+  provisioned with `Microsoft.Search/searchServices@2026-03-01-preview` and
+  `sku.name = "serverless"`. Serverless omits replicas and partitions while preserving
+  the same managed identity, RBAC, endpoint outputs, bootstrap, and Foundry connection.
+  Source retrieved 2026-09-09:
+  https://learn.microsoft.com/azure/search/search-sku-tier
 - **State is local by default and treated as sensitive.** No backend block
   is declared in `versions.tf`, so Terraform defaults to a local state file
   (already gitignored). `backend.remote.tf.example` documents how an

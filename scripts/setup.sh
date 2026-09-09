@@ -29,7 +29,8 @@
 # Usage:
 #   scripts/setup.sh --subscription <sub-id> --resource-group <rg-name> \
 #                     [--travel-api-image-ref ghcr.io/org/travel-ops-api@sha256:<digest>] \
-#                     [--location eastus2] [--auto-approve] [--skip-bootstrap]
+#                     [--location japaneast] [--ai-search-serverless] \
+#                     [--auto-approve] [--skip-bootstrap]
 set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
@@ -77,9 +78,13 @@ Options:
                                 to v1.0.3 (the latest validated workshop
                                 release). May also be supplied via the
                                 TRAVEL_API_IMAGE_TAG environment variable.
-  --location <region>   Preferred region: eastus2 (default), swedencentral,
-                        or japaneast. scripts/preflight.sh may resolve to
+  --location <region>   Preferred region: japaneast (default), australiaeast,
+                        or centralus. scripts/preflight.sh may resolve to
                         another supported region if required capacity is absent.
+  --ai-search-serverless
+                        Use Azure AI Search Serverless Developer (preview)
+                        instead of the dedicated Basic tier. Serverless is
+                        consumption-based and has no SLA during preview.
   --source-base <url>   Public base URL substituted for data/manifest.json's
                         source_url_base_placeholder token (used for citations
                         and each indexed chunk's source_url field). Must be a
@@ -99,7 +104,8 @@ EOF
 
 SUBSCRIPTION_ID=""
 RESOURCE_GROUP_NAME=""
-PREFERRED_LOCATION="eastus2"
+PREFERRED_LOCATION="japaneast"
+SEARCH_PRICING_MODEL="dedicated"
 TRAVEL_API_IMAGE_REF="${TRAVEL_API_IMAGE_REF:-}"
 TRAVEL_API_IMAGE_REPO="${TRAVEL_API_IMAGE_REPO:-}"
 TRAVEL_API_IMAGE_TAG="${TRAVEL_API_IMAGE_TAG:-v1.0.3}"
@@ -119,6 +125,7 @@ while [[ $# -gt 0 ]]; do
     --travel-api-image-repo) TRAVEL_API_IMAGE_REPO="${2:-}"; shift 2 ;;
     --travel-api-image-tag) TRAVEL_API_IMAGE_TAG="${2:-}"; shift 2 ;;
     --source-base) SOURCE_BASE="${2:-}"; shift 2 ;;
+    --ai-search-serverless) SEARCH_PRICING_MODEL="serverless"; shift 1 ;;
     --auto-approve) AUTO_APPROVE="true"; shift 1 ;;
     --skip-bootstrap) SKIP_BOOTSTRAP="true"; shift 1 ;;
     --skip-validate) SKIP_VALIDATE="true"; shift 1 ;;
@@ -443,6 +450,7 @@ RESOLVED_INPUTS_JSON="$(jq -n \
   --arg subscription_id "${SUBSCRIPTION_ID}" \
   --arg resource_group_name "${RESOURCE_GROUP_NAME}" \
   --arg location "${RESOLVED_LOCATION}" \
+  --arg search_pricing_model "${SEARCH_PRICING_MODEL}" \
   --arg travel_api_image_ref "${TRAVEL_API_IMAGE_REF}" \
   --arg travel_api_image_resolution "${TRAVEL_API_IMAGE_RESOLUTION}" \
   --arg evaluation_model_version "${EVALUATION_MODEL_VERSION}" \
@@ -458,6 +466,7 @@ RESOLVED_INPUTS_JSON="$(jq -n \
     location: $location,
     source_base: $source_base,
     terraform_inputs: {
+      search_pricing_model: $search_pricing_model,
       travel_api_image_ref: $travel_api_image_ref,
       travel_api_image_resolution: $travel_api_image_resolution,
       enable_evaluation_model: $enable_evaluation_model,
@@ -479,6 +488,7 @@ TF_VAR_ARGS=(
   -var "subscription_id=${SUBSCRIPTION_ID}"
   -var "resource_group_name=${RESOURCE_GROUP_NAME}"
   -var "location=${RESOLVED_LOCATION}"
+  -var "search_pricing_model=${SEARCH_PRICING_MODEL}"
   -var "travel_api_image_ref=${TRAVEL_API_IMAGE_REF}"
   -var "source_base=${SOURCE_BASE}"
   -var "enable_evaluation_model=${ENABLE_EVALUATION_MODEL}"

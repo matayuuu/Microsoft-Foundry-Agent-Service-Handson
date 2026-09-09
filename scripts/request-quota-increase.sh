@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
 SUBSCRIPTION_ID=""
-LOCATION="eastus2"
+LOCATION="japaneast"
 PARTICIPANT_COUNT="1"
 
 MODEL_QUOTA_REQUEST_URL="https://aka.ms/oai/stuquotarequest"
@@ -18,7 +18,8 @@ Usage: request-quota-increase.sh --subscription <id> [options]
 
 Options:
   --subscription <id>       Azure subscription ID (required).
-  --location <region>       Target region: eastus2 (default) or swedencentral.
+  --location <region>       Target region. Recommended: japaneast (default),
+                            australiaeast, or centralus.
   --participant-count <n>   Concurrent workshop environments. Default: 1.
   -h, --help                Show this help and exit.
 
@@ -62,8 +63,8 @@ if [[ ! "${SUBSCRIPTION_ID}" =~ ^[0-9a-fA-F-]{36}$ ]]; then
   echo "${SCRIPT_NAME}: --subscription must be a GUID" >&2
   exit 1
 fi
-if [[ "${LOCATION}" != "eastus2" && "${LOCATION}" != "swedencentral" ]]; then
-  echo "${SCRIPT_NAME}: --location must be 'eastus2' or 'swedencentral'" >&2
+if [[ "${LOCATION}" != "japaneast" && "${LOCATION}" != "australiaeast" && "${LOCATION}" != "centralus" && "${LOCATION}" != "eastus2" && "${LOCATION}" != "swedencentral" ]]; then
+  echo "${SCRIPT_NAME}: --location must be 'japaneast', 'australiaeast', or 'centralus' (legacy: 'eastus2' or 'swedencentral')" >&2
   exit 1
 fi
 if [[ ! "${PARTICIPANT_COUNT}" =~ ^[1-9][0-9]*$ ]]; then

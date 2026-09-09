@@ -86,7 +86,8 @@ Terraform と SDK ラッパーが同じオブジェクトを管理してはい�
 - Prompt / Hosted Agent、Foundry IQ、Agent Optimizer が共有する `gpt-5.6-luna` デプロイ
 - Lab 5 の設定可能な LLM 評価用モデルだけに使う、オプションの `gpt-5.6-sol` デプロイ
 - 初期データを投入するベクトルインデックス用に、`embedding` という名前でデプロイする `text-embedding-3-small`
-- Azure AI Search Basic（レプリカ 1、パーティション 1）
+- Azure AI Search Dedicated Basic（レプリカ 1、パーティション 1）。`--ai-search-serverless`
+  指定時は Serverless Developer preview
 - Log Analytics とワークスペースベースの Application Insights
 - Container Apps の従量課金環境と、ゼロまでスケールできる Travel Ops API
 

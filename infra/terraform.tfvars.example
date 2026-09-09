@@ -16,6 +16,9 @@ participant_object_id = ""
 # published by the Travel Ops API workstream's GitHub Actions workflow.
 travel_api_image_ref = "ghcr.io/example-org/travel-ops-api@sha256:0000000000000000000000000000000000000000000000000000000000000000"
 
+# Use "serverless" for the Serverless Developer preview.
+search_pricing_model = "dedicated"
+
 # Model deployment overrides. Run scripts/preflight.sh first to discover
 # versions that are actually available in your subscription/region; do not
 # guess them. The evaluation model is optional so setup can continue without

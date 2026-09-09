@@ -38,7 +38,8 @@ UI が利用できない根拠として解釈しないでください。
 
 | 項目 | 要件 |
 |---|---|
-| リージョン | East US 2。代替候補は Sweden Central、次に Japan East |
+| リージョン | Japan East（既定）、Australia East、Central US。3つとも Agentic retrieval、Semantic ranker、Serverless preview 対応 |
+| Azure AI Search pricing model | Dedicated Basic（既定）。3 region で容量不足時は `--ai-search-serverless` で Serverless Developer preview |
 | Prompt / Hosted Agent、Foundry IQ、Agent Optimizer | 共有の `gpt-5.6-luna` デプロイ。`primary_model_deployment_name` |
 | Lab 5 の設定可能な LLM 評価用モデル | オプションの `gpt-5.6-sol` デプロイ。`evaluation_model_deployment_name`。未デプロイ時は Lab 5 だけスキップ |
 | 埋め込み | `text-embedding-3-small`、デプロイ名 `embedding` |

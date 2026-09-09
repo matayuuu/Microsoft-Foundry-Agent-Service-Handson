@@ -25,6 +25,7 @@
 #   scripts/destroy.sh [--subscription <id>] [--resource-group <name>]
 #                       [--travel-api-image-ref <ref>] [--location <region>]
 #                       [--source-base <url>]
+#                       [--ai-search-serverless]
 #                       [--primary-model-version <version>]
 #                       [--embedding-model-version <version>] [--auto-approve]
 #
@@ -66,6 +67,8 @@ Options:
                                 May also be supplied via TRAVEL_API_IMAGE_REF.
   --location <region>          Same Azure region used at setup time.
   --source-base <url>          Same public citation base URL used at setup time.
+  --ai-search-serverless       Destroy a Serverless Developer Search deployment
+                                when no setup context file is available.
   --primary-model-version <version>
                                 Same primary model version used at setup time.
   --embedding-model-version <version>
@@ -90,6 +93,7 @@ RESOURCE_GROUP_NAME=""
 TRAVEL_API_IMAGE_REF="${TRAVEL_API_IMAGE_REF:-}"
 LOCATION=""
 SOURCE_BASE=""
+SEARCH_PRICING_MODEL=""
 PRIMARY_MODEL_VERSION=""
 EMBEDDING_MODEL_VERSION=""
 AUTO_APPROVE="false"
@@ -101,6 +105,7 @@ while [[ $# -gt 0 ]]; do
     --travel-api-image-ref) TRAVEL_API_IMAGE_REF="${2:-}"; shift 2 ;;
     --location) LOCATION="${2:-}"; shift 2 ;;
     --source-base) SOURCE_BASE="${2:-}"; shift 2 ;;
+    --ai-search-serverless) SEARCH_PRICING_MODEL="serverless"; shift 1 ;;
     --primary-model-version) PRIMARY_MODEL_VERSION="${2:-}"; shift 2 ;;
     --embedding-model-version) EMBEDDING_MODEL_VERSION="${2:-}"; shift 2 ;;
     --auto-approve) AUTO_APPROVE="true"; shift 1 ;;
@@ -132,6 +137,7 @@ read_context_defaults() {
   [[ -z "${TRAVEL_API_IMAGE_REF}" ]] && TRAVEL_API_IMAGE_REF="$(jq -r '.terraform_inputs.travel_api_image_ref // empty' "${source_file}")"
   [[ -z "${LOCATION}" ]] && LOCATION="$(jq -r '.location // empty' "${source_file}")"
   [[ -z "${SOURCE_BASE}" ]] && SOURCE_BASE="$(jq -r '.source_base // empty' "${source_file}")"
+  [[ -z "${SEARCH_PRICING_MODEL}" ]] && SEARCH_PRICING_MODEL="$(jq -r '.terraform_inputs.search_pricing_model // empty' "${source_file}")"
   [[ -z "${PRIMARY_MODEL_VERSION}" ]] && PRIMARY_MODEL_VERSION="$(jq -r '.terraform_inputs.primary_model_version // empty' "${source_file}")"
   [[ -z "${EMBEDDING_MODEL_VERSION}" ]] && EMBEDDING_MODEL_VERSION="$(jq -r '.terraform_inputs.embedding_model_version // empty' "${source_file}")"
   return 0
@@ -163,6 +169,9 @@ fi
 if [[ -z "${SOURCE_BASE}" ]]; then
   echo "${SCRIPT_NAME}: could not resolve source_base. Pass --source-base or restore a setup context file." >&2
   exit 1
+fi
+if [[ -z "${SEARCH_PRICING_MODEL}" ]]; then
+  SEARCH_PRICING_MODEL="dedicated"
 fi
 if [[ -z "${PRIMARY_MODEL_VERSION}" ]]; then
   echo "${SCRIPT_NAME}: could not resolve primary_model_version. Pass --primary-model-version or restore a setup context file; it has no Terraform default and must match what was applied." >&2
@@ -227,6 +236,7 @@ TF_VAR_ARGS=(
   -var "location=${LOCATION}"
   -var "travel_api_image_ref=${TRAVEL_API_IMAGE_REF}"
   -var "source_base=${SOURCE_BASE}"
+  -var "search_pricing_model=${SEARCH_PRICING_MODEL}"
   -var "enable_evaluation_model=false"
   -var "primary_model_version=${PRIMARY_MODEL_VERSION}"
 )

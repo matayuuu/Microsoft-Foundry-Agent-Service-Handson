@@ -49,14 +49,28 @@ az account show --query "{subscriptionId:id, user:user.name}" -o table
 `.workshop/` を手動で削除しないでください。
 
 Azure AI Search の作成で `InsufficientResourcesAvailable` が表示された場合だけ、
-別 region を指定して同じ setup を再実行します。
+別 region を指定して同じ setup を再実行します。推奨順は **Japan East**（既定）、
+**Australia East**、**Central US** です。
 
 ```bash
 ./scripts/setup.sh \
   --subscription "<subscription-id>" \
   --resource-group "<resource-group>" \
-  --location swedencentral
+  --location australiaeast
 ```
+
+3 region の dedicated Basic がすべて作成できない場合は、Serverless Developer preview を試します。
+
+```bash
+./scripts/setup.sh \
+  --subscription "<subscription-id>" \
+  --resource-group "<resource-group>" \
+  --location japaneast \
+  --ai-search-serverless
+```
+
+Serverless は従量課金で、preview 中は SLA がありません。2026-09-09 に取得した公式情報では
+2026-09-13 から課金開始予定です。本番用途ではなく、このハンズオンの小規模データでだけ使います。
 
 ## 4. 完了を確認する
 
@@ -72,6 +86,7 @@ jq -r '
       account: .ai_services_account_name.value,
       project: .foundry_project_name.value,
       search: .search_service_name.value,
+      search_pricing_model: .search_pricing_model.value,
       travel_api: .travel_api_fqdn.value
     }
 ' .workshop/context.json

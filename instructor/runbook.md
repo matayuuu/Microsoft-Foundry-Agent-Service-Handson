@@ -12,7 +12,7 @@
      を実行し、5 つの resource provider（`Microsoft.CognitiveServices`、
      `Microsoft.Search`、`Microsoft.Insights`、`Microsoft.OperationalInsights`、
      `Microsoft.App`）がすべての対象 region
-     （`eastus2`、`swedencentral`、必要に応じて `japaneast`）で `Registered` であること。
+     （`japaneast`、`australiaeast`、`centralus`）で `Registered` であること。
   2. 想定参加者・チーム数に対して `gpt-5.6-luna`（20K TPM/team）、`gpt-5.6-sol`（100K TPM/team）、
      `text-embedding-3-small`（20K TPM/team）の model quota/capacity が対応 region の
      少なくとも一方で足りていること。
@@ -22,6 +22,8 @@
      これは既存 quota 内での GlobalStandard throughput の割り当てであり、
      subscription quota 上限の引き上げや、固定額のトークン料金の購入ではありません。
      実際の利用には課金され、100 でも 429 がなくなる保証はないため、実環境で再確認します。
+     Dedicated Basic が3リージョンとも作成できない場合は
+     `--ai-search-serverless` で Serverless Developer preview を使用します。
   3. 未登録の provider がある場合のみ `--apply` を実行してもらう（quota・policy・
      resource group・role assignment は一切変更しない設計です）。
 - 各参加者（または参加チーム）に対して、既存 resource group を 1 つずつ用意し、

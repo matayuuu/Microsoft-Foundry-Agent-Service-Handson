@@ -31,20 +31,21 @@ Azure Policy の確認には、サブスクリプション全体に対する権�
   **Azure Resource Manager Provider Registration** の権限が例に挙げられます。
   教材では特定のロール名の付与や保有を前提としないため、テナントの運用ルールを確認してください。
 - `management.azure.com` へのネットワーク接続。
-- 対象リージョンの確認。既定は `eastus2`、代替は `swedencentral`、次に `japaneast` です。
-  参加者が切り替える際に管理者の再確認が不要になるよう、常に両方を確認します。
+- 対象リージョンの確認。推奨順は `japaneast`、`australiaeast`、`centralus` です。
+  3つとも Agentic retrieval、Semantic ranker、Serverless preview を提供し、
+  2026-09-09 取得の公式リージョン表で高需要の作成制限が付いていません。
+  East US 2 は高需要により新規 Search service 作成不可と明記されているため推奨しません。
 
 ## 事前確認スクリプトの実行
 
 リポジトリの最上位フォルダーで実行します。
 
 ```bash
-./scripts/admin-preflight.sh --subscription "<subscription-id>" [--location eastus2]
+./scripts/admin-preflight.sh --subscription "<subscription-id>" [--location japaneast]
 ```
 
 既定では **読み取り専用**です。リソースグループの作成・削除、クォータや Azure Policy の変更、
-ロールの割り当ては行いません。既定では `eastus2` と `swedencentral` を報告します。
-両方で Search の物理容量が不足する場合は `--location japaneast` でも再確認します。
+ロールの割り当ては行いません。開催前に3つの推奨リージョンを確認します。
 
 ### リソースプロバイダーの登録状態
 
@@ -73,6 +74,11 @@ Azure Policy の確認には、サブスクリプション全体に対する権�
 物理容量は表さないため、判定が `pass` でも `ResourcesForSkuUnavailable` が発生する場合があります。**
 その場合は[管理者向けトラブルシューティング](troubleshooting.md#azure-ai-search-で-insufficientresourcesavailable-が発生する)に従って、
 代替リージョンを使用してください。
+
+Dedicated Basic が3リージョンとも作成できない場合は、Serverless Developer preview を
+`setup.sh --ai-search-serverless` で使用できます。Serverless は Basic のサービス数クォータではなく
+従量課金の Compute Units と indexed storage で課金され、preview 中は SLA がありません。
+公式情報の取得日: **2026-09-09**。
 
 ### モデルのクォータ・容量
 
@@ -154,7 +160,7 @@ Azure Policy によって教材のリソースがブロックされないか、�
 ```bash
 ./scripts/request-quota-increase.sh \
   --subscription "<subscription-id>" \
-  --location eastus2 \
+  --location japaneast \
   --participant-count 30
 ```
 
@@ -270,7 +276,7 @@ Lab 5 をスキップし、追加デプロイや別モデルへの無断切り�
 ## 参加者への引き継ぎ
 
 想定する環境数を `--participant-count` に指定し、`--apply` なしで `admin-preflight.sh` を実行します。
-必要なプロバイダーがすべて `Registered` であり、`eastus2` / `swedencentral` / `japaneast` の少なくとも一方に
+必要なプロバイダーがすべて `Registered` であり、`japaneast` / `australiaeast` / `centralus` の少なくとも一方に
 全環境分のモデルのクォータ・容量があることを確認してください。
 
 その後、参加者・チームごとにリソースグループを作成するか既存のものを割り当て、

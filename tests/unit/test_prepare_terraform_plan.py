@@ -183,7 +183,7 @@ def test_foundry_connection_not_found_response_is_treated_as_absent() -> None:
 
 def test_recovers_existing_project_search_and_role_assignment(tmp_path: Path) -> None:
     project_address = "azapi_resource.project"
-    search_address = "azurerm_search_service.workshop"
+    search_address = "azurerm_search_service.workshop[0]"
     account_resource = {"id": f"{RESOURCE_GROUP_ID}/providers/test/account", "tags": WORKSHOP_TAGS}
     runner = FakeRunner(
         state={"azapi_resource.ai_services"},

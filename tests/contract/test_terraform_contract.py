@@ -159,11 +159,22 @@ def test_foundry_account_disables_local_auth_and_allows_project_management() -> 
     assert re.search(r"allowProjectManagement\s*=\s*true", text)
 
 
-def test_search_service_disables_local_authentication() -> None:
+def test_search_service_supports_keyless_dedicated_and_serverless_models() -> None:
     text = _read("search.tf")
 
     assert re.search(r"local_authentication_enabled\s*=\s*false", text)
     assert re.search(r'semantic_search_sku\s*=\s*"free"', text)
+    assert "Microsoft.Search/searchServices@2026-03-01-preview" in text
+    assert re.search(r'name\s*=\s*"serverless"', text)
+    assert re.search(r"disableLocalAuth\s*=\s*true", text)
+    serverless = re.search(
+        r'resource "azapi_resource" "search_service_serverless" \{(.*?)\n\}',
+        text,
+        re.DOTALL,
+    )
+    assert serverless is not None
+    assert "partitionCount" not in serverless.group(1)
+    assert "replicaCount" not in serverless.group(1)
 
 
 def test_core_infrastructure_has_no_storage_dependency() -> None:
@@ -374,7 +385,7 @@ def test_rbac_grants_participant_and_managed_identities() -> None:
 
     # Managed identity grants
     assert "azapi_resource.project.output.identity.principalId" in text
-    assert "azurerm_search_service.workshop.identity[0].principal_id" in text
+    assert "local.search_service_principal_id" in text
     assert text.count("skip_service_principal_aad_check") >= 4
 
 

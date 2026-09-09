@@ -361,7 +361,9 @@ def test_setup_uses_discovered_versions_and_omits_only_optional_sol(
         assert result.returncode == 0, result.stderr
         recovery = json.loads(recovery_path.read_text(encoding="utf-8"))
         assert recovery["location"] == "swedencentral"
+        assert recovery["terraform_inputs"]["search_pricing_model"] == "dedicated"
         arguments = (workshop_dir / "model-args.txt").read_text(encoding="utf-8").splitlines()
+        assert "search_pricing_model=dedicated" in arguments
         for role in ("primary", "embedding"):
             version = f"fixture-{role}-version"
             assert recovery["terraform_inputs"][f"{role}_model_version"] == version
@@ -374,3 +376,10 @@ def test_setup_uses_discovered_versions_and_omits_only_optional_sol(
         )
         assert f"enable_evaluation_model={str(evaluation_enabled).lower()}" in arguments
         assert f"evaluation_model_version={expected_evaluation_version}" in arguments
+
+
+def test_setup_exposes_ai_search_serverless_option() -> None:
+    setup_text = SETUP_SH.read_text(encoding="utf-8")
+
+    assert '--ai-search-serverless) SEARCH_PRICING_MODEL="serverless"' in setup_text
+    assert '-var "search_pricing_model=${SEARCH_PRICING_MODEL}"' in setup_text

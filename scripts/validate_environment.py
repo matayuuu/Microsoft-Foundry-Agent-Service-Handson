@@ -322,6 +322,7 @@ REQUIRED_TERRAFORM_OUTPUTS = (
     "embedding_model_deployment_name",
     "search_service_name",
     "search_service_endpoint",
+    "search_pricing_model",
     "travel_api_fqdn",
     "travel_api_container_app_name",
 )

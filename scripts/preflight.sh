@@ -30,9 +30,9 @@ Usage: preflight.sh --subscription <subscription-id> --resource-group <name> [op
 Options:
   --subscription <id>     Azure subscription ID (required).
   --resource-group <name> EXISTING resource group name the participant owns (required).
-  --location <region>     Preferred region. Default: eastus2. Supported:
-                          eastus2, swedencentral, japaneast. Falls back
-                          through the remaining supported regions if needed.
+  --location <region>     Preferred region. Default: japaneast. Recommended:
+                          japaneast, australiaeast, centralus. Legacy explicit
+                          choices eastus2 and swedencentral remain accepted.
   --format <fmt>          Output format: json (default) or markdown.
   --output <file>         Write the report to <file> instead of stdout.
   -h, --help              Show this help and exit.
@@ -46,7 +46,7 @@ EOF
 
 SUBSCRIPTION_ID=""
 RESOURCE_GROUP_NAME=""
-PREFERRED_LOCATION="eastus2"
+PREFERRED_LOCATION="japaneast"
 FORMAT="json"
 OUTPUT_FILE=""
 
@@ -95,8 +95,8 @@ if [[ "${FORMAT}" != "json" && "${FORMAT}" != "markdown" ]]; then
   exit 1
 fi
 
-if [[ "${PREFERRED_LOCATION}" != "eastus2" && "${PREFERRED_LOCATION}" != "swedencentral" && "${PREFERRED_LOCATION}" != "japaneast" ]]; then
-  echo "${SCRIPT_NAME}: --location must be 'eastus2', 'swedencentral', or 'japaneast'" >&2
+if [[ "${PREFERRED_LOCATION}" != "japaneast" && "${PREFERRED_LOCATION}" != "australiaeast" && "${PREFERRED_LOCATION}" != "centralus" && "${PREFERRED_LOCATION}" != "eastus2" && "${PREFERRED_LOCATION}" != "swedencentral" ]]; then
+  echo "${SCRIPT_NAME}: --location must be 'japaneast', 'australiaeast', or 'centralus' (legacy: 'eastus2' or 'swedencentral')" >&2
   exit 1
 fi
 
@@ -107,7 +107,7 @@ for tool in az jq; do
   fi
 done
 
-SUPPORTED_LOCATIONS=("eastus2" "swedencentral" "japaneast")
+SUPPORTED_LOCATIONS=("japaneast" "australiaeast" "centralus" "eastus2" "swedencentral")
 REQUIRED_PROVIDERS=(
   "Microsoft.CognitiveServices"
   "Microsoft.Search"

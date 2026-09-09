@@ -51,11 +51,15 @@ output "embedding_model_deployment_name" {
 }
 
 output "search_service_name" {
-  value = azurerm_search_service.workshop.name
+  value = local.search_service_name
 }
 
 output "search_service_endpoint" {
-  value = "https://${azurerm_search_service.workshop.name}.search.windows.net"
+  value = "https://${local.search_service_name}.search.windows.net"
+}
+
+output "search_pricing_model" {
+  value = var.search_pricing_model
 }
 
 output "log_analytics_workspace_name" {
