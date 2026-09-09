@@ -1,4 +1,4 @@
-"""Static contracts for the Serverless Foundry IQ setup fallback."""
+"""Static contracts for the Foundry IQ Portal picker fallback."""
 
 from pathlib import Path
 
@@ -14,7 +14,10 @@ def test_serverless_foundry_iq_uses_preview_api_and_keyless_auth() -> None:
     assert "az account get-access-token" in text
     assert "https://search.azure.com" in text
     assert "api-key" not in text
-    assert "Authorization: Bearer ${ACCESS_TOKEN}" in text
+    assert "printf 'Authorization: Bearer %s\\n'" in text
+    assert text.count("-H @-") == 2
+    assert '-H "Authorization:' not in text
+    assert "--connect-timeout 15 --max-time 90" in text
 
 
 def test_serverless_foundry_iq_prepares_sources_luna_base_and_smoke_retrieve() -> None:
@@ -33,6 +36,19 @@ def test_serverless_foundry_iq_prepares_sources_luna_base_and_smoke_retrieve() -
     ):
         assert expected in text
     assert "maxOutputSizeInTokens" not in text
+    assert text.count('outputMode: "extractiveData"') == 2
+
+
+def test_foundry_iq_fallback_accepts_completed_workshop_context() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+
+    assert ".workshop/context.json" in text
+    for output in (
+        "search_service_endpoint",
+        "openai_endpoint",
+        "primary_model_deployment_name",
+    ):
+        assert f"(.terraform_outputs // .).{output}.value // empty" in text
 
 
 def test_setup_runs_fallback_only_for_serverless_search() -> None:

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "{{WORKSHOP_SOURCE_BASE}}/data/schemas/eval_case.schema.json",
+  "$id": "urn:contoso:travel-workshop:eval-case",
   "title": "Travel Ops evaluation case",
   "description": "Schema for one line of data/eval/master.jsonl or data/eval/live_subset.jsonl. Defines the exact columns evaluators and the optimizer read, including separate Tool Search meta-calls and underlying operations. Designed to contrast a naive v1 prompt-only agent against an improved v2 agent (Foundry IQ + tools) on the same question set.",
   "type": "object",

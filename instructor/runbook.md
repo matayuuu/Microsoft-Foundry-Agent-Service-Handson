@@ -27,14 +27,60 @@
      `--ai-search-serverless` で Serverless Developer preview を使用します。
   3. 未登録の provider がある場合のみ `--apply` を実行してもらう（quota・policy・
      resource group・role assignment は一切変更しない設計です）。
-- 各参加者（または参加チーム）に対して、既存 resource group を 1 つずつ用意し、
-  参加者本人にその resource group の **Owner** ロールのみを付与してもらいます。
-  subscription スコープの権限は参加者には一切付与しません。
+- 参加者ごとのsandbox subscription、または参加者がworkload用RGを作成できる
+  subscriptionレベルの権限を用意します。参加者へRGの命名規則とlocationを伝え、
+  前提条件の冒頭で専用RGを作成してOwnerを確認してもらいます。
+- Cloud Shell採用時は、同じ権限でCloud Shell専用RG / Storageも自動作成できることを確認します。
+  共有subscriptionで複数参加者をOwnerにする場合は、相互アクセスのリスクを明示します。
+
+### 0.1.1 Codespaces / Cloud Shell の開催条件
+
+- 準備時に [Codespaces](../docs/participant/environments/codespaces.md) または
+  [Cloud Shell Bash + JupyterLab](../docs/participant/environments/cloud-shell.md) を選びます。
+  Lab 2 以降は同じ進行とし、Lab 7 / 8 の Notebook を CLI 手順へ置き換えません。
+- **Cloud Shell は tenant あたり既定20同時ユーザーです。** 講師・補助員・他用途も数え、
+  超える場合は開催前に Azure Support への引き上げ相談を管理者へ依頼します。
+- 管理者に `Microsoft.CloudShell` / `Microsoft.Storage` の登録、Cloud Shell初回UIによる
+  専用RG / Storage / shareの自動作成権限、共有キーとネットワークのpolicy、
+  HTTPS / WSS、GitHub・GHCR・パッケージ配布先の通信を確認してもらいます。
+  通常の `admin-preflight.sh` 成功だけではこれらの確認の代わりになりません。
+- 既存Storageを手動作成する代替経路だけ、**Primary service: Other (tables and queues)**、general-purpose v2 用の
+  **Standard**、LRS を使い、**View automation template > Parameters** の
+  `kind=StorageV2` / `accountType=Standard_LRS` を作成前に確認します。
+  Review の Account type が **Page blobs** と表示される不整合があるため、説明ラベルを必須条件にしません。
+  作成後は `az storage account show` の kind / SKU / `Succeeded` も確認します。
+  **Azure Files** の選択で **File shares / Provisioned v2** へ変わる経路は使いません。
+  storage の region は選択する対応済み Cloud Shell location に合わせ、RG の region から決めません。
+- share の入口は **Data storage > Classic file shares > New classic file share** です。
+  **Backup** の **Enable backup** は既定 On のため、新規・演習専用で任意なら外します。
+  Review の名前、**TransactionOptimized / SMB**、新規 Vault / policy がないことを確認します。
+  組織必須の backup や既存の保護は変更しません。
+- Cloud Shell storage はユーザーごとに分離します。受講者に subscription / 専用RG / account /
+  share / region を控えてもらい、新規作成と既存割り当て、終了時の削除可否を区別します。
+  標準は **We will create a storage account for you** とし、別ユーザーのshareは使わせません。
+- Cloud Shell の既存利用者には設定を黙ってリセットさせません。古い share のマウント失敗後に
+  ephemeral session になっている場合も同様です。別 share への切替は HOME と全 session に影響するため、
+  元の `preferredLocation`、storage / 個人設定と必要なファイルを保全してから管理者と調整します。
+  古い storage が割り当て RG の外にあっても削除しません。
+- Cloud Shell 用 storage の準備・パッケージ取得は開始前に済ませます。
+  本編の時間内に全員分の provider / policy / 同時利用の調整が終わる前提にはしません。
 
 ### 0.2 講師自身のリハーサル（推奨: イベント前日までに 1 回）
 
 - 自分用の resource group で `./scripts/preflight.sh` → `./scripts/setup.sh` を通し、
   `.workshop/context.json` が生成されることを確認します。
+- 採用する実行環境ごとに準備を確認します。Cloud Shell を採用する場合は、
+  参加者ガイドどおりCloud Shellによる専用storageの自動作成・マウントから、Web previewの実URL、
+  Jupyter 認証、両 kernel の Python 3.13、セルの実行・保存、Graphviz の SVG を
+  ブラウザーで確認します。起動ページが表示されただけでは合格にしません。
+- Cloud Shell の **Restart** で同じ repository、保存ファイル、`.venv`、作成後の state /
+  `.workshop/context.json` に戻れることを確認します。**New session** は同じ container の
+  別プロセスなので永続化の検証にはなりません。保存済み Notebook と kernel 内メモリーは区別します。
+- リハーサル前に RG 内の既存 resource と Cloud Shell storage を記録します。終了後は
+  workload cleanup → 安全な成果物の取得 → Jupyter / preview / session 終了 →
+  Cloud Shell設定解除 → 自動作成された専用RG一式の削除を通し、workload用RGと
+  事前からあるresourceが残ることを確認します。
+  token、cookie、Jupyter runtime、Terraform state を画面共有や配布資料に含めません。
 - AgentとFoundry IQは`primary_model_deployment_name`（Luna）を使います。
   Lab 5の設定可能なjudgeは`evaluation_model_deployment_name`、Lab 6の両モデル選択は
   `optimizer_model_deployment_name`（いずれも同じGPT-5.5）を使います。
@@ -47,9 +93,11 @@
 
 ### 0.3 当日開始前チェックリスト
 
-- [ ] 参加者全員が GitHub Codespaces を起動できることを確認済み。
-- [ ] 参加者全員が `az login --use-device-code` を試せる状態（会社ネットワークの
-     デバイスコード認証ブロックがないか事前確認）。
+- [ ] 全員が選んだ実行環境を起動でき、Python 3.13 と2つの kernel の準備が完了している。
+- [ ] Cloud Shell 利用者は永続 HOME の保持を確認済み。tenant 同時利用枠、個人別 storage、
+     HTTPS / WSS とパッケージ配布先の通信が確認済み。
+- [ ] Codespaces は `az login --use-device-code`、Cloud Shell は既存 Azure CLI サインインを確認。
+     未対応 audience 時の device-code 再認証も組織で許可されているか事前確認済み。
 - [ ] `travel-ops-api:v1.0.3` を GHCR に publish 済みで、package visibility が
      **Public** になっている（private repository からの初回 publish 後は GitHub
      package settings で手動変更が必要）。
@@ -71,6 +119,8 @@
   model 推論・embedding・評価 judge・Agent Optimizer のトークン課金、Container Apps
   など、いずれも小さいですが無料ではありません。終了後は必ず Lab 9 の cleanup を
   実行します」（[costs-and-cleanup.md](../docs/costs-and-cleanup.md)）。
+- **実行環境のコスト**: 「Codespaces の稼働・保存、Cloud Shell の永続ストレージにも注意します。
+  Cloud Shell の計算環境が無料でも、storage と Azure workloads は閉じるだけでは消えません」。
 
 ### 00:10–00:30 Lab 1 — 環境構築
 
@@ -83,6 +133,9 @@
 - **つまずきやすい点**: `az login --use-device-code` のブラウザ承認忘れ、
   resource group 名の入力ミス。[docs/participant/troubleshooting.md](../docs/participant/troubleshooting.md)
   を画面共有できるようにしておく。
+- **合流の確認**: 選んだ環境の repository root と2つの `.venv` が準備できたら、
+  Lab 1 の手順 2 以降を全員同じコマンドで進めます。Cloud Shell の一時セッションや
+  未確認の保存先で Terraform を実行させません。
 
 ### 00:30–00:50 Lab 2 — Prompt Agent と Azure AI Search（baseline）
 
@@ -109,11 +162,19 @@
 
 ### 01:25–01:35 休憩
 
+Cloud Shell は非対話20分で終了し得ます。Notebook を保存し、切断された場合は環境ガイドの
+再接続手順を使います。休憩や長時間の remote build / evaluation のために無限 keepalive を
+使わせません。Azure 側の処理は Portal で状態を確認してから再開し、重複送信しません。
+
 ### 01:35–02:10 Lab 4 — Tools・Tool Catalog・Toolbox
 
 - **操作面**: 本編は Web Portal。`prepare_toolbox_assets.py` は素材のローカル出力のみ。
   Notebook で先に Toolbox を作らせない。2026-09-05 の実画面では OpenAPI と Skill upload
   に対応しているため、古い「Portal 非対応」という説明を使わない。
+- **ダウンロードの境界**: Portal の file picker は PC 側です。Codespaces は Explorer の
+  **Download**、Cloud Shell は **Manage files > Download** に生成 ZIP の絶対パスを指定します。
+  `.workshop` が JupyterLab に見えないことをエラーとせず、隠しファイルの全公開や HOME 全体の
+  アーカイブは行わせません。
 - **チェックポイント**: Included に `travel_ops_api`、Code Interpreter、Web Search、
   `travel-estimation`、`preapproval-simulation` があり、Tool Search が On のまま
   Publish されていること。Trace で `tool_search` → `call_tool` → 実 tool を区別する。
@@ -157,6 +218,9 @@
 
 - **学習順序**: Lab 3 の Foundry IQ と Lab 4 の Toolbox / Skills を plain Agent に接続し、
   Harness Agent で plan / todo / memory と tool 選択を追加する。
+- **kernel**: どちらの環境でも **Python (Foundry Hosted Agent)**。
+  VS Code 固有の選択画面は Codespaces ガイド、Cloud Shell は JupyterLab ガイドを案内します。
+  切断で kernel のメモリーが失われた場合は、必要な接続・plan 確認セルから再実行します。
 - **チェックポイント**: 同じ remote resources を使いながら、plain Agent と Harness Agent の
   実行ループの違いを説明できること。Notebook の session state は Lab 8 に引き継がれない。
 - **スキップ時**: 経験者は Lab 3 / 4 の remote resources が準備済みなら Lab 7 Notebook を
@@ -192,8 +256,15 @@
   2. 失敗した場合は Terraform state を削除させない。
      [docs/admin/troubleshooting.md](../docs/admin/troubleshooting.md) に記載の、
      報告されたリソース・操作に対応する手順を一緒に確認する。
-  3. Codespace は cleanup 完了まで削除させない（ローカル Terraform state が
-     Codespaces の永続ワークスペースにのみ存在するため）。
+  3. Codespace または Cloud Shell の storage / HOME image は cleanup 完了まで削除させない。
+     ローカル Terraform state と復旧用 `.workshop` がそこにあるため。
+  4. 成功後に保存する Notebook / 安全な結果を取得し、選択した環境ガイドの終了手順へ進む。
+     Cloud ShellはJupyter shutdown、Web previewの **Close port**、すべてのsessionの
+     `exit`、設定解除の後、**Cloud Shellが自動作成した専用RG一式だけ**をAzure portalで削除する。
+     workloadの`destroy.sh`はCloud Shell storageを管理しない。workload用RG、他人・他用途の
+     storage、検証前からあるCloud Shell設定は削除しない。
+  5. 残存 resource、実行できなかった検証、cleanup の未完了は明記して引き継ぐ。
+     simulated assets を実行成功の証跡にせず、失敗時は state と storage を保持する。
 
 ## 2. 選択ラボへの案内（時間が余った参加者向け）
 

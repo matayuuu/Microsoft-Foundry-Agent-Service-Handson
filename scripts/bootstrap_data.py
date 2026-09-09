@@ -52,7 +52,7 @@ script:
   ``file://`` URI pointing at the resolved RAG directory when not provided
   (useful for direct/local invocation), but ``scripts/setup.sh`` always
   passes a real public source base (this repository's ``main`` branch URL by
-  default) so citations are never a Codespace-local ``file://`` path.
+  default) so citations are never a local ``file://`` path.
 
 If ``data/manifest.json`` does not exist yet, callers should treat that as
 a soft warning (see ``scripts/setup.sh``), not a hard failure -- this
@@ -872,7 +872,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "for citations and the indexed source_url field. Defaults to a local file:// URI over "
         "--rag-dir when not set (useful for direct/local invocation), but scripts/setup.sh "
         "always passes a real public source base so citations/source_url are never a "
-        "Codespace-local file:// path.",
+        "local file:// path.",
     )
     parser.add_argument(
         "--search-endpoint", required=True, help="https://<search-service>.search.windows.net"

@@ -1,10 +1,7 @@
-"""Contract test: every local markdown link in the participant path resolves.
+"""Contract test: local workshop and environment-guide markdown links resolve.
 
-This workstream owns the root README files, ``labs/00-overview.md`` through
-``labs/09-observability-cleanup.md``, and participant support docs. It also reads
-several sibling docs it does not own (``README.md``, ``docs/architecture.md``,
-``docs/feature-support-matrix.md``, ``docs/costs-and-cleanup.md``,
-``docs/participant/prerequisites.md``, ``docs/admin/troubleshooting.md``).
+The checked path includes the root README files, all core labs, both environment
+guides, and their participant, administrator, instructor, and developer support docs.
 A relative markdown link that silently rots (wrong path, typo, moved file) is a
 real participant-facing failure -- they would click through mid-workshop and hit
 a 404. This test statically extracts every ``[text](target)`` link from the
@@ -33,9 +30,11 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LABS_DIR = REPO_ROOT / "labs"
+ENVIRONMENTS_DIR = REPO_ROOT / "docs" / "participant" / "environments"
 OWNED_FILES = [
     REPO_ROOT / "README.md",
     REPO_ROOT / "README.en.md",
+    REPO_ROOT / "AGENTS.md",
     LABS_DIR / "00-overview.md",
     LABS_DIR / "01-setup.md",
     LABS_DIR / "02-prompt-agent.md",
@@ -48,6 +47,18 @@ OWNED_FILES = [
     LABS_DIR / "09-observability-cleanup.md",
     REPO_ROOT / "docs" / "participant" / "prerequisites.md",
     REPO_ROOT / "docs" / "participant" / "troubleshooting.md",
+    ENVIRONMENTS_DIR / "codespaces.md",
+    ENVIRONMENTS_DIR / "cloud-shell.md",
+    REPO_ROOT / "docs" / "admin" / "prerequisites.md",
+    REPO_ROOT / "docs" / "admin" / "troubleshooting.md",
+    REPO_ROOT / "docs" / "architecture.md",
+    REPO_ROOT / "docs" / "costs-and-cleanup.md",
+    REPO_ROOT / "docs" / "feature-support-matrix.md",
+    REPO_ROOT / "instructor" / "README.md",
+    REPO_ROOT / "instructor" / "runbook.md",
+    REPO_ROOT / "src" / "hosted-agent" / "README.md",
+    LABS_DIR / "optional" / "README.md",
+    LABS_DIR / "optional" / "fabric-iq.md",
 ]
 
 _LINK_PATTERN = re.compile(r"\[[^\]\n]+\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
@@ -274,6 +285,7 @@ def test_beginner_path_handles_observed_portal_defaults() -> None:
     toolbox = (LABS_DIR / "04-tools-toolbox.md").read_text(encoding="utf-8")
     optimization = (LABS_DIR / "06-optimization.md").read_text(encoding="utf-8")
     hosted = (LABS_DIR / "08-hosted-multi-agent.md").read_text(encoding="utf-8")
+    codespaces = (ENVIRONMENTS_DIR / "codespaces.md").read_text(encoding="utf-8")
 
     assert "Web search" in prompt and "Remove" in prompt
     assert "web_search" in toolbox and "code_interpreter" in toolbox
@@ -282,9 +294,128 @@ def test_beginner_path_handles_observed_portal_defaults() -> None:
     assert "**Actions > Remove**" in toolbox
     assert "Select dataset and criteria" in optimization
     assert "Generate data" in optimization
-    assert "Jupyter Kernel..." in hosted
+    assert "Jupyter Kernel..." in codespaces
+    assert "Python (Foundry Hosted Agent)" in hosted
     assert "src/hosted-agent/.venv/bin/python" in hosted
-    assert "Recommended" in hosted
+    assert "Recommended" in codespaces
+
+
+def test_environment_selection_converges_on_common_labs_and_notebooks() -> None:
+    for source in (
+        REPO_ROOT / "README.md",
+        REPO_ROOT / "README.en.md",
+        REPO_ROOT / "docs" / "participant" / "prerequisites.md",
+        LABS_DIR / "01-setup.md",
+    ):
+        text = source.read_text(encoding="utf-8")
+        assert "environments/codespaces.md" in text
+        assert "environments/cloud-shell.md" in text
+
+    for lab, notebook in (
+        ("07-agent-framework-harness.md", "07-agent-framework-harness.ipynb"),
+        ("08-hosted-multi-agent.md", "08-hosted-agent.ipynb"),
+    ):
+        text = (LABS_DIR / lab).read_text(encoding="utf-8")
+        assert f"../notebooks/{notebook}" in text
+        assert "Python (Foundry Hosted Agent)" in text
+        assert "environments/codespaces.md#notebook" in text
+        assert "environments/cloud-shell.md#notebook" in text
+        assert "sudo apt-get" not in text
+
+    codespaces = (ENVIRONMENTS_DIR / "codespaces.md").read_text(encoding="utf-8")
+    for preserved_asset in (
+        "lab00-create-codespace.png",
+        "lab07-hosted-kernel.png",
+        "lab08-stop-codespace.png",
+    ):
+        assert preserved_asset in codespaces
+    assert "Codespaces: Stop Current Codespace" in codespaces
+
+    cleanup = (LABS_DIR / "09-observability-cleanup.md").read_text(encoding="utf-8")
+    assert cleanup.index("./scripts/destroy.sh") < cleanup.index("environments/cloud-shell.md#stop")
+    assert "environments/codespaces.md#stop" in cleanup
+
+
+def test_participant_creates_an_empty_workload_group_before_lab_one() -> None:
+    prerequisites = (REPO_ROOT / "docs" / "participant" / "prerequisites.md").read_text(
+        encoding="utf-8"
+    )
+    lab_one = (LABS_DIR / "01-setup.md").read_text(encoding="utf-8")
+
+    for required in (
+        "Resource groups",
+        "Review + create > Create",
+        "Resources**が0件",
+        "Access control (IAM) > View my access",
+        "Owner",
+        "Cloud Shellの初回画面が自動作成する",
+        "Storage用RGは別物",
+    ):
+        assert required in prerequisites
+    assert prerequisites.index("教材workload用のリソースグループを作成する") < (
+        prerequisites.index("実行環境を選ぶ")
+    )
+    assert "参加者向け前提条件で自分が作成したworkload用RG" in lab_one
+    assert "az group create" not in prerequisites
+    assert "az group create" not in lab_one
+
+
+def test_cloud_shell_guide_keeps_a_concise_participant_workflow() -> None:
+    cloud_shell = (ENVIRONMENTS_DIR / "cloud-shell.md").read_text(encoding="utf-8")
+    for required in (
+        "Mount storage account",
+        "We will create a storage account for you",
+        "Select existing storage account",
+        "No storage account required",
+        "https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson.git",
+        'git clone --branch "<branch-name>" --single-branch',
+        'id="setup"',
+        'id="persistence"',
+        "Restart",
+        'id="jupyter"',
+        "start-cloud-shell-jupyter.sh",
+        "source scripts/activate-cloud-shell.sh",
+        'id="notebook"',
+        "Python (Foundry Hosted Agent)",
+        "%pip install",
+        'id="files"',
+        'realpath --relative-to="$HOME"',
+        ".workshop/toolbox/travel-estimation.zip",
+        ".workshop/toolbox/preapproval-simulation.zip",
+        "Manage files > Download",
+        "Download file",
+        'id="resume"',
+        "20分",
+        'id="stop"',
+        "Delete resource group",
+        "Terraform state",
+        "XSRF",
+    ):
+        assert required in cloud_shell
+    assert len(cloud_shell.splitlines()) <= 250
+    assert cloud_shell.index("We will create a storage account for you") < cloud_shell.index(
+        "Select existing storage account"
+    )
+    assert "教材workload用RGは`destroy.sh`でもこの手順でも削除しません" in cloud_shell
+    for removed in (
+        "## 1. 入力する値と組織の許可を確認する",
+        "## 3. 永続 storage と Bash を確認する",
+        "standalone CPython",
+        "micromamba",
+        "SHA-256",
+        "HTTP polling",
+        "Secure / HttpOnly",
+    ):
+        assert removed not in cloud_shell
+    commands = "\n".join(re.findall(r"```bash\n(.*?)```", cloud_shell, re.DOTALL))
+    for forbidden in (
+        "sudo ",
+        "apt-get ",
+        "--allow-origin=*",
+        "az group create",
+        "az group delete",
+    ):
+        assert forbidden not in commands
 
 
 def test_hosted_notebook_keeps_practical_notices_without_preview_disclaimer() -> None:

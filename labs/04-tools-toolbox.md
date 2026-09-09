@@ -37,7 +37,7 @@ Tool Search を有効にすると、最初から全 tool 定義をモデルへ�
 
 ## 1. 貼り付け・アップロード用ファイルを用意する
 
-Codespace の repository root の terminal で次を実行します。
+選んだ実行環境の repository root の Terminal で次を実行します。
 
 ```bash
 .venv/bin/python scripts/prepare_toolbox_assets.py
@@ -53,9 +53,21 @@ Codespace の repository root の terminal で次を実行します。
 | `.workshop/toolbox/preapproval-simulation.zip` | 承認シミュレーション Skill のアップロード |
 | `.workshop/toolbox/portal-values.json` | 自分の環境の Toolbox MCP endpoint などを確認する |
 
-Browser のファイル選択ダイアログは Codespace 内を直接参照できません。
-アップロードする ZIP を VS Code Explorer で右クリックし、**Download** で手元へ保存します。
-この演習では生成された 2 つの ZIP を使います。本文を読むときは次の元ファイルを開きます。
+Browser のファイル選択ダイアログは**手元の PC**を参照し、リモート実行環境内を直接参照できません。
+生成された **2 つの ZIP だけ**を環境ガイドの手順で PC にダウンロードしてからアップロードします。
+[Codespaces の Download](../docs/participant/environments/codespaces.md#files) /
+[Cloud Shell の Manage files > Download](../docs/participant/environments/cloud-shell.md#files)
+を参照してください。Cloud Shell では `.workshop` が隠しフォルダーでも、
+入力欄の HOME prefix に続く**相対パス**を指定し、**Download file** 通知の
+ファイル名リンクから取得できます。JupyterLab に隠しファイルを表示する必要はありません。
+
+OpenAPI の内容は次のコマンドで表示し、JSON 全体だけを schema editor に貼り付けます。
+
+```bash
+cat .workshop/toolbox/travel-ops.openapi.json
+```
+
+Skill の本文を読むときは次の元ファイルを開きます。
 
 - [`travel-estimation/SKILL.md`](../data/skills/travel-estimation/SKILL.md)
 - [`preapproval-simulation/SKILL.md`](../data/skills/preapproval-simulation/SKILL.md)
@@ -204,6 +216,10 @@ Agent の既存 instructions（Lab 3 の規程検索指示）を残したまま�
 - 社内規程と根拠は Foundry IQ Knowledge で検索する。
 - 日当、旅費見積もり、事前承認シミュレーションは Travel Ops API の決定論的な結果を使う。
 - Toolbox tool が必要なときは tool_search で候補を探し、call_tool で選んだ tool を実行する。
+- tool_search の query は日本語の説明文にせず、目的に合う英語の tool 名を1つ使う。
+  見積もりは createTripEstimate、日当照会は getPerDiem、明示された承認シミュレーションは
+  createPreapproval、数値計算は code_interpreter、明示された公開情報検索は web_search。
+  検索結果の正式な name と inputSchema を確認して call_tool を呼び、未発見の tool を推測しない。
 - Code Interpreter は API 結果の数値比較、集計、表整形にだけ使い、規程値や旅程を作らない。
 - Web Search はユーザーが現在の公開旅行情報を明示的に求めた場合だけ使い、出典 URL と
   取得日時を示す。秘密、資格情報、個人情報、顧客データを検索へ送らない。

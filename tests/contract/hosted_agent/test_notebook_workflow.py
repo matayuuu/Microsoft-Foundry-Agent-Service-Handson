@@ -85,6 +85,7 @@ def notebook_namespace(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "path", sys.path.copy())
     credential = _Credential()
+    chat_client.include_harness_tool_events = True
     harness_agent = build_scripted_harness_agent(chat_client)
     monkeypatch.setattr(travel_agents, "create_credential", lambda: credential)
     monkeypatch.setattr(
@@ -170,6 +171,18 @@ def test_notebook_uses_shared_harness_factory_before_building_workflow() -> None
     assert 'default_mode=\\"execute\\"' in text
     assert "intermediate_output_from" in text
     assert "deploy_hosted_agent.py" in text
+
+
+def test_notebook_rejects_a_text_only_harness_response(
+    notebook_namespace: dict[str, Any],
+    chat_client: ScriptedChatClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    chat_client.include_harness_tool_events = False
+
+    with pytest.raises(AssertionError, match="Skill"):
+        asyncio.run(execute_cells(notebook_namespace))
 
 
 def test_notebook_explains_missing_setup(

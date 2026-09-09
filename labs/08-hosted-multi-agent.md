@@ -35,20 +35,17 @@ plan 承認は workflow の途中では行いません。
 
 ## 1. Notebook で作成・可視化・テストする
 
-1. VS Code Explorer で
+1. 選んだ実行環境のファイルブラウザーで
    [`notebooks/08-hosted-agent.ipynb`](../notebooks/08-hosted-agent.ipynb)
    を開きます。
 
-2. Notebook の本文と toolbar が表示されるまで待ち、右上の **Select Kernel** を選択します。
-   すでに kernel 名が出ている場合は、その選択欄を開きます。
-3. kernel の種類を選ぶ画面では **Jupyter Kernel...** を選択します。
-4. **Python (Foundry Hosted Agent)** を選びます。
+2. Notebook の本文と toolbar が表示されるまで待ち、kernel に
+   **Python (Foundry Hosted Agent)** を選びます。
    パスが `src/hosted-agent/.venv/bin/python` であることも確認してください。
-   **Recommended** と表示されても、root の **Python (Foundry Workshop)** は選びません。
-
-![Lab 8 で Hosted Agent 用の名前と src/hosted-agent 内の Python を確認する](../docs/images/lab07-hosted-kernel.png)
-
-5. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばして進めません。
+   root の **Python (Foundry Workshop)** は選びません。
+   画面固有の操作は [Codespaces](../docs/participant/environments/codespaces.md#notebook) /
+   [Cloud Shell の JupyterLab](../docs/participant/environments/cloud-shell.md#notebook) を参照してください。
+3. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばして進めません。
 
 Notebook は次の順に進みます。agent 作成と workflow 構築だけでは推論は始まりません。
 
@@ -58,12 +55,10 @@ Notebook は次の順に進みます。agent 作成と workflow 構築だけで�
 4. 標準依頼を実行し、intake / Harness の途中回答と reviewer の最終回答を比較
 5. Contract test と `workflow.py` / `main.py` との対応を確認
 
-以前作った Codespace に Graphviz がない場合は、Terminal で次を実行し、
-可視化 cell を再実行します。グラフは外部サービスへ送信しません。
-
-```bash
-sudo apt-get update && sudo apt-get install -y graphviz
-```
+Graphviz は環境準備時にインストールします。描画できない場合は
+[Codespaces の Graphviz](../docs/participant/environments/codespaces.md#graphviz) /
+[Cloud Shell の環境準備](../docs/participant/environments/cloud-shell.md#setup) を確認し、
+kernel を再起動して必要なセルを再実行します。グラフは外部サービスへ送信しません。
 
 `intermediate_output_from="all_other"` は Notebook だけの観察設定です。
 デプロイ用 workflow は途中回答を公開せず、reviewer の最終回答だけを返します。

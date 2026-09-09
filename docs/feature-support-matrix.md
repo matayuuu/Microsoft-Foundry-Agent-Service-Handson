@@ -45,9 +45,20 @@ UI が利用できない根拠として解釈しないでください。
 | Lab 5 の設定可能な評価、Lab 6 の Agent Optimizer | 共有のoptional `gpt-5.5` デプロイ。`evaluation_model_deployment_name` / `optimizer_model_deployment_name`。未デプロイ時は Labs 5 / 6 をスキップ |
 | 埋め込み | `text-embedding-3-small`、デプロイ名 `embedding` |
 | Search | Azure AI Search Basic 以上 |
-| ID | 参加者が既存のリソースグループの Owner であること。Foundry のロールはそのリソースグループ内で付与 |
+| ID | 参加者がworkload用RGを作成でき、作成した空のRGでOwnerであること。FoundryのロールはそのRG内で付与 |
 | 可観測性 | プロジェクトに接続されたワークスペースベースの Application Insights |
-| 開発 | Python 3.13 の Codespace と Azure CLI 認証 |
+| 開発 | Codespaces または Azure Cloud Shell Bash + JupyterLab。Python 3.13、2つの `.venv` / kernels、Azure CLI 認証を共用 |
+| Cloud Shell の永続化 | 初回UIが自動作成するユーザー専用RG / Storage / share、または管理者割当の既存Storageと、再起動後のHOME保持確認が必須。Terraform管理外 |
+| Cloud Shell の開催条件 | tenant あたり既定20同時ユーザー。必要時は管理者が Support へ事前相談。HTTPS / WSS と配布先への通信を確認 |
+
+実行環境の選択は [Lab 1](../labs/01-setup.md) の準備時だけです。
+Lab 2〜9 の Portal 操作と既存の Lab 7 / 8 Notebook は共通で、
+Cloud Shell 向けに Notebook を CLI 演習へ置き換えません。
+準備・再接続・終了は [Codespaces](participant/environments/codespaces.md) /
+[Cloud Shell](participant/environments/cloud-shell.md) を参照してください。
+Cloud Shell 固有の制約は2026-09-09取得の公式資料に基づきます。
+採用する tenant / browser での Jupyter、認証付き HTTP kernel relay、Graphviz、永続化の検証は
+[講師のリハーサル](../instructor/runbook.md)で行い、既存 Portal 機能の確認日と混同しません。
 
 ## 提供状況に関する重要事項
 

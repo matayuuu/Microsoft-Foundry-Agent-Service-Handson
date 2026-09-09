@@ -24,7 +24,7 @@ test-hosted:
 	src/hosted-agent/.venv/bin/python -m pytest tests/unit/hosted_agent tests/contract/hosted_agent -q
 
 shell-validate:
-	bash -n scripts/admin-preflight.sh scripts/preflight.sh scripts/request-quota-increase.sh scripts/setup.sh scripts/destroy.sh
+	@for script in scripts/admin-preflight.sh scripts/preflight.sh scripts/request-quota-increase.sh scripts/setup.sh scripts/destroy.sh scripts/prepare_serverless_foundry_iq.sh scripts/cloud-shell-common.sh scripts/setup-cloud-shell.sh scripts/activate-cloud-shell.sh scripts/start-cloud-shell-jupyter.sh; do bash -n "$$script" || exit; done
 
 terraform-validate:
 	terraform -chdir=infra init -backend=false

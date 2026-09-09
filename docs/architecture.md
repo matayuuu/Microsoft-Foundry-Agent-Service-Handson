@@ -3,8 +3,10 @@
 ## 目標
 
 このハンズオンは、`az login` を実行でき、既存の Azure リソースグループに対してのみ
-Owner 権限を持つ参加者が、GitHub Codespace から繰り返し実施できる構成とします。
+Owner 権限を持つ参加者が、GitHub Codespaces または Azure Cloud Shell Bash + JupyterLab から
+繰り返し実施できる構成とします。
 サブスクリプションレベルの事前準備は、参加者によるセットアップと明確に分離しています。
+実行環境の選択は準備時だけに集約し、Lab 2〜9 と Lab 7 / 8 の Notebook を共用します。
 
 必須の手順では、意図的に **Basic Agent Setup** を採用しています。ハンズオンの
 ナレッジ用に Azure AI Search をプロビジョニングしますが、Agent Service の状態は
@@ -35,22 +37,23 @@ Travel Ops API だけは Anonymous** です。
 ```mermaid
 flowchart LR
     browser[参加者のブラウザー] --> portal[Microsoft Foundry ポータル]
-    browser --> codespace[GitHub Codespaces]
-    codespace -->|az login| azure[Azure コントロールプレーンとデータプレーン]
-    codespace -->|Terraform| foundry[Foundry アカウントとプロジェクト]
-    codespace -->|Terraform| search[Azure AI Search]
-    codespace -->|Terraform| monitor[Application Insights]
-    codespace -->|Terraform| api[Travel Ops API]
-    codespace -->|Python による初期データ投入| search
+    browser --> environment["GitHub Codespaces / Azure Cloud Shell Bash + JupyterLab"]
+    environment -.->|Cloud Shell のみ・Terraform 管理外| shellstorage["ユーザー専用 Storage account / Azure Files share"]
+    environment -->|Azure CLI サインイン| azure[Azure コントロールプレーンとデータプレーン]
+    environment -->|Terraform| foundry[Foundry アカウントとプロジェクト]
+    environment -->|Terraform| search[Azure AI Search]
+    environment -->|Terraform| monitor[Application Insights]
+    environment -->|Terraform| api[Travel Ops API]
+    environment -->|Python による初期データ投入| search
     portal --> prompt[Prompt Agent]
     prompt --> iq[Foundry IQ ナレッジベース]
     iq --> search
     prompt --> toolbox[Toolbox]
     toolbox --> api
-    codespace -->|Lab 7 Notebook| codeagent[Agent Framework Agent / Harness Agent]
+    environment -->|Lab 7 Notebook| codeagent[Agent Framework Agent / Harness Agent]
     codeagent --> iq
     codeagent --> toolbox
-    codespace -->|Python SDK によるソースデプロイ| hosted[Hosted Agent]
+    environment -->|Python SDK によるソースデプロイ| hosted[Hosted Agent]
     hosted --> iq
     hosted --> toolbox
     prompt --> monitor
@@ -63,7 +66,8 @@ flowchart LR
 
 | 対象 | 管理主体 | ライフサイクル |
 |---|---|---|
-| 既存のリソースグループ | ハンズオン管理者 | このリポジトリでは作成も削除もしない |
+| 教材workload用リソースグループ | 参加者が前提条件のAzure portal手順で作成 | Terraform実行前は空。このリポジトリでは作成も削除もしない |
+| Cloud Shell の専用 RG / Storage account / Azure Files share | Cloud Shell の初回UIが参加者ごとに自動作成。新規RGを許可しない組織だけ管理者が既存Storageを割り当てる。Terraform管理外 | workload cleanup、成果物退避、session終了、設定解除の後に、自動作成された専用RG一式だけを削除。既存Storageは割当範囲だけを扱う |
 | Foundry アカウント / プロジェクトとモデルのデプロイ | Terraform | `setup.sh` / `destroy.sh` |
 | Search, Application Insights, Container Apps | Terraform | `setup.sh` / `destroy.sh` |
 | Search インデックス内のドキュメント | 初期データ投入アダプター | Terraform の実行後に、繰り返しても結果が変わらない追加・更新（upsert）を実行 |
@@ -76,6 +80,26 @@ flowchart LR
 | Hosted Agent ランタイムの Search / Foundry / テレメトリ用ロール | Hosted Agent デプロイアダプター | ランタイム ID の作成後、Search Index Data Reader、Foundry User、Monitoring Metrics Publisher を各 resource scope で冪等に付与 |
 
 Terraform と SDK ラッパーが同じオブジェクトを管理してはいけません。
+
+### 実行環境と永続化の境界
+
+- Codespaces は既存 devcontainer、Cloud Shell はユーザー領域の準備スクリプトを使います。
+  どちらも Python 3.13 と2つの `.venv` / kernels を維持します。
+  root の `azure-ai-projects==2.5.0` と Hosted Agent の `<2.4` は統合しません。
+- Cloud Shell の JupyterLab は root 環境から起動し、`foundry-workshop` と
+  `foundry-hosted-agent` を選択します。Notebook の公開ルートは repository 内に限定し、
+  認証・XSRF を維持した Web preview を使います。
+- Cloud Shell の HOME は Azure Files に保存される disk image の永続マウントを確認して使用します。
+  repository、`.venv`、Terraform state、`.workshop` は HOME 内へ置き、
+  `clouddrive` の SMB share 直下に実行環境を作りません。ephemeral session は本編の対象外です。
+- HOME の保持は実際の再起動で確認します。ファイル保存はプロセス・kernel 内メモリーの
+  永続化ではありません。再開時は activation、Jupyter 起動、必要なセルの再実行が必要です。
+
+手順は [Codespaces](participant/environments/codespaces.md) /
+[Cloud Shell](participant/environments/cloud-shell.md) を参照してください。
+Cloud Shell 用 storage は、Foundry のナレッジ用 Storage や Terraform remote backend ではありません。
+自動作成されたCloud Shell専用RGは、教材workload用の既存RGとは別であり、
+このリポジトリのTerraformから作成・削除しません。
 
 ## リソース構成
 
@@ -122,12 +146,17 @@ Foundry IQ では Luna、Optimizer の2つのモデル選択では GPT-5.5 を�
 
 ## 認証と認可
 
-参加者は Azure CLI で対話的に認証します。Terraform と Python は
-`DefaultAzureCredential` を通じて、同じキャッシュ済み Entra ID を使用します。
+参加者は Azure CLI のサインインを使います。Terraform は Azure CLI 認証、
+Python は `DefaultAzureCredential` を通じて同じ参加者の Entra ID を使用します。
+Cloud Shell では既存の Azure CLI サインインを使い、教材のローカルプロセスだけ
+`AZURE_TOKEN_CREDENTIALS=AzureCliCredential` に限定します。
+この設定を Hosted Agent のデプロイ先へ渡さず、Hosted runtime は managed identity を使います。
 
 - クライアントシークレットやサービスプリンシパルの資格情報は不要です。
-- 対応しているサービスでは、ローカルキーと共有キーを無効にします。
-- Terraform を通じて、既存のリソースグループ内で参加者に Foundry とデータプレーンのロールを付与します。
+- 対応している Foundry workload のサービスでは、ローカルキーと共有キーを無効にします。
+  Cloud Shell の storage マウントは別のサービス要件です。必要な方式が組織ポリシーで
+  禁止されている場合は、ポリシーを弱めず管理者へ相談します。
+- Terraformを通じて、参加者が事前作成したworkload用RG内でFoundryとデータプレーンのロールを付与します。
 - プロジェクト、Search、Hosted Agent ランタイムの ID には、モデル、データ、
   トレースへのアクセスに必要なリソーススコープのロールのみを付与します。
 - Terraform の状態ファイルにはプロバイダーが生成した資格情報が含まれる可能性があるため、

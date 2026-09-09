@@ -9,6 +9,17 @@ __pycache__/
 htmlcov/
 .venv/
 
+# Jupyter checkpoints, runtime credentials, and accidental local config
+.ipynb_checkpoints/
+.jupyter/
+.jupyter-runtime/
+jpserver-*.json
+jpserver-*-open.html
+kernel-*.json
+jupyter_cookie_secret
+jupyter-cookie-secret
+cloud-shell-resume-check.txt
+
 # Local workshop state and credentials
 .workshop/
 .azure/

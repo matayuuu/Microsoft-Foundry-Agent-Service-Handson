@@ -14,6 +14,9 @@
 - Container Apps はゼロまでスケールできますが、リクエストや関連する Log Analytics への
   データ取り込みには料金が発生する場合があります。
 - Application Insights と Log Analytics では、含まれる利用枠を超えて保持するテレメトリに課金されます。
+- Codespaces は利用時間と保存ストレージが課金対象になり得ます。停止と削除は別です。
+- Cloud Shell の計算環境は無料ですが、永続化用 Storage account / Azure Files の容量・操作には
+  料金が発生します。`exit`、Web preview の閉鎖、ブラウザー終了では storage は消えません。
 
 管理者向けの事前チェックでは、参加者数・チーム数から必要なモデル容量を計算します。
 料金やリージョンごとの提供条件は変わるため、金額の見積もりは行いません。
@@ -24,7 +27,7 @@
 - Search Basic をレプリカ 1、パーティション 1 で使用します。
 - Travel Ops API の最小レプリカ数は 0 のままにします。
 - 実際に実行する評価データのサブセットと、Optimizer の候補数を少なくします。
-- 本編では、エージェント型検索の推論レベルを `low` に保ちます。
+- 本編では、Foundry IQ の推論レベルを Lab 3 で指定する **Medium** にし、不要に引き上げません。
 - ラボに記載されているリクエストのみを使用します。
 - 開催終了後、すぐにクリーンアップを実行します。
 
@@ -55,9 +58,20 @@ Toolbox または Skill の参照が原因で削除に失敗した場合は、
 6. リソースグループ自体は残します。
 7. 検証に成功した後にのみ、ローカルのコンテキストと状態ファイルを削除します。
 
+上記は**教材 workload の削除**です。次に保存した Notebook や安全な結果を必要に応じて
+PC にダウンロードし、準備時に選んだ
+[Codespaces の停止](participant/environments/codespaces.md#stop) /
+[Cloud Shell の終了](participant/environments/cloud-shell.md#stop) を行います。
+Cloud Shell は Jupyter shutdown → Web preview の **Close port** → 各 session の `exit` の後、
+Cloud Shell設定を解除し、初回UIが**その回専用に自動作成したRG一式**だけを削除します。
+既存Storageの代替を使った場合は、許可されたStorage account / File shareだけを扱います。
+Cloud Shell storageはTerraform / `destroy.sh`の対象外であり、教材workload用RG、他用途・
+他ユーザーのstorage、検証前からあるCloud Shell設定は削除しません。
+
 クリーンアップが失敗した場合、Terraform の状態ファイルを削除しないでください。
 スクリプトが報告した正確なリソースと操作を確認し、
 [管理者向けのトラブルシューティング](admin/troubleshooting.md) に従ってください。
+Cloud Shell の場合も、失敗中に share や HOME image を削除しないでください。
 `setup.sh` は、Terraform がリソースを作成できるようになる前に
 `.workshop/terraform-inputs.json` を書き込むため、通常は `destroy.sh` を引数なしで実行して、
 途中まで進んだセットアップから復旧できます。セットアップのコンテキストファイルが
@@ -66,9 +80,13 @@ Toolbox または Skill の参照が原因で削除に失敗した場合は、
 ## 状態ファイルの取り扱い
 
 すべての参加者が状態ファイル共有用のストレージアカウントにアクセスできるとは限らないため、
-既定ではローカルの Terraform 状態ファイルを使用します。状態ファイルは永続的な Codespaces
-ワークスペース内にのみ保存し、Git の管理対象から除外して、機密情報として扱います。
-クリーンアップ前に Codespace を削除しないでください。
+既定ではローカルの Terraform 状態ファイルを使用します。
+Codespaces では永続ワークスペース、Cloud Shell では**保持を確認済みの HOME** 内の repository に保存します。
+Git の管理対象から除外し、`.workshop`、Azure CLI キャッシュ、Jupyter の認証設定も機密情報として扱います。
+cleanup 前に Codespace や Cloud Shell の storage / HOME image を削除しないでください。
+Cloud Shell の永続 share は HOME を保持するためのもので、Terraform remote backend ではありません。
+share へアクセスできる人は HOME image の秘密にもアクセスできる可能性があるため、ユーザーごとに分離します。
+Terraform state や HOME 全体をスクリーンショット・配布用 ZIP に含めません。
 
 主催者が状態ファイル用のストレージアカウントをプロビジョニングし、各参加者にデータプレーンの
 アクセス権限を付与できる場合は、Azure Blob バックエンドのサンプルを選択できます。

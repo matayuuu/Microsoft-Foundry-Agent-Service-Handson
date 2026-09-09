@@ -30,14 +30,23 @@ answering questions about Foundry agents, read the microsoft-foundry skill first
 Terraform owns Azure infrastructure. Python SDK wrappers own Foundry data-plane
 objects such as toolbox versions, evaluation runs, and Hosted Agent versions. Do
 not make Terraform and SDK scripts manage the same object.
+Cloud Shell's user-specific Storage account, Azure Files share, and optional
+Cloud-Shell-created resource group are environment prerequisites managed separately
+through the Azure portal, not Terraform workload resources. Delete only the dedicated
+Cloud Shell resources after workload cleanup succeeds.
 
 ## Non-negotiable constraints
 
-- Participants authenticate with `az login`; do not require client secrets, API keys,
-  or a separate `azd auth login` in the core workshop.
-- Participant automation may write only inside the existing resource group supplied
-  by the user. It must not register resource providers, change quota, create resource
-  groups, or write subscription-scope role assignments.
+- Participants use Azure CLI sign-in (`az login` or Cloud Shell's existing session);
+  do not require client secrets, API keys, or a separate `azd auth login` in the core
+  workshop.
+- Participant workload automation may write only inside the existing resource group
+  supplied by the user. It must not register resource providers, change quota, create
+  resource groups, or write subscription-scope role assignments. Before running that
+  automation, the participant may create the dedicated workload resource group in the
+  Azure portal when the workshop explicitly assumes subscription-level Owner or
+  equivalent permissions. The Cloud Shell first-run UI may separately create its own
+  dedicated storage resource group. Both prerequisite actions stay outside Terraform.
 - Use public endpoints with Microsoft Entra ID/RBAC. Private networking is out of
   scope.
 - Do not add Cosmos DB, ACR, or an Agent capability host to the core Basic Agent
@@ -48,10 +57,24 @@ not make Terraform and SDK scripts manage the same object.
 - Keep actionable billing, authentication, data-boundary, simulation, and cleanup
   guidance visible in the labs. Omit generic preview disclaimers from the
   participant path; retain actual UI labels, API versions, and operational limits.
+- Preserve both browser paths: Codespaces VS Code and Azure Cloud Shell Bash with
+  JupyterLab Web preview. Branch only during environment preparation; share Labs
+  2–9 and the existing Lab 7/8 notebooks. Keep environment-specific UI instructions
+  in `docs/participant/environments/`.
+- Cloud Shell requires verified persistent HOME storage. Prefer the first-run
+  **We will create a storage account for you** path when its subscription-level
+  permissions and policy are approved; retain existing-storage selection as the
+  controlled alternative. Never run Terraform in an ephemeral session, place virtual
+  environments directly on the clouddrive SMB share, reset existing user settings
+  silently, or remove recovery state before cleanup succeeds. A saved notebook does
+  not persist kernel memory.
+- Do not require sudo, OS package installation, or Docker in Cloud Shell. Keep
+  Jupyter authentication and XSRF enabled, restrict access to the actual preview
+  origin, and never expose tokens or credentials in logs or screenshots.
 
 ## Setup commands
 
-Run these commands in the GitHub Codespace:
+Codespaces developer setup (the existing devcontainer path):
 
 ```bash
 python -m venv .venv
@@ -64,6 +87,27 @@ src/hosted-agent/.venv/bin/python -m pip install -r src/hosted-agent/requirement
 az login --use-device-code
 ```
 
+Cloud Shell participants use the
+[environment guide](docs/participant/environments/cloud-shell.md), including
+storage creation/mounting, Jupyter authentication, and reconnection. From the
+repository under persistent HOME:
+
+```bash
+bash scripts/setup-cloud-shell.sh
+source scripts/activate-cloud-shell.sh
+bash scripts/start-cloud-shell-jupyter.sh
+```
+
+The default launcher prepares or reuses dependencies, asks for a private password,
+and captures the actual Web preview URL from the authenticated preview tab. Keep
+explicit `--discover-preview` / `--preview-url` only as troubleshooting paths.
+
+Keep Python 3.13 and both virtual environments. Root tooling requires
+`azure-ai-projects==2.5.0`; Hosted Agent dependencies require a version below 2.4.
+Keep kernel names `foundry-workshop` and `foundry-hosted-agent`. Activation limits
+Cloud Shell local tooling to `AZURE_TOKEN_CREDENTIALS=AzureCliCredential`; never
+propagate that restriction to the deployed Hosted Agent's managed identity.
+
 Participant environment lifecycle:
 
 ```bash
@@ -74,6 +118,9 @@ Participant environment lifecycle:
 
 Subscription administrators use `./scripts/admin-preflight.sh`; its default mode
 must remain read-only.
+Administrators, not participants or bootstrap scripts, register
+`Microsoft.CloudShell` and `Microsoft.Storage`, approve storage/network policy,
+and arrange any increase to Cloud Shell's default 20 concurrent users per tenant.
 
 ## Development workflow
 

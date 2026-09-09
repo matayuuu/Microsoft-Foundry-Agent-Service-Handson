@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prepare the Foundry IQ objects that the current Portal cannot create or
-# enumerate reliably for Azure AI Search Serverless Developer.
+# Work around Portal index/model picker gaps for either Search pricing model.
+# The historical filename is retained for setup.sh compatibility.
 set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
@@ -15,6 +15,8 @@ Usage: prepare_serverless_foundry_iq.sh --terraform-outputs <path>
 Creates or updates the two search-index knowledge sources and the workshop
 knowledge base, then performs one retrieve smoke test. Authentication uses
 the current az login session and Microsoft Entra ID only.
+The input can be terraform output -json or .workshop/context.json.
+Use only for this workshop's named knowledge base, not an unrelated existing base.
 EOF
 }
 
@@ -31,7 +33,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${TERRAFORM_OUTPUTS}" || ! -s "${TERRAFORM_OUTPUTS}" ]]; then
-  echo "${SCRIPT_NAME}: --terraform-outputs must point to terraform output -json data" >&2
+  echo "${SCRIPT_NAME}: --terraform-outputs must point to Terraform outputs or workshop context" >&2
   exit 1
 fi
 
@@ -42,9 +44,9 @@ for tool in az curl jq; do
   fi
 done
 
-SEARCH_ENDPOINT="$(jq -r '.search_service_endpoint.value // empty' "${TERRAFORM_OUTPUTS}")"
-OPENAI_ENDPOINT="$(jq -r '.openai_endpoint.value // empty' "${TERRAFORM_OUTPUTS}")"
-MODEL_DEPLOYMENT="$(jq -r '.primary_model_deployment_name.value // empty' "${TERRAFORM_OUTPUTS}")"
+SEARCH_ENDPOINT="$(jq -r '(.terraform_outputs // .).search_service_endpoint.value // empty' "${TERRAFORM_OUTPUTS}")"
+OPENAI_ENDPOINT="$(jq -r '(.terraform_outputs // .).openai_endpoint.value // empty' "${TERRAFORM_OUTPUTS}")"
+MODEL_DEPLOYMENT="$(jq -r '(.terraform_outputs // .).primary_model_deployment_name.value // empty' "${TERRAFORM_OUTPUTS}")"
 if [[ -z "${SEARCH_ENDPOINT}" || -z "${OPENAI_ENDPOINT}" || -z "${MODEL_DEPLOYMENT}" ]]; then
   echo "${SCRIPT_NAME}: terraform outputs are missing Search, OpenAI, or primary model values" >&2
   exit 1
@@ -64,9 +66,10 @@ trap 'rm -rf "${TEMP_DIR}"' EXIT
 
 put_json() {
   local label="$1" url="$2" payload="$3" response_file="$4" status detail
-  status="$(curl -sS -o "${response_file}" -w '%{http_code}' \
+  status="$(printf 'Authorization: Bearer %s\n' "${ACCESS_TOKEN}" |
+    curl -sS --connect-timeout 15 --max-time 90 -o "${response_file}" -w '%{http_code}' \
     -X PUT "${url}" \
-    -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+    -H @- \
     -H "Content-Type: application/json" \
     -H "Prefer: return=representation" \
     --data "${payload}")"
@@ -129,7 +132,7 @@ KNOWLEDGE_BASE_PAYLOAD="$(jq -nc \
       }
     }],
     retrievalReasoningEffort: {kind: "medium"},
-    outputMode: "answerSynthesis"
+    outputMode: "extractiveData"
   }')"
 put_json \
   "knowledge base ${KNOWLEDGE_BASE_NAME}" \
@@ -150,12 +153,13 @@ RETRIEVE_PAYLOAD="$(jq -nc '{
   maxOutputSize: 100000,
   retrievalReasoningEffort: {kind: "medium"},
   includeActivity: true,
-  outputMode: "answerSynthesis"
+  outputMode: "extractiveData"
 }')"
-RETRIEVE_STATUS="$(curl -sS -o "${TEMP_DIR}/retrieve.json" -w '%{http_code}' \
+RETRIEVE_STATUS="$(printf 'Authorization: Bearer %s\n' "${ACCESS_TOKEN}" |
+  curl -sS --connect-timeout 15 --max-time 90 -o "${TEMP_DIR}/retrieve.json" -w '%{http_code}' \
   -X POST \
   "${SEARCH_ENDPOINT}/knowledgebases('${KNOWLEDGE_BASE_NAME}')/retrieve?api-version=${API_VERSION}" \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H @- \
   -H "Content-Type: application/json" \
   --data "${RETRIEVE_PAYLOAD}")"
 if [[ "${RETRIEVE_STATUS}" != "200" ]]; then

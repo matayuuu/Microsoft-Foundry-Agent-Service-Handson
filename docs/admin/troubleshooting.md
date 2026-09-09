@@ -5,6 +5,36 @@
 参加者が `scripts/setup.sh` の実行中にこれらの問題に遭遇した場合、参加者自身では解決できません。
 管理者によるサブスクリプション全体への操作、または Azure サポートへの問い合わせが必要です。
 
+## Cloud Shell の開催・ストレージ・接続
+
+| 症状 | 確認と対応 |
+|---|---|
+| `Tenant User Over Quota` | **tenant あたり既定20同時ユーザー**。講師・補助員・他部署も含めて数え、開催前に Azure Support へ引き上げを相談する。モデル TPM の変更や新規 RG では解消しない |
+| Cloud Shell / Storage の provider が未登録 | 管理者が **Subscriptions > Resource providers** で `Microsoft.CloudShell` / `Microsoft.Storage` を確認し、必要なものだけ登録する。参加者に `--apply` や subscription 権限を渡さない |
+| `RequestDisallowedByPolicy` / storage の作成・マウントが403 | 自動作成された専用RG / Storage、または管理者割当の既存Storageについて、継承RBACとdenyの詳細を確認する。共有キーアクセス・public networkの禁止を参加者が解除する手順にはしない。標準Cloud Shellが組織方針に適合しない場合は対応不能として調整する |
+| Storage の Review が File shares / Provisioned v2 になる | **Primary service: Azure Files** による作成構成の切替を確認する。作成前に **Other (tables and queues)**、general-purpose v2 用の **Standard**、LRS に戻す。**View automation template > Parameters** の `kind=StorageV2` / `accountType=Standard_LRS` を判断根拠にする |
+| Other / Standard なのに Review が Page blobs と表示される | 2026-09-09 に確認された表示不整合。Review のラベルを必須条件にせず、ARM template の kind / accountType を確認する。作成後は `az storage account show` で `StorageV2` / `Standard_LRS` / `Succeeded` を確認する。表示だけを理由に Premium や FileStorage に変更しない |
+| 古い share に接続できず ephemeral session になる | Bash の起動を永続化の成功とみなさない。元の `preferredLocation`、storage と個人設定を保全し、参加者ガイドの明示的な再設定を行う。新しい storage の region は選択する Cloud Shell location に一致させ、RG の region から推定しない。古い storage は削除しない |
+| File share 作成で追加の vault が表示される | **New classic file share > Backup** の **Enable backup** は既定 On。新しい短期演習用 share で任意なら選択を外し、Review が TransactionOptimized / SMB で、新規 Vault / policy を含まないことを確認する。既存・組織必須の保護は変更しない |
+| `Failed to connect terminal` / Jupyter は開くが kernel が接続しない | Terminal の HTTPS / WSS と preview の HTTPS、企業プロキシ、Relay の名前解決を確認する。専用 launcher の認証付き HTTP channel で両 kernel の確認セルを実行する。browser から kernel への直接 WebSocket を前提にせず、Jupyter 認証、XSRF、Origin 制限を弱めない |
+| 永続 HOME / runtime の判定が合わない | 実機の HOME image は ext2 の場合もある。SMB 上に venv を置かず、backing image と native filesystem を確認する。Jupyter が runtime directory に付ける sticky bit による `1700` は owner-only のままなので許容する。group / other 権限を追加して回避しない |
+| パッケージの取得に失敗する | [配布先の通信条件](prerequisites.md#企業ネットワークの事前確認)を確認する。非承認のミラー、`sudo`、system Python / Azure CLI の改変へ切り替えない |
+| `Audience ... is not a supported MSI token audience` | `az login --use-device-code` が公式の回復手順。Conditional Access で拒否されたら管理者が認証条件を確認し、key / secret へ置き換えない |
+| HOME / venv / state が再接続後にない | 別の share、一時セッション、HOME 永続マウントの不成立を調べる。元の storage / HOME image を削除せず、新しい state で setup を開始しない |
+| Jupyter / build 待ちが切断される | Cloud Shell は非対話20分で終了し、kernel メモリーは失われる。保存ファイルと Azure 側の run / version 状態を確認して再開する。無限 keepalive や重複デプロイで回避しない |
+
+[永続ストレージの文書](https://learn.microsoft.com/azure/cloud-shell/persisting-shell-storage)は
+HOME image の保持を説明する一方、
+[FAQ](https://learn.microsoft.com/azure/cloud-shell/faq-troubleshooting)には HOME が終了時に失われるとの記述があります
+（2026-09-09 取得）。文書だけで保持を保証せず、
+[参加者ガイド](../participant/environments/cloud-shell.md#persistence)の **Restart** 検証を行います。
+`New session` で同じファイルが見えるだけでは検証完了としません。
+
+再接続で前回の storage が選べない場合は、元の `preferredLocation`、
+subscription / RG / account / share と個人設定を保全して調査します。
+**Reset User Settings** は既存の個人設定と全 session に影響するため、自動復旧手順にはしません。
+cleanup が未完了なら storage を残し、残存 resource ID とエラーだけを安全に引き継ぎます。
+
 ## リソースプロバイダーが `NotRegistered` と表示される
 
 `./scripts/admin-preflight.sh --subscription "<id>" --apply` を実行して登録します。
@@ -59,6 +89,25 @@ Foundry IQ は Luna を使います。
 リクエストの集中、トークン量、サービス側の制限も影響します。
 スロットリングが続く場合は同時実行を減らし、再試行の案内に従ってください。
 **課金対象の評価が実行中のまま、むやみに再実行しないでください。**
+
+### 40K の Luna でも自動評価が集中する場合
+
+2026-09-10 の Dedicated Search / Cloud Shell E2E では、7件・候補1件の Optimizer でも、
+Foundry IQ 内の Luna 呼び出しが `429` になりました。実際の割り当ては
+40,000 TPM / 40 RPM、サブスクリプションの同じ `usageName` の上限は1,000Kでした。
+既定の40Kは起動・軽い対話用の容量であり、並列評価の成功を保証する値ではありません。
+
+この検証では、既存クォータ内の空きを別途確認し、`TF_VAR_primary_model_capacity=400` を
+指定した `setup.sh --skip-bootstrap` の保存済み計画をレビューしました。
+対象 subscription / RG と元の入力値を維持し、モデル容量と既存 connection の差分だけを適用後、
+ARM の `rateLimits` が400,000 TPM / 400 RPMであることを確認して、終了済みの評価を再実行しました。
+クォータ上限、policy、認証、Guardrail は変更していません。
+
+400はこの検証の割り当て例であり、全環境の推奨値・最小値ではありません。
+既定の preflight は40 / 100 / 40Kを確認するため、**その成功を上書き容量の確認として使わず**、
+管理者が対象モデル・SKUの空きと既存割り当ての増分を確認してください。
+上書き値は再実行時にも明示し、Terraform 外から同じ deployment を変更しません。
+容量を変えられない場合は並列実行を避け、未解消の `429` がある比較結果を採用しません。
 
 ## カタログにあるモデルが Portal の選択欄に表示されない
 
@@ -153,9 +202,11 @@ Serverless は従量課金で、preview 中は SLA がありません。Dedicate
 2026-08-31 より前の教材では、元文書の複製用に Storage アカウントを作成していました。
 管理グループの `modify` ポリシーでパブリックアクセスが無効になり、
 Codespaces からの初期データ投入が失敗する事象がありました。
-現在の本編では Storage を作成・参照せず、リポジトリの合成ポリシーファイルを
+現在の **Foundry workload の Terraform** ではその Storage を作成・参照せず、リポジトリの合成ポリシーファイルを
 Azure AI Search に直接登録します。教材を更新して `setup.sh` を再実行し、
 古い Storage リソースを Terraform 経由で削除してください。
+これは過去の Codespaces での事象です。今回追加した Cloud Shell の HOME 永続化用
+Storage account / Azure Files share は別用途・別管理であり、上記の削除対象ではありません。
 
 ## 管理者の事前確認は通るのに、参加者の `preflight.sh` が失敗する
 

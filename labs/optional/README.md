@@ -25,6 +25,11 @@
 - 事前収録デモやフォールバック資料を用意したい講師（[instructor/](../../instructor/README.md)
   も参照）。
 
+本編の Codespaces / Cloud Shell 選択は、このディレクトリの追加条件を自動で満たすものではありません。
+特に Toolkit、`azd`、コンテナビルド、Fabric / Microsoft 365 の認証・管理は各教材の条件を確認します。
+Cloud Shell の JupyterLab に VS Code 拡張機能や Docker daemon が用意されるとは仮定せず、
+必要なら組織で承認された別の環境を管理者と用意してください。本編への追加設定は不要です。
+
 ## ラボ一覧
 
 | ラボ | 内容 | 状態 | 追加で必要なもの |

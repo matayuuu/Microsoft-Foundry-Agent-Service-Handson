@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="870" viewBox="0 0 1600 870" role="img" aria-labelledby="title desc">
   <title id="title">Microsoft Foundry Agent Service workshop architecture</title>
-  <desc id="desc">Azure architecture diagram for a portal-first workshop. A participant and GitHub Codespaces access an existing Azure resource group. The resource group contains a Microsoft Foundry account and project, Azure AI Search, and an Azure Container Apps environment. Prompt and hosted agents use model deployments, Foundry IQ, a toolbox, and synthetic data through public endpoints secured with Microsoft Entra ID and Azure RBAC.</desc>
+  <desc id="desc">Azure architecture diagram for a portal-first workshop. A participant uses GitHub Codespaces or Azure Cloud Shell to access an existing Azure resource group. Both environments run the same notebooks. The resource group contains a Microsoft Foundry account and project, Azure AI Search, and an Azure Container Apps environment. Prompt and hosted agents use model deployments, Foundry IQ, a toolbox, and synthetic data through public endpoints secured with Microsoft Entra ID and Azure RBAC. Cloud Shell additionally uses a separately managed Azure Files share for its persistent workspace.</desc>
 
   <defs>
     <marker id="arrow-runtime" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
@@ -175,8 +175,8 @@
       <rect x="82" y="444" width="45" height="34" rx="5" fill="#24292F"/>
       <circle cx="90" cy="452" r="2" fill="#F85149"/><circle cx="97" cy="452" r="2" fill="#F0B72F"/><circle cx="104" cy="452" r="2" fill="#3FB950"/>
       <path d="M90 463l5 4-5 4M100 471h10" fill="none" stroke="#FFFFFF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="140" y="452" class="resource-title">GitHub</text>
-      <text x="140" y="474" class="resource-title">Codespaces</text>
+      <text x="140" y="450" class="resource-title">Codespaces</text>
+      <text x="140" y="473" class="service-subtitle">or Cloud Shell</text>
       <g>
         <rect x="82" y="500" width="72" height="24" rx="12" fill="#F3F4F6"/><text x="118" y="516" text-anchor="middle" class="chip">az login</text>
         <rect x="160" y="500" width="88" height="24" rx="12" fill="#F3F4F6"/><text x="204" y="516" text-anchor="middle" class="chip">Terraform</text>

@@ -3,6 +3,43 @@
 該当する症状だけを確認してください。サブスクリプション全体への対応が必要な場合は
 [管理者向けトラブルシューティング](../admin/troubleshooting.md)へ進みます。
 
+## 実行環境と Cloud Shell
+
+準備・再接続・終了の操作は
+[Codespaces](environments/codespaces.md) / [Cloud Shell](environments/cloud-shell.md) を参照してください。
+環境の問題を理由に Lab 7 / 8 を別の CLI 演習へ置き換えたり、2つの `.venv` を統合したりしません。
+
+| 症状 | 次に行うこと |
+|---|---|
+| `Tenant User Over Quota` | Cloud Shell は tenant あたり既定20同時ユーザーです。講師に知らせます。参加者が quota、provider、RG を増やして解決しません |
+| storage 作成・マウントが拒否される | 自動作成を選んだsubscriptionレベルの作成権限、または既存StorageのRG / account / shareを確認します。policy、firewall、共有キー制限を解除せず管理者へ連絡します |
+| 永続ストレージの検査に失敗する | **Mount storage account** を選んだか、HOME の永続マウントがあるか確認します。ephemeral session のまま `setup.sh` を実行しません。[保持の確認](environments/cloud-shell.md#persistence)に戻ります |
+| Python / Graphviz がない、空き容量が不足 | Cloud Shell は `setup-cloud-shell.sh` の出力を確認します。`sudo` や system Python へのインストールは行いません。他用途のファイルを消さず、容量・通信条件を講師へ伝えます |
+| Jupyter が開かない、`403` / Origin エラー | **Web preview** が開いた実際の HTTPS URL とポートを使っているか確認します。古い preview URL を使わず、ガイドどおり起動し直します。認証・XSRF を無効化しません |
+| Notebook の kernel が接続しない | **Python (Foundry Hosted Agent)** を選びます。Cloud Shell では専用 launcher の認証付き HTTP relay、Codespaces では通常の Notebook 接続を確認します。古い preview URL や切断された Cloud Shell を使わず、認証・XSRF を無効にしません。画面表示だけでなく確認セルを実行します |
+| Cloud Shell が切断された | 非対話20分で session は終了し得ます。[再接続](environments/cloud-shell.md#resume)で同じ storage と repository に戻ります。保存ファイルは保持確認しますが、Python のメモリーは再実行が必要です |
+| Jupyter に `Directory not found` が出る | 先に Cloud Shell の切断表示を確認します。期限切れなら古い preview を閉じ、同じ storage へ再接続して state を確認します。空の repository を作り直しません |
+| Download が失敗する／PC に ZIP が保存されない | 入力欄の HOME prefix が二重になっていないか確認します。prefix がある欄は HOME 相対パスを入力し、続いて **Download file** 通知のファイル名リンクを選びます。[実際の手順](environments/cloud-shell.md#files)を参照してください |
+| 再接続後に context / state が見えない | 新しい repository で setup を実行せず、元の account / share と HOME image を確認します。storage や `.workshop` を削除・初期化しません |
+
+### Cloud Shell の Azure 認証で失敗する
+
+repository root で `source scripts/activate-cloud-shell.sh` を実行し直します。
+この設定はローカル教材プロセスの認証を Azure CLI に限定するもので、
+Hosted Agent のデプロイ先の managed identity を変更しません。
+
+`Audience ... is not a supported MSI token audience` と表示された場合だけ、
+公式 FAQ の回復手順で同じ参加者としてサインインし、subscription を選び直します。
+
+```bash
+az login --use-device-code
+az account set --subscription "<subscription-id>"
+```
+
+Conditional Access や組織の device-code 禁止で拒否された場合は管理者へ連絡します。
+API key / client secret、別人のサインイン、認証保護の無効化へ切り替えません。
+Jupyter を再起動した場合は必要な接続セルを再実行します。
+
 ## 事前確認とセットアップ
 
 ### Owner ロールがない
@@ -122,9 +159,14 @@ JSON 全体を貼り付け、コードブロックを囲むバッククォート
 
 ### ブラウザーのアップロード画面でファイルが見えない
 
-Codespace と手元の PC は別のファイルシステムです。VS Code Explorer の **Download** で
-ZIP または各 `SKILL.md` を手元へ保存してからアップロードします。
-ZIP は `SKILL.md` が直下にある、生成済みのものを使ってください。
+実行環境と手元の PC は別のファイルシステムです。
+[Codespaces の Explorer > Download](environments/codespaces.md#files) または
+[Cloud Shell の Manage files > Download](environments/cloud-shell.md#files) で、
+Lab 4 が生成した2つの ZIP を手元へ保存してからアップロードします。
+Cloud Shell の HOME prefix がある欄では相対パスを入力し、**Download file** 通知の
+ZIP リンクを選びます。`.workshop` は隠しフォルダーなので、
+JupyterLab のファイル一覧に見えなくても異常ではありません。
+ZIP は `SKILL.md` が直下にある生成済みのものを使い、state や `.workshop` 全体は取得しません。
 
 ### Upload skill の後に Add を押せない
 
@@ -140,6 +182,18 @@ Toolbox への認証は Entra ID/RBAC です。OpenAPI の模擬 API の **Anony
 `.venv/bin/python scripts/connect_toolbox.py` を実行します。
 新しい Toolbox は作らず、既存のナレッジを保持して接続だけを追加します。
 403 が続く場合は、対象プロジェクトと呼び出し元 ID の **Foundry User** 権限を講師に確認してもらいます。
+
+### Tool Search が `No tools matched query` で止まる
+
+公開済み Toolbox に対象 tool が含まれることを確認します。日本語の長い検索語では
+built-in tool に一致しない場合があります。**New chat** で依頼をやり直し、
+tool discovery には `web_search`、`code_interpreter`、`createTripEstimate` のような
+英語の tool 名を使うよう指示します。検索対象の公開情報と、tool の発見用キーワードは別です。
+Tool Search を無効化したり、無関係な tool を追加したりして回避しません。
+
+Web Search の回答では、参照 URL、情報の基準日時、実際の取得日時を区別します。
+tool の出力に取得タイムスタンプがない場合は「取得日時は未提供」と記録し、
+ページの更新日時を取得日時として作り替えません。Trace の実行時刻も併せて確認します。
 
 ### Skill を追加したのに手順が反映されない
 
@@ -160,7 +214,10 @@ Skill をエージェントの指示文にコピーする代替手段は、Toolb
 
 ### `Python (Foundry Workshop)` カーネルがない
 
-Codespace を再構築します。急ぐ場合はターミナルで次を実行します。
+選んだ環境ガイドで初期化の完了を確認します。
+Codespaces は devcontainer の再構築、Cloud Shell は永続 HOME の同じ repository で
+`bash scripts/setup-cloud-shell.sh` → `source scripts/activate-cloud-shell.sh` を実行し、
+Jupyter を起動し直します。Codespaces で root `.venv` が正常な場合は、Terminal で次の再登録もできます。
 
 ```bash
 .venv/bin/python -m ipykernel install \
@@ -254,7 +311,10 @@ GPT-5.5 がデプロイ済みで、run を開始した後に候補が生成さ�
 
 ### `Python (Foundry Hosted Agent)` カーネルがない
 
-Codespace を再構築します。急ぐ場合はターミナルで次を実行します。
+選んだ環境ガイドで初期化の完了を確認します。
+Codespaces は devcontainer の再構築、Cloud Shell は永続 HOME の同じ repository で
+`bash scripts/setup-cloud-shell.sh` → `source scripts/activate-cloud-shell.sh` を実行し、
+Jupyter を起動し直します。Codespaces で Hosted Agent 用 `.venv` が正常な場合は、次の再登録もできます。
 
 ```bash
 src/hosted-agent/.venv/bin/python -m ipykernel install \
@@ -303,6 +363,9 @@ Hosted Agent の **Log stream** に `Monitoring Metrics Publisher` または `Fo
 ```
 
 Terraform の状態ファイルと `.workshop/` はクリーンアップ完了の確認に必要です。手動で削除しないでください。
+Cloud Shell の storage / HOME image も、`destroy.sh` が成功するまで削除しません。
+Cloud Shell storage はこのスクリプトの削除対象ではなく、
+[環境ガイドの終了手順](environments/cloud-shell.md#stop)で最後に扱います。
 削除直後の一覧反映には時間差があるため、スクリプトは残存確認を有限回繰り返します。
 途中で失敗して環境情報が残っていれば、Foundry アカウントの削除後でも同じコマンドで再開できます。
 

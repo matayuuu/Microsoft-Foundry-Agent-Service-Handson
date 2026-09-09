@@ -118,6 +118,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -n "${ACC_VERSION:-}" || "${AZUREPS_HOST_ENVIRONMENT:-}" == cloud-shell* || -n "${WORKSHOP_CLOUD_SHELL_REPO:-}" ]]; then
+  source "${SCRIPT_DIR}/cloud-shell-common.sh"
+  cloud_shell_guard "${REPO_ROOT}"
+fi
+
 for tool in terraform jq az; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
     echo "${SCRIPT_NAME}: '${tool}' is required and was not found on PATH" >&2
@@ -214,7 +219,7 @@ for script_name in "${OPTIONAL_CLEANUP_SCRIPTS[@]}"; do
   if [[ -f "${script_path}" ]]; then
     echo "    Running ${script_name}..." >&2
     if [[ -z "${PYTHON_BIN}" || ! -x "${PYTHON_BIN}" ]]; then
-      echo "${SCRIPT_NAME}: workshop Python environment is required to run ${script_name}. Rebuild the Codespace or run 'make install'." >&2
+      echo "${SCRIPT_NAME}: workshop Python environment is required to run ${script_name}. Follow docs/participant/prerequisites.md for the selected environment, then retry; retain Terraform state and .workshop." >&2
       exit 1
     fi
     "${PYTHON_BIN}" "${script_path}" --subscription "${SUBSCRIPTION_ID}" --resource-group "${RESOURCE_GROUP_NAME}"

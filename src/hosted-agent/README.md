@@ -41,10 +41,14 @@ src/hosted-agent/
 └── .agentignore      # Excludes local files from source deployment
 ```
 
-## Local setup
+## Local developer setup in Codespaces
 
 Use the dedicated Python 3.13 environment because the Hosted Agent and root
 deployment scripts require different `azure-ai-projects` versions.
+The commands below retain the Codespaces developer path. Workshop participants
+use the common [Lab 7](../../labs/07-agent-framework-harness.md) and
+[Lab 8](../../labs/08-hosted-multi-agent.md) notebooks rather than replacing them
+with the direct execution examples below.
 
 ```bash
 cd src/hosted-agent
@@ -68,6 +72,34 @@ PORT=8088
 Run `az login` before local execution. `DefaultAzureCredential` uses that
 session locally and the managed identity when the code runs as a Hosted Agent.
 
+### Cloud Shell entry point
+
+Follow the [Cloud Shell environment guide](../../docs/participant/environments/cloud-shell.md)
+for persistent storage, authentication, and browser JupyterLab. From the repository
+root under persistent HOME:
+
+```bash
+bash scripts/start-cloud-shell-jupyter.sh
+```
+
+The command prepares or reuses dependencies and waits for Cloud Shell **Web preview**
+on port 5000. The preview tab submits its actual HTTPS URL to the temporary discovery
+server and reloads into JupyterLab automatically; no hostname is constructed or copied.
+Explicit `--discover-preview` / `--preview-url` modes remain troubleshooting fallbacks.
+The launcher asks for a private password of at least 12 characters twice, without
+echoing it, and also keeps a private token and XSRF protection enabled.
+The bootstrap creates both Python 3.13 environments and kernels; do not merge root
+`azure-ai-projects==2.5.0` with the Hosted Agent's `<2.4` dependencies or manually
+install them into system Python. JupyterLab runs from root and selects the Hosted
+kernel for the same Lab 7 / 8 notebooks. Those notebooks read `.workshop/context.json`;
+participants do not need to create `.env` or edit source.
+
+Activation uses `AZURE_TOKEN_CREDENTIALS=AzureCliCredential` for Cloud Shell local
+tooling only. Never inject it into the deployed Hosted Agent's environment; its
+runtime still uses the managed identity. Reconnect by sourcing activation again,
+starting Jupyter, and rerunning the required cells. Saved notebooks do not preserve
+live Python or AgentSession memory.
+
 ## Build and inspect the agents and workflow in notebooks
 
 Open [the Lab 7 Harness notebook](../../notebooks/07-agent-framework-harness.ipynb) to
@@ -79,9 +111,10 @@ connects them with `SequentialBuilder`, renders the actual graph using
 final output. It then exercises missing-input and overseas-business requests
 and runs network-free contract tests.
 
-Codespace setup installs Graphviz. For an older Codespace, install it with
+Codespace setup installs Graphviz. For an older Codespace only, install it with
 `sudo apt-get update && sudo apt-get install -y graphviz`. No graph content is
-sent to an external rendering service.
+sent to an external rendering service. Cloud Shell instead uses the user-owned
+Graphviz installed by `setup-cloud-shell.sh`; it does not support sudo.
 
 The Lab 8 notebook imports instructions from `workflow.py`. Its explicit construction
 mirrors `build_workflow()`; contract tests execute the saved notebook cells with a

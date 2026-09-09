@@ -39,6 +39,7 @@ class ScriptedChatClient:
     def __init__(self) -> None:
         self.created_agents: list[str] = []
         self.calls: list[dict[str, Any]] = []
+        self.include_harness_tool_events = False
 
     def as_agent(self, *, name: str, instructions: str) -> Agent:
         self.created_agents.append(name)
@@ -67,6 +68,21 @@ class ScriptedChatClient:
             from agent_framework import ChatResponseUpdate, Content, ResponseStream
 
             async def _stream() -> Any:
+                if self.include_harness_tool_events and HARNESS_AGENT_INSTRUCTIONS in instructions:
+                    for name in (
+                        "load_skill",
+                        "knowledge_base_retrieve",
+                        "tool_search",
+                        "call_tool",
+                    ):
+                        yield ChatResponseUpdate(
+                            contents=[
+                                Content.from_function_call(
+                                    call_id=f"synthetic-{name}", name=name, arguments="{}"
+                                )
+                            ],
+                            role="assistant",
+                        )
                 midpoint = len(text) // 2
                 for chunk in (text[:midpoint], text[midpoint:]):
                     yield ChatResponseUpdate(

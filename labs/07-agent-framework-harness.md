@@ -40,17 +40,21 @@ Toolbox へ登録しただけの状態と、Agent が実際に利用した状態
 
 ## 1. Notebook を開く
 
-1. VS Code Explorer で
+1. 選んだ実行環境のファイルブラウザーで
    [`notebooks/07-agent-framework-harness.ipynb`](../notebooks/07-agent-framework-harness.ipynb)
    を開きます。
-2. 右上の **Select Kernel** を選択します。
-3. **Jupyter Kernel... > Python (Foundry Hosted Agent)** を選択します。
-4. kernel の Python が `src/hosted-agent/.venv/bin/python` であることを確認します。
-5. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばしません。
+2. kernel に **Python (Foundry Hosted Agent)** を選択します。
+   選択画面の操作は [Codespaces](../docs/participant/environments/codespaces.md#notebook) /
+   [Cloud Shell の JupyterLab](../docs/participant/environments/cloud-shell.md#notebook) を参照してください。
+3. kernel の Python が `src/hosted-agent/.venv/bin/python` であることを確認します。
+   root の **Python (Foundry Workshop)** は選びません。
+4. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばしません。
 
 Notebook は Lab 1 の `.workshop/context.json` を読みます。接続先や model deployment を
 手入力する必要はありません。認証には Lab 1 と同じ `az login` を使い、API key や
 client secret は使いません。
+Notebook を保存しても、実行中の session、todos、memory が保存されるわけではありません。
+kernel を再起動した場合は接続セルから必要なセルを順番に再実行し、plan の確認もやり直します。
 
 ## 2. Foundry IQ を使う通常の Agent
 

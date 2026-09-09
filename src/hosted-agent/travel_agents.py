@@ -33,7 +33,8 @@ TOOLBOX_NAME_ENV = "TOOLBOX_NAME"
 
 DEFAULT_KNOWLEDGE_BASE_NAME = "contoso-travel-knowledge-lab"
 DEFAULT_TOOLBOX_NAME = "contoso-travel-toolbox"
-FOUNDRY_IQ_API_VERSION = "2026-05-01-preview"
+# Luna is supported by the August API (Microsoft Learn, retrieved 2026-09-10).
+FOUNDRY_IQ_API_VERSION = "2026-08-01-preview"
 SEARCH_TOKEN_SCOPE = "https://search.azure.com/.default"
 
 HARNESS_AGENT_NAME = "travel_harness_agent"
@@ -52,6 +53,10 @@ Web Search を実行しないでください。ユーザーが計画を承認し
 - 社内規程と承認手続きの根拠は Foundry IQ で検索し、引用を付ける。
 - 操作手順が必要なら Toolbox の Skill を読み込み、その手順に従う。
 - Toolbox の tool が必要なら、Tool Search の tool_search で候補を探し、call_tool で実行する。
+- tool_search の query は日本語の説明文にせず、目的に合う英語の tool 名を1つ使う。
+  見積もりは createTripEstimate、日当照会は getPerDiem、明示された承認シミュレーションは
+  createPreapproval、数値計算は code_interpreter、明示された公開情報検索は web_search。
+  検索結果の正式な name と inputSchema を確認して call_tool を呼び、未発見の tool を推測しない。
 - 費用・日当・承認シミュレーションは Travel Ops API の結果を使い、値を創作しない。
 - 比率や複数結果の比較は Code Interpreter を使う。
 - Web Search は、現在の公開情報をユーザーが明示的に求めた場合だけ使い、取得時点と出典を示す。
@@ -244,7 +249,9 @@ def build_environment_harness_agent(
         foundry_iq_tool=foundry_iq_tool,
         toolbox=toolbox,
         default_mode=default_mode,
-        history_provider=InMemoryHistoryProvider(load_messages=not hosted),
+        # Stateless service calls still need one local history for the Harness tool loop.
+        # Disabling loads makes Agent inject a second provider with the same source ID.
+        history_provider=InMemoryHistoryProvider(),
         file_memory_store=file_memory_store,
         default_options={"store": False} if hosted else None,
     )

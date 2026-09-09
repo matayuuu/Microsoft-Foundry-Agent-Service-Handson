@@ -65,6 +65,24 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
 **Retrieval reasoning effort** は初期値の Minimal から **Medium** に変更します。
 **Description** と **Retrieval instructions** は、この演習では空のままで構いません。
 
+> [!NOTE]
+> Dedicated Search でも、Portal の model picker にデプロイ済みの Luna が出ない場合が
+> あります（2026-09-10 の実機確認）。GPT-5.5 への変更やモデルの追加はせず、作成画面を
+> **Cancel** で閉じます。選んだ実行環境の repository root の Terminal で次を実行し、
+> 一覧を再読み込みしてください。
+>
+> ```bash
+> bash scripts/prepare_serverless_foundry_iq.sh --terraform-outputs .workshop/context.json
+> ```
+>
+> スクリプト名は旧 Serverless 手順との互換性のための名前ですが、Dedicated でも使えます。
+> このハンズオン専用の knowledge base と、`contoso-travel-policy-source` /
+> `contoso-travel-approval-source` を準備します。Luna、Medium、Extractive data は上の設定と
+> 同じです。既に編集した同名の knowledge base を上書きする目的では使わないでください。
+> 成功後は source と knowledge base の **Active** を確認し、手順2へ進みます。
+> [公式の対応モデルと API](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base#supported-models)
+> に従い、認証は Microsoft Entra ID のままです。
+
 5. **Knowledge sources (Foundry IQ) > Add sources > Azure AI Search Index** を選択します。
 
 6. ダイアログを次のように設定し、**Create** を選択します。

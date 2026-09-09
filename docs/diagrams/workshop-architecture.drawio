@@ -368,10 +368,10 @@
         <mxCell id="codespaces-icon" value="{ }" style="text;html=0;whiteSpace=wrap;overflow=hidden;rounded=0;strokeColor=none;fillColor=none;fontFamily=Segoe UI,Yu Gothic UI,Meiryo,sans-serif;fontSize=22;fontStyle=1;fontColor=#17212B;align=left;verticalAlign=middle;spacing=0;spacingLeft=0;spacingRight=0;" vertex="1" parent="codespaces">
           <mxGeometry x="16" y="19" width="34" height="34" as="geometry"/>
         </mxCell>
-        <mxCell id="codespaces-title" value="GitHub Codespaces" style="text;html=0;whiteSpace=wrap;overflow=hidden;rounded=0;strokeColor=none;fillColor=none;fontFamily=Segoe UI,Yu Gothic UI,Meiryo,sans-serif;fontSize=22;fontStyle=1;fontColor=#17212B;align=left;verticalAlign=middle;spacing=0;spacingLeft=0;spacingRight=0;" vertex="1" parent="codespaces">
-          <mxGeometry x="58" y="20" width="230" height="31" as="geometry"/>
+        <mxCell id="codespaces-title" value="Codespaces /&#xa;Azure Cloud Shell" style="text;html=0;whiteSpace=wrap;overflow=hidden;rounded=0;strokeColor=none;fillColor=none;fontFamily=Segoe UI,Yu Gothic UI,Meiryo,sans-serif;fontSize=20;fontStyle=1;fontColor=#17212B;align=left;verticalAlign=middle;spacing=0;spacingLeft=0;spacingRight=0;" vertex="1" parent="codespaces">
+          <mxGeometry x="58" y="10" width="230" height="54" as="geometry"/>
         </mxCell>
-        <mxCell id="codespaces-tools" value="VS Code / Notebook / Python 3.13" style="text;html=0;whiteSpace=wrap;overflow=hidden;rounded=0;strokeColor=none;fillColor=none;fontFamily=Segoe UI,Yu Gothic UI,Meiryo,sans-serif;fontSize=16;fontStyle=0;fontColor=#17212B;align=left;verticalAlign=middle;spacing=0;spacingLeft=0;spacingRight=0;" vertex="1" parent="codespaces">
+        <mxCell id="codespaces-tools" value="Notebook / Python 3.13" style="text;html=0;whiteSpace=wrap;overflow=hidden;rounded=0;strokeColor=none;fillColor=none;fontFamily=Segoe UI,Yu Gothic UI,Meiryo,sans-serif;fontSize=16;fontStyle=0;fontColor=#17212B;align=left;verticalAlign=middle;spacing=0;spacingLeft=0;spacingRight=0;" vertex="1" parent="codespaces">
           <mxGeometry x="18" y="68" width="268" height="26" as="geometry"/>
         </mxCell>
         <mxCell id="codespaces-agents" value="Lab 7: plain → Harness Agent&#xa;同じ Models / IQ / Toolbox を利用" style="text;html=0;whiteSpace=wrap;overflow=hidden;rounded=0;strokeColor=none;fillColor=none;fontFamily=Segoe UI,Yu Gothic UI,Meiryo,sans-serif;fontSize=16;fontStyle=0;fontColor=#17212B;align=left;verticalAlign=middle;spacing=0;spacingLeft=0;spacingRight=0;" vertex="1" parent="codespaces">
@@ -380,7 +380,7 @@
         <mxCell id="ingestion-title" value="Lab 1  合成データ投入" style="text;html=0;whiteSpace=wrap;overflow=hidden;rounded=0;strokeColor=none;fillColor=none;fontFamily=Segoe UI,Yu Gothic UI,Meiryo,sans-serif;fontSize=18;fontStyle=1;fontColor=#17212B;align=left;verticalAlign=middle;spacing=0;spacingLeft=0;spacingRight=0;" vertex="1" parent="1">
           <mxGeometry x="64" y="1176" width="308" height="26" as="geometry"/>
         </mxCell>
-        <mxCell id="ingestion-method" value="Codespace で chunk → embed → upsert&#xa;Blob Storage は使用しない" style="text;html=0;whiteSpace=wrap;overflow=hidden;rounded=0;strokeColor=none;fillColor=none;fontFamily=Segoe UI,Yu Gothic UI,Meiryo,sans-serif;fontSize=16;fontStyle=0;fontColor=#465563;align=left;verticalAlign=middle;spacing=0;spacingLeft=0;spacingRight=0;" vertex="1" parent="1">
+        <mxCell id="ingestion-method" value="Python で chunk → embed → upsert&#xa;RAG は Blob Storage を使用しない" style="text;html=0;whiteSpace=wrap;overflow=hidden;rounded=0;strokeColor=none;fillColor=none;fontFamily=Segoe UI,Yu Gothic UI,Meiryo,sans-serif;fontSize=16;fontStyle=0;fontColor=#465563;align=left;verticalAlign=middle;spacing=0;spacingLeft=0;spacingRight=0;" vertex="1" parent="1">
           <mxGeometry x="64" y="1213" width="308" height="51" as="geometry"/>
         </mxCell>
         <mxCell id="step-request" value="1" style="ellipse;html=0;fillColor=#0078D4;strokeColor=none;fontColor=#FFFFFF;fontFamily=Segoe UI,Yu Gothic UI,Meiryo,sans-serif;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">

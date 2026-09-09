@@ -22,6 +22,10 @@
 
 1. イベントの数日前に [runbook.md](runbook.md) の「0. 事前準備」を実施し、
    `admin-preflight.sh` の結果と、参加者数に応じた model quota を確認します。
+   参加者は [Codespaces](../docs/participant/environments/codespaces.md) または
+   [Cloud Shell Bash + JupyterLab](../docs/participant/environments/cloud-shell.md) を準備時に選びます。
+   Cloud Shell の tenant 同時利用制限、専用ストレージ、通信・永続化を事前確認し、
+   同じ Lab 7 / 8 Notebook をブラウザーで実行するリハーサルを行ってください。
 2. 当日は [runbook.md](runbook.md) の時間割に沿って進行し、各区切りのチェックポイントで
    参加者の進捗を確認します。
 3. Optimizer（Lab 6）や評価（Lab 5）、Hosted Agent デプロイ（Lab 8）で live 実行が
@@ -29,7 +33,8 @@
    [completed-run-assets/](completed-run-assets/README.md) の該当資料を画面共有し、
    「本来ならこの形の結果が返ってくる」という参考として説明します。
 4. イベント終了後は [runbook.md](runbook.md) の「cleanup 確認」節に従い、
-   `./scripts/destroy.sh` の実行結果を確認します。
+   `./scripts/destroy.sh` の実行結果を確認します。その後に選んだ環境を終了し、
+   Cloud Shell 用の新規専用ストレージがある場合は、その storage だけを削除します。
 
 ## 関連リンク
 

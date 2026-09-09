@@ -51,14 +51,16 @@ API が返す費用内訳と合計を確認します。これは**学ぶ内容�
 
 ## どこを操作するか
 
-- **ブラウザーの GitHub Codespaces**: ブラウザー内の VS Code で教材ファイルを開きます。
+- **選択したブラウザー実行環境**: GitHub Codespaces の VS Code、または
+  Azure Cloud Shell Bash と Web preview の JupyterLab で同じ教材ファイルを開きます。
   **Terminal** はコマンドを実行する場所、**Notebook** は説明と Python コードを
   小さな単位で読みながら実行するファイルです。必須の Notebook 演習は Lab 7 と Lab 8 です。
 - **別のブラウザータブの Microsoft Foundry Portal**: Agent の設定、会話、評価結果などを
   操作します。教材は **Foundry (new) の English UI・ダークモード**に、日本語で説明を付けています。
 - **手元の PC**: ブラウザーを使い、Lab 4 などでアップロードする素材を保存します。
-  本編のコマンドは PC の PowerShell や Terminal ではなく、**Codespace の Terminal**
-  で実行します。
+  本編のコマンドは PC の PowerShell や Terminal ではなく、**選択した環境の Terminal**
+  で実行します。Portal のファイル選択画面は手元の PC を参照するため、
+  リモート環境で生成した素材は先にダウンロードします。
 
 モデルは合計 **3 deployment**（モデルを呼び出すための配置単位）です。
 **Luna（`gpt-5.6-luna`）** は Prompt / Hosted Agent と Foundry IQ で共有します。
@@ -71,19 +73,34 @@ Luna を使うほかの Lab は完遂できます。
 
 ## 参加条件
 
-- GitHub Codespaces を利用できる GitHub account
 - `az login` が可能な Azure account
-- 管理者から割り当てられた subscription と**既存** resource group
-- その resource group に対する **Owner** role
+- 個人・sandbox subscriptionの **Owner**、または教材workload用RGを作成し、
+  そのRGで **Owner** になれる同等の権限
+- 講師の命名規則に従って参加者が作成する自分専用のworkload用resource group
+- 次のどちらかの実行環境を利用できること
 
 詳しい確認項目は
 [参加者向け前提条件](docs/participant/prerequisites.md)を参照してください。
+
+### 最初に実行環境を選ぶ
+
+| 実行環境 | 追加で必要なもの | 準備ガイド |
+|---|---|---|
+| **GitHub Codespaces**（従来の経路） | Codespaces を利用できる GitHub account | [Codespaces](docs/participant/environments/codespaces.md) |
+| **Azure Cloud Shell Bash + JupyterLab** | 個人検証、または専用RG / Storageを自動作成できるサブスクリプションレベルの権限。管理者によるPolicy・通信・同時利用の確認 | [Cloud Shell](docs/participant/environments/cloud-shell.md) |
+
+**環境を選ぶのは準備時だけです。Lab 2〜9 は同じ手順、Lab 7 / 8 は同じ Notebook を使います。**
+Cloud Shell では公開教材の取得に GitHub account は不要です。Codespaces の利用禁止と、
+GitHub / パッケージ配布先への通信禁止は別なので、組織の許可を確認してください。
+Cloud Shellは初回画面で専用RG / Storage / shareを自動作成できます。
+計算環境は無料ですが、ストレージと教材のAzure利用は有料です。
+開催管理者は **tenant あたり既定20同時ユーザー**の制限を事前に確認します。
 
 ## ハンズオンを始める
 
 **[Lab 0 — 全体像と進め方](labs/00-overview.md) から開始してください。**
 まず作るものを確認し、[参加者向け前提条件](docs/participant/prerequisites.md)で
-Codespace の準備を行います。Azure 環境構築のコマンドは Lab 1 で案内します。
+選んだ実行環境の準備を行います。Lab 1 で共通の Terraform / setup 手順へ合流します。
 各 Lab の完了チェックを確認してから、末尾の「次の Lab」へ進んでください。
 
 ## Agenda
@@ -93,7 +110,7 @@ Codespace の準備を行います。Azure 環境構築のコマンドは Lab 1 
 | Lab | 内容 | 所要時間（目安） |
 |---|---|---:|
 | [Lab 0](labs/00-overview.md) | 全体像と進め方 | 5分 |
-| [Lab 1](labs/01-setup.md) | Codespaces と Terraform による環境構築 | 20分 |
+| [Lab 1](labs/01-setup.md) | 実行環境の準備と Terraform による環境構築 | 20分 |
 | [Lab 2](labs/02-prompt-agent.md) | Prompt Agent と Azure AI Search | 20分 |
 | [Lab 3](labs/03-rag-foundry-iq.md) | Foundry IQ | 25分 |
 | — | 休憩 | 10分 |
@@ -126,5 +143,6 @@ Codespace の準備を行います。Azure 環境構築のコマンドは Lab 1 
 
 > [!WARNING]
 > モデル呼び出し・評価・最適化、Azure resources、Codespaces の利用には料金が発生します。
+> Cloud Shell のストレージも終了後まで課金対象として残ります。
 > ブラウザーを閉じても Azure resources は削除されません。終了時は必ず
-> [Lab 9](labs/09-observability-cleanup.md) の cleanup を実行し、Codespace も停止してください。
+> [Lab 9](labs/09-observability-cleanup.md) の cleanup 後に、選んだ環境ガイドの終了手順を実行してください。

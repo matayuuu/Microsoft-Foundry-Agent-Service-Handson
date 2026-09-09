@@ -41,12 +41,15 @@ Azure 構成の詳細は [アーキテクチャ](../docs/architecture.md)を参�
 
 ## 始める前に
 
-[参加者向け前提条件](../docs/participant/prerequisites.md)に沿って Codespace を準備し、
-講師から subscription ID と resource group 名を受け取ってください。
+[参加者向け前提条件](../docs/participant/prerequisites.md)で Codespaces または
+Cloud Shell Bash + JupyterLab を選び、
+subscription IDと講師の命名規則を確認して、自分の教材workload用resource groupを作成してください。
+環境別の準備は Lab 1 で行います。Lab 2 以降は同じ手順・Notebook へ合流します。
 
 > [!WARNING]
 > モデル・評価・最適化・Azure resources・Codespaces の利用には料金が発生します。
-> 終了時は [Lab 9](09-observability-cleanup.md) の cleanup と Codespace の停止を行ってください。
+> Cloud Shell の計算環境は無料ですが、永続ストレージは課金対象です。
+> 終了時は [Lab 9](09-observability-cleanup.md) の cleanup 後、環境ガイドの終了手順を行ってください。
 > ブラウザーを閉じるだけでは、リソースは削除されません。
 
 実在する個人・顧客・予約の情報や、認証情報・Terraform state は入力・共有しないでください。

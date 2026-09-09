@@ -107,6 +107,12 @@ for tool in az jq; do
   fi
 done
 
+if [[ -n "${ACC_VERSION:-}" || "${AZUREPS_HOST_ENVIRONMENT:-}" == cloud-shell* || -n "${WORKSHOP_CLOUD_SHELL_REPO:-}" ]]; then
+  CLOUD_SHELL_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+  source "${CLOUD_SHELL_REPO}/scripts/cloud-shell-common.sh"
+  cloud_shell_guard "${CLOUD_SHELL_REPO}" --subscription "${SUBSCRIPTION_ID}"
+fi
+
 SUPPORTED_LOCATIONS=("japaneast" "australiaeast" "centralus" "eastus2" "swedencentral")
 REQUIRED_PROVIDERS=(
   "Microsoft.CognitiveServices"

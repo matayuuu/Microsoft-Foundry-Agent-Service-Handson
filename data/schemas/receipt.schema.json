@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "{{WORKSHOP_SOURCE_BASE}}/data/schemas/receipt.schema.json",
+  "$id": "urn:contoso:travel-workshop:receipt",
   "title": "Travel Ops synthetic receipt",
   "description": "Schema for one entry in data/receipts/receipts.json (and the equivalent CSV columns in data/receipts/receipts.csv). No personally identifiable information: employee_alias is an opaque synthetic identifier, never a real name or email.",
   "type": "object",

@@ -54,13 +54,16 @@ These are examples of what to verify, not fixed wording that the model must repr
 
 ## Where you work
 
-- **GitHub Codespaces in your browser:** open files in browser-based VS Code.
+- **Your chosen browser environment:** use VS Code in GitHub Codespaces, or Azure
+  Cloud Shell Bash with JupyterLab through Web preview, to open the same workshop files.
   Its **Terminal** runs commands. A **Notebook** combines explanations with small executable
   Python cells; the required Notebook exercises are in Labs 7 and 8.
 - **Microsoft Foundry Portal in another browser tab:** configure Agents, chat, evaluate,
   optimize, and inspect execution history using **English UI and dark mode**.
 - **Your local PC:** use the browser and save files needed for Portal uploads.
-  Run workshop commands in the **Codespace Terminal**, not your PC's PowerShell or terminal.
+  Run workshop commands in the **chosen environment's Terminal**, not your PC's PowerShell
+  or terminal. Portal file pickers read your local PC, so download generated remote files
+  before uploading them.
 
 The workshop uses **three model deployments** (named model instances you can call):
 **Luna (`gpt-5.6-luna`)** is shared by Prompt/Hosted Agents and Foundry IQ;
@@ -73,18 +76,34 @@ remaining Luna-based labs stay available.
 
 ## Prerequisites
 
-- A GitHub account with Codespaces access
 - An Azure account that can run `az login`
-- An existing resource group assigned by the workshop administrator
-- **Owner** on that resource group
+- **Owner** on an individual or sandbox subscription, or equivalent permission to
+  create the workshop resource group and become its **Owner**
+- A dedicated workload resource group created by the participant using the
+  instructor's naming convention
+- Access to one of the environments below
 
 See [participant prerequisites](docs/participant/prerequisites.md) for the checklist.
+
+### Choose your environment once
+
+| Environment | Additional requirements | Setup guide |
+|---|---|---|
+| **GitHub Codespaces** (the original path) | A GitHub account with Codespaces access | [Codespaces](docs/participant/environments/codespaces.md) |
+| **Azure Cloud Shell Bash + JupyterLab** | Individual validation, or subscription-level permission to let Cloud Shell create a dedicated resource group and storage. Administrator approval for policy, network, and concurrency | [Cloud Shell](docs/participant/environments/cloud-shell.md) |
+
+**Only environment preparation differs. Labs 2–9 and the existing Lab 7 / 8 Notebooks
+are shared.** Cloning the public workshop in Cloud Shell does not require a GitHub account,
+but your organization must allow access to GitHub and the package sources.
+The Cloud Shell first-run UI can create its dedicated resource group, storage
+account, and share. Cloud Shell compute is free; storage and workshop workloads incur charges.
+Organizers must check Cloud Shell's default **20 concurrent users per tenant** limit in advance.
 
 ## Start
 
 **Begin with [Lab 0 — Overview](labs/00-overview.md).**
-Then prepare your Codespace with the [participant prerequisites](docs/participant/prerequisites.md).
-Lab 1 provides the Azure setup commands. Check each lab's completion conditions before
+Then prepare your selected environment with the [participant prerequisites](docs/participant/prerequisites.md).
+Lab 1 brings both paths into the same Terraform / Azure setup commands. Check each lab's completion conditions before
 following its next-lab link.
 
 ## Agenda
@@ -94,7 +113,7 @@ following its next-lab link.
 | Lab | Topic | Estimated time |
 |---|---|---:|
 | [Lab 0](labs/00-overview.md) | Overview and workshop flow | 5 min |
-| [Lab 1](labs/01-setup.md) | Codespaces and Terraform setup | 20 min |
+| [Lab 1](labs/01-setup.md) | Execution environment and Terraform setup | 20 min |
 | [Lab 2](labs/02-prompt-agent.md) | Prompt Agent and Azure AI Search | 20 min |
 | [Lab 3](labs/03-rag-foundry-iq.md) | Foundry IQ | 25 min |
 | — | Break | 10 min |
@@ -124,5 +143,6 @@ You do not need to memorize every service before starting.
 
 > [!WARNING]
 > Model calls, evaluation, optimization, Azure resources, and Codespaces can incur charges.
+> Cloud Shell storage also remains billable after the session ends.
 > Closing your browser does not remove Azure resources. Complete the cleanup in
-> [Lab 9](labs/09-observability-cleanup.md), then stop your Codespace.
+> [Lab 9](labs/09-observability-cleanup.md), then follow your environment guide's shutdown steps.

@@ -2,7 +2,10 @@
 
 ハンズオン前に Azure 環境を準備する **サブスクリプション管理者向け**の手順です。
 参加者はこのページの操作を行わず、[参加者向け前提条件](../participant/prerequisites.md)を確認してください。
-参加者にサブスクリプション全体の権限は不要です。
+この開催モデルでは、個人検証または受講者が専用のworkload用RGとCloud Shell用RG /
+Storage accountを作成できるサブスクリプションレベルの権限を明示的な前提とします。
+最も単純なのは、受講者ごとのsandbox subscriptionにOwnerを付与する方法です。
+共有subscriptionのOwnerは他参加者のRGにもアクセスできるため、管理者がリスクと棚卸しを管理します。
 
 ## 管理者による事前準備が必要な理由
 
@@ -13,6 +16,88 @@ Azure Policy の確認には、サブスクリプション全体に対する権�
 管理者は `scripts/admin-preflight.sh` で事前確認を行います。既定では確認結果の報告だけを行い、
 設定は変更しません。これにより、参加者が実行する `scripts/preflight.sh` と
 `scripts/setup.sh` にサブスクリプション全体の権限を持たせずに済みます。
+
+## 実行環境の選択と Cloud Shell の開催条件
+
+Codespaces の既存経路は維持します。Codespaces を使えない参加者は
+[Azure Cloud Shell Bash + JupyterLab](../participant/environments/cloud-shell.md) を選べます。
+選択は環境準備時だけで、Lab 2〜9 と Lab 7 / 8 の Notebook は共通です。
+Cloud Shell の計算環境は無料ですが、永続ストレージと教材の Azure workloads は課金対象です。
+
+> [!IMPORTANT]
+> **Azure Cloud Shell は tenant あたり既定20同時ユーザーです。**
+> 講師・補助員や同じ tenant の他用途の利用も含め、超える可能性がある場合は開催前に
+> Azure Support へ training の日時・人数を示して引き上げを相談してください。
+> モデルの `--participant-count` の確認や RG の追加では、この制限は増えません。
+> 40名なら最大40個のCloud Shell専用RG / Storageが自動作成され得ます。
+> 講師・補助員・同じtenantの他用途を含めた同時利用枠と、終了後の専用RG棚卸しを準備してください。
+
+Cloud Shell 採用時は、通常の5 provider・モデル確認に加えて、以下を管理者が確認します。
+
+| 確認項目 | 管理者が行うこと |
+|---|---|
+| Resource providers | Azure portal の **Subscriptions > 対象 subscription > Resource providers** で `Microsoft.CloudShell` と `Microsoft.Storage` を確認する。未登録なら権限を持つ管理者だけが **Register** し、`Registered` を確認する |
+| RG / Storage作成の権限 | 各参加者が教材workload用RGを作成してそのRGのOwnerになり、Cloud Shell専用RG / Storageも作成できることを確認する。受講者ごとのsandbox subscription Owner、またはRG作成・role assignment・Storage作成を含む同等の権限を使う |
+| 標準の作成経路 | 初回画面で **Mount storage account > We will create a storage account for you** を選ぶ。自動生成された専用 RG / account / share を参加者ごとに記録し、Terraform の管理対象と混同しない |
+| 既存 Storage の代替 | 新規 RG 作成を許可しない組織だけ、各参加者へ既存 RG 内の StorageV2 / Standard / LRS と Azure Files SMB share を割り当てる。手動作成時は **Primary service: Other (tables and queues)** と **View automation template > Parameters** の `kind=StorageV2` / `accountType=Standard_LRS` を確認する |
+| Storage の region | 自動作成は Cloud Shell に選択させる。既存 Storage の代替では、対応済み Cloud Shell location と一致させる。既存利用者の `preferredLocation` と元の接続を保全する |
+| Storage の利用者分離 | ユーザーごとに自動生成された専用 RG / Storage、または管理者割り当ての専用 Storage / share を使う。他人の share や HOME image は再利用させない |
+| Storage の policy | 標準 Cloud Shell の永続マウントに必要な共有キーアクセスとネットワーク接続が許可されることを確認する。拒否時に参加者へ policy、firewall、共有キー制限の無効化を指示しない |
+| 手動作成時の追加 resource の抑止 | 既存 Storage の代替経路だけ、**Classic file shares > New classic file share** の任意 backup と、新規 Vault / policy の作成有無を確認する。自動作成では Cloud Shell が作った構成を記録し、勝手に変更しない |
+| データ保護 | HOME image には Terraform state、Azure CLI の認証キャッシュ、Jupyter の認証設定が含まれ得る。教材データが合成でも storage 全体は機密として扱う |
+| 永続化 | HOME の永続マウントと実際の **Restart** 後のファイル保持をリハーサルで確認する。`New session` は同じ container を共有するため、永続化の検証にはならない |
+| 既存接続の復旧 | 古い share のマウント失敗後に ephemeral session になっていないか確認する。元の `preferredLocation` と storage / 個人設定を保全して明示的に再設定する。割り当て RG 外の古い storage も無断で削除しない |
+| 実行時間・容量 | 非対話20分で終了する制約、HOME / share の空き容量、Python 3.13 と2つの kernel、Graphviz の SVG 描画を実ブラウザーで確認する |
+
+### Jupyter を Cloud Shell に追加すると増える環境構築
+
+Storage の自動作成で省略できるのは、RG / Storage account / Azure Files share の手動作成だけです。
+Notebook を Cloud Shell で動かすため、次の準備は引き続き必要です。
+
+| 追加要素 | この教材での構築 |
+|---|---|
+| Python 3.13 | Cloud Shell の system Python と分離した公式 standalone CPython を HOME に準備 |
+| 2つの依存環境 | root の `azure-ai-projects==2.5.0` と Hosted Agent の `<2.4` を別 `.venv` に配置 |
+| Notebook runtime | JupyterLab / Jupyter Server / `ipykernel` と2つの kernelspec をユーザー領域に登録 |
+| Graphviz | Lab 8 の実 SVG 用に micromamba / conda-forge の native `dot` をユーザー領域に準備 |
+| Browser 接続 | Web preview の実 URL を確認し、port 5000、専用パスワード、token、Origin / Host / XSRF 制限を設定 |
+| Relay 互換 | Cloud Shell relay の prefix / status / redirect / cookie / browser WebSocket の差を吸収する専用アダプターを起動 |
+| 運用 | Jupyter用と通常コマンド用の2 Terminal、切断後の再起動、Notebook保存とkernelメモリーの区別 |
+
+主な懸念は、非対話20分でJupyterプロセスとkernelメモリーが失われること、Web preview と
+Relay の挙動変更に追随する保守、追加のHTTPS / WSS / package配布先、HOME image内のtokenや
+Terraform stateの保護、初回3GiB程度の空き容量、40名分の個別Storageと同時接続上限です。
+Cloud Shell は汎用計算基盤ではないため、開催前の実ブラウザーE2Eを必須とし、
+認証・XSRF・Origin制限を弱めて問題を回避しません。
+
+`admin-preflight.sh` の既定は引き続き**読み取り専用**です。この Cloud Shell 固有の
+Portal・通信・ストレージ確認を、通常のモデル preflight の成功だけで代用しません。
+参加者用 bootstrap / setup から provider 登録、quota 変更、subscription scope の書き込みは行いません。
+
+### 企業ネットワークの事前確認
+
+Codespaces 禁止と GitHub への通信禁止は別です。Cloud Shell も、教材・パッケージの取得と
+Jupyter のブラウザー接続に以下の通信が必要です。組織の許可リストとプロキシ条件を確認し、
+禁止されている場合は迂回せず、承認された対応を管理者と決めます。
+
+| 通信元 | 必要な接続先・用途 |
+|---|---|
+| 参加者のブラウザー | Azure portal / Microsoft Entra サインイン / Foundry Portal。Cloud Shell Terminal の `*.console.azure.com`、`*.servicebus.windows.net` への HTTPS / WSS。Jupyter の専用 launcher は、実際の Web preview URL への認証付き HTTPS polling を Cloud Shell 内の kernel WebSocket へ中継する |
+| Cloud Shell | 講師指定の公開 GitHub repository、`github.com` と GitHub の release 配布先（`release-assets.githubusercontent.com` など）、PyPI（`pypi.org`、`files.pythonhosted.org`） |
+| Cloud Shell のツール準備 | uv も利用する standalone CPython と micromamba の公式 GitHub releases、conda-forge（`conda.anaconda.org`）。必要なリダイレクト先も確認する |
+| Cloud Shell の共通セットアップ | Terraform registry / provider 配布先（`registry.terraform.io`、`releases.hashicorp.com` など）、公開 GHCR（`ghcr.io` と配布先） |
+| Azure 操作 | `management.azure.com` と、この環境の Foundry / Search / Container Apps / telemetry / source remote build の各 endpoint。Cloud Shell サービスから選択した Azure Files へのマウント |
+
+GitHub account は公開 repository の clone には不要です。参加者へ GitHub token や Storage key の
+貼り付けを求めません。Cloud Shell で未対応の token audience が出た場合は公式手順の
+`az login --use-device-code` を使いますが、Conditional Access などで拒否される場合は管理者へ戻します。
+`sudo`、Docker daemon、Jupyter の認証無効化、ワイルドカードの Origin 許可は解決策にしません。
+
+公式資料（取得日: 2026-09-09）:
+[Cloud Shell FAQ](https://learn.microsoft.com/azure/cloud-shell/faq-troubleshooting) /
+[新しいStorageの自動作成](https://learn.microsoft.com/azure/cloud-shell/get-started/new-storage) /
+[永続ストレージ](https://learn.microsoft.com/azure/cloud-shell/persisting-shell-storage) /
+[shell window と Web preview](https://learn.microsoft.com/azure/cloud-shell/use-the-shell-window)
 
 ## 必要なもの
 
@@ -228,6 +313,9 @@ Luna は Prompt / Hosted Agent と Foundry IQ で共有します。GPT-5.5 は L
 GPT-5.5 は評価と最適化で共有するため、既定値を100にしています。
 2026-09-09 の Serverless E2E では Luna 20K で7件の Portal 評価を実行した際、
 Foundry IQ の並列呼び出し2件が HTTP 429 になったため、Luna は40Kを維持します。
+40Kでも7件の自動評価で十分とは限りません。2026-09-10 の Dedicated E2E では
+Optimizer 内の IQ 呼び出しが429になり、既存クォータ内で一時的に400Kを割り当てました。
+既定値は変更せず、開催時の並列数と実測 `rateLimits` から別途判断してください。
 Optimizer は Max candidates = 1、評価データは7件に限定してトークン消費を抑えます。
 詳細は[実行時の事象と追加の確認事項](troubleshooting.md#クォータに余裕があるのに-http-429-や-foundry-iq-のタイムアウトが発生する)を参照してください。
 
@@ -248,7 +336,9 @@ GPT-5.5 を選択します。GPT-5.5 は2026-09-09時点の公式の最適化モ
 開催前に公式一覧と各選択欄の両方を確認してください。
 カタログ・クォータ上の利用可否や [Search API の対応状況](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
 だけでは、Portal で利用できることの裏付けにはなりません。
-Foundry IQ で Luna を選択できない場合は作業を止めて原因を調べます。GPT-5.5 だけを
+Foundry IQ で Luna を選択できない場合は、デプロイ済み・API対応済みであることを確認し、
+[Lab 3 の限定的な picker 回復手順](../../labs/03-rag-foundry-iq.md)を使います。
+別モデルへの切替や重複デプロイはしません。GPT-5.5 だけを
 選択できない場合は Labs 5 / 6 をスキップし、追加デプロイや別モデルへの
 無断切り替えは行わないでください。
 
@@ -282,12 +372,16 @@ Foundry IQ で Luna を選択できない場合は作業を止めて原因を調
 必要なプロバイダーがすべて `Registered` であり、`japaneast` / `australiaeast` / `centralus` の少なくとも一方に
 全環境分のモデルのクォータ・容量があることを確認してください。
 
-その後、参加者・チームごとにリソースグループを作成するか既存のものを割り当て、
-**その RG だけに Owner ロールを付与**します。このリポジトリと
-[README のクイックスタート](../../README.md#quick-start)を共有してください。
+その後、教材workload用RGの命名規則とlocationを参加者へ伝えます。
+参加者は[参加者向け前提条件](../participant/prerequisites.md)の冒頭でRGを作成し、
+空のRGと自分のOwnerを確認します。このリポジトリの指定ブランチも共有してください。
+Cloud Shell 利用者には、選択する Cloud Shell location と一致する storage 用 region、
+専用 account / share の作成可否、通信の確認結果も伝えます。
+既存ストレージを割り当てる場合は、そのユーザー専用であることと、終了時の削除可否を明記します。
 
-参加者は `scripts/preflight.sh` と `scripts/setup.sh` を実行します。
-両スクリプトは割り当てられたリソースグループの範囲内で動作し、このページに記載した管理者権限は必要ありません。
+参加者は`scripts/preflight.sh`と`scripts/setup.sh`を実行します。
+両スクリプトは参加者が事前作成したworkload用RGの範囲内で動作し、RGやroleを
+subscription scopeへ自動作成しません。
 
 ## 関連資料
 

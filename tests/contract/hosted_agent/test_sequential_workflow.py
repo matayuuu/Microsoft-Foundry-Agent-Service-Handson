@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-from agent_framework import AgentModeProvider, create_harness_agent
+import travel_agents
+from agent_framework import AgentModeProvider, HistoryProvider, create_harness_agent
 from fakes import (
     HARNESS_RESPONSE,
     INTAKE_RESPONSE,
@@ -87,6 +88,37 @@ def test_real_harness_agent_can_run_as_a_sequential_participant(
     assert final_text == REVIEWER_RESPONSE
     assert HARNESS_AGENT_INSTRUCTIONS in chat_client.calls[1]["instructions"]
     assert INTAKE_RESPONSE in chat_client.calls[1]["messages"]
+
+
+def test_hosted_factory_does_not_inject_a_duplicate_history_provider(
+    chat_client: ScriptedChatClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(travel_agents, "create_credential", object)
+    monkeypatch.setattr(travel_agents, "create_chat_client", lambda _: chat_client)
+    monkeypatch.setattr(travel_agents, "create_foundry_iq_tool", lambda _: None)
+    monkeypatch.setattr(travel_agents, "create_toolbox", lambda _: None)
+
+    def build_without_network_tools(**kwargs):
+        return create_harness_agent(
+            client=kwargs["chat_client"],
+            agent_instructions=HARNESS_AGENT_INSTRUCTIONS,
+            history_provider=kwargs["history_provider"],
+            default_options=kwargs["default_options"],
+            mode_provider=AgentModeProvider(default_mode=kwargs["default_mode"]),
+            disable_file_memory=True,
+            disable_todo=True,
+            disable_web_search=True,
+            disable_tool_auto_approval=True,
+        )
+
+    monkeypatch.setattr(travel_agents, "build_harness_travel_agent", build_without_network_tools)
+    harness = travel_agents.build_environment_harness_agent(default_mode="execute", hosted=True)
+    asyncio.run(harness.run(SAMPLE_REQUEST, session=harness.create_session()))
+
+    providers = [p for p in harness.context_providers if isinstance(p, HistoryProvider)]
+    assert len(providers) == 1
+    assert providers[0].load_messages
+    assert harness.default_options["store"] is False
 
 
 def test_workflow_as_agent_returns_only_the_final_review(

@@ -31,6 +31,7 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import jsonschema
 import pytest
@@ -40,6 +41,17 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 REAL_MANIFEST_PATH = REPO_ROOT / "data" / "manifest.json"
 REAL_SCHEMA_PATH = REPO_ROOT / "data" / "schemas" / "manifest.schema.json"
 REAL_DATA_DIR = REPO_ROOT / "data"
+
+
+@pytest.mark.parametrize(
+    "schema_path", sorted((REAL_DATA_DIR / "schemas").glob("*.schema.json")), ids=lambda p: p.name
+)
+def test_schema_identifiers_are_real_uris_not_citation_placeholders(schema_path: Path) -> None:
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    identifier = schema["$id"]
+    assert urlsplit(identifier).scheme in {"urn", "https"}
+    assert "{" not in identifier and "}" not in identifier
+    jsonschema.validators.validator_for(schema).check_schema(schema)
 
 
 def _load_bootstrap_data_module() -> Any:

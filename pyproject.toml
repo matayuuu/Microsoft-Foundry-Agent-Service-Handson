@@ -22,6 +22,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+cloud-shell = [
+  "jupyterlab==4.6.3",
+  "jupyter-server==2.21.0",
+]
 dev = [
   "agent-framework-core==1.15.0",
   "agent-framework-orchestrations==1.1.1",

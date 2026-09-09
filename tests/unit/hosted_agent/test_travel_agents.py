@@ -46,7 +46,7 @@ def test_foundry_iq_tool_builds_expected_knowledge_base_endpoint() -> None:
         try:
             assert tool.url == (
                 "https://search.example.invalid/knowledgebases/travel-kb/"
-                "mcp?api-version=2026-05-01-preview"
+                "mcp?api-version=2026-08-01-preview"
             )
             assert tool.allowed_tools == ["knowledge_base_retrieve"]
         finally:
@@ -134,6 +134,12 @@ def test_agent_instructions_keep_source_and_action_boundaries_visible() -> None:
         "Skill",
         "tool_search",
         "call_tool",
+        "英語の tool 名",
+        "createTripEstimate",
+        "getPerDiem",
+        "createPreapproval",
+        "code_interpreter",
+        "web_search",
         "Travel Ops API",
         "Code Interpreter",
         "Web Search",
@@ -142,7 +148,7 @@ def test_agent_instructions_keep_source_and_action_boundaries_visible() -> None:
         assert required in instructions
 
 
-def test_hosted_harness_uses_response_history_as_single_owner(
+def test_hosted_harness_keeps_local_history_for_stateless_tool_calls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     credential = object()
@@ -185,6 +191,6 @@ def test_hosted_harness_uses_response_history_as_single_owner(
     assert captured["foundry_iq_tool"] is iq_tool
     assert captured["toolbox"] is toolbox
     assert captured["default_mode"] == "execute"
-    assert captured["history_provider"].load_messages is False
+    assert captured["history_provider"].load_messages is True
     assert captured["file_memory_store"] == "memory-store"
     assert captured["default_options"] == {"store": False}

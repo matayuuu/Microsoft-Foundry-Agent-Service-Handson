@@ -88,7 +88,7 @@ Options:
   --source-base <url>   Public base URL substituted for data/manifest.json's
                         source_url_base_placeholder token (used for citations
                         and each indexed chunk's source_url field). Must be a
-                        real, publicly reachable URL -- never a Codespace-local
+                        real, publicly reachable URL -- never a local
                         file:// path. Defaults to this repository's own GitHub
                         main-branch "blob/main" URL, derived from `git remote
                         get-url origin` when available, or the fixed
@@ -142,6 +142,11 @@ if [[ -z "${SUBSCRIPTION_ID}" || -z "${RESOURCE_GROUP_NAME}" ]]; then
   echo "${SCRIPT_NAME}: --subscription and --resource-group are both required" >&2
   usage >&2
   exit 1
+fi
+
+if [[ -n "${ACC_VERSION:-}" || "${AZUREPS_HOST_ENVIRONMENT:-}" == cloud-shell* || -n "${WORKSHOP_CLOUD_SHELL_REPO:-}" ]]; then
+  source "${SCRIPT_DIR}/cloud-shell-common.sh"
+  cloud_shell_guard "${REPO_ROOT}"
 fi
 
 if [[ -n "${TRAVEL_API_IMAGE_REF}" && ( -n "${TRAVEL_API_IMAGE_REPO}" || "${TRAVEL_API_IMAGE_TAG}" != "v1.0.3" ) ]]; then
@@ -441,7 +446,7 @@ if [[ ! -x "${PYTHON_BIN}" ]]; then
   PYTHON_BIN="$(command -v python3 || true)"
 fi
 if [[ -z "${PYTHON_BIN}" || ! -x "${PYTHON_BIN}" ]]; then
-  echo "${SCRIPT_NAME}: workshop Python environment not found. Rebuild the Codespace or run 'make install'." >&2
+  echo "${SCRIPT_NAME}: workshop Python environment not found. Follow docs/participant/prerequisites.md for the selected environment, then retry; retain Terraform state and .workshop." >&2
   exit 1
 fi
 

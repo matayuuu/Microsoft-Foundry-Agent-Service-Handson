@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "{{WORKSHOP_SOURCE_BASE}}/data/schemas/manifest.schema.json",
+  "$id": "urn:contoso:travel-workshop:manifest",
   "title": "Travel Ops corpus manifest",
   "description": "Deterministic manifest describing search-index partitions and every synthetic corpus document, receipt fixture, trip fixture, and evaluation file shipped under data/. bootstrap_data.py uses this contract to verify checksums before indexing content into Azure AI Search / Foundry IQ.",
   "type": "object",

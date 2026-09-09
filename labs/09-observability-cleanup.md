@@ -78,7 +78,7 @@ Trace には prompt、response、tool の引数が保存されます。実デー
 
 ## 4. Cleanup を実行する
 
-repository root の terminal で実行します。
+選んだ実行環境の repository root の Terminal で実行します。
 
 ```bash
 ./scripts/destroy.sh
@@ -92,29 +92,27 @@ repository root の terminal で実行します。
 ## Cleanup の完了チェック
 
 - Command が exit code `0` で終了する
-- Workshop 管理 resource が resource group に残っていない
+- Terraform / SDK 管理の Workshop resource が resource group に残っていない
 - Cleanup 成功後に `.workshop/` の生成 context が削除される
+
+Cloud Shell の Storage account / Azure Files share はこのコマンドの削除対象外です。
+次の環境ガイドで、教材の削除完了と保存するファイルを確認した**後**に扱います。
 
 失敗した場合は Terraform state や `.workshop/` を手動で消さず、
 [クリーンアップのトラブルシューティング](../docs/participant/troubleshooting.md#クリーンアップ)を確認して
 同じ command を再実行してください。
 
-## 5. Codespace を停止する
+## 5. 選んだ実行環境を終了する
 
-Azure の cleanup が完了したら、Codespace の稼働も止めます。
-**Codespace を停止するだけでは Azure resources は削除されません。**
-必ず上の cleanup の完了を先に確認してください。
+**上の cleanup の完了を先に確認**し、残す Notebook や安全な結果を保存・ダウンロードします。
+Terraform state、`.azure`、Jupyter の認証情報は配布物やスクリーンショットに含めません。
+準備時に選んだ環境の終了手順へ進んでください。
 
-1. 残しておきたい Notebook などの作業を保存します。
-2. **Ctrl+Shift+P**（macOS は **Cmd+Shift+P**）で Command Palette を開きます。
-3. `Codespaces: Stop Current Codespace` と入力し、同名の項目を選択します。
+- [Codespaces の停止](../docs/participant/environments/codespaces.md#stop)
+- [Cloud Shell の Jupyter 停止・Web preview 閉鎖・専用ストレージの削除](../docs/participant/environments/cloud-shell.md#stop)
 
-![Lab 9 で Command Palette から Codespaces: Stop Current Codespace を選択する](../docs/images/lab08-stop-codespace.png)
-
-4. 停止処理が終わり、**Codespace is stopped** と表示されることを確認します。
-   **Stopping codespace...** の表示が続く場合は、ブラウザーを再読み込みして確認します。
-
-5. **Restart codespace** は押さず、ブラウザーのタブを閉じます。
+ブラウザーや実行環境を閉じるだけでは Azure resources は削除されません。
+Cloud Shell の場合も、resource group 自体や以前からある他用途のストレージは削除しません。
 
 ## 完了
 

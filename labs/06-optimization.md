@@ -36,7 +36,7 @@ optional deployment が省略されています。
 ### GPT-5.5 が未デプロイの場合
 
 1. 追加のモデルはデプロイしません。
-2. Codespace で
+2. 選んだ実行環境のファイルブラウザーで
    `instructor/completed-run-assets/optimizer-run.simulated.json` を開きます。
 3. baseline と candidate の score、`instructions_diff_summary_ja` を比較し、
    「すべての候補が baseline を下回る場合は現状維持」という判断基準を確認します。
