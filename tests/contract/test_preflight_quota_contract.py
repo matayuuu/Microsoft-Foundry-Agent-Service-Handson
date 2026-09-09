@@ -13,7 +13,7 @@ entries key on `name.value` matching that exact usageName string and report
 They assert the behaviors AGENTS.md and the follow-up hardening pass require:
 
 * The specific SKU (GlobalStandard for all three deployments) and per-model
-  capacity (20/100/20, matching infra/variables.tf) are what gates region
+  capacity (40/100/40, matching infra/variables.tf) are what gates region
   resolution for required models and optional Sol availability.
 * `usageName` is read from the model's own `skus[]` entry, never
   reconstructed from the model name. Synthetic aliases retain the historic
@@ -252,11 +252,11 @@ MODELS_ISDEFAULTVERSION_PREFERRED_FIXTURE = [
 
 def _sufficient_usage_fixture() -> list[dict]:
     return [
-        _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),  # headroom 100 >= 20
+        _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),  # headroom 100 >= 40
         _usage_entry(SOL_GLOBALSTANDARD_USAGE, limit=120.0, current=20.0),  # headroom 100 == 100
         _usage_entry(
             EMBEDDING_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0
-        ),  # headroom 100 >= 20
+        ),  # headroom 100 >= 40
     ]
 
 
@@ -272,7 +272,7 @@ def _insufficient_sol_usage_fixture() -> list[dict]:
 
 def _insufficient_primary_usage_fixture() -> list[dict]:
     return [
-        _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=20.0, current=1.0),
+        _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=40.0, current=1.0),
         _usage_entry(SOL_GLOBALSTANDARD_USAGE, limit=120.0, current=20.0),
         _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE, limit=100.0, current=0.0),
     ]
@@ -366,7 +366,7 @@ def test_resolves_preferred_region_with_sufficient_capacity_evidence(
     assert evidence[PRIMARY_MODEL] == {
         "sku": "GlobalStandard",
         "usage_name": GPT41_GLOBALSTANDARD_USAGE,
-        "required_capacity_k": 20,
+        "required_capacity_k": 40,
     }
     assert evidence[EVALUATION_MODEL] == {
         "sku": "GlobalStandard",
@@ -376,7 +376,7 @@ def test_resolves_preferred_region_with_sufficient_capacity_evidence(
     assert evidence["text-embedding-3-small"] == {
         "sku": "GlobalStandard",
         "usage_name": EMBEDDING_GLOBALSTANDARD_USAGE,
-        "required_capacity_k": 20,
+        "required_capacity_k": 40,
     }
     assert report["resolved_model_versions"][PRIMARY_MODEL] == "2025-04-14"
     assert report["resolved_model_versions"][EVALUATION_MODEL] == "2026-08-01"
@@ -432,8 +432,8 @@ def test_falls_back_to_swedencentral_when_eastus2_headroom_insufficient(
     ]
     assert eastus2_primary_checks, "expected an explicit Luna quota-usage check"
     assert eastus2_primary_checks[0]["status"] == "fail"
-    assert "headroom=19K" in eastus2_primary_checks[0]["detail"]
-    assert "< required 20K" in eastus2_primary_checks[0]["detail"]
+    assert "headroom=39K" in eastus2_primary_checks[0]["detail"]
+    assert "< required 40K" in eastus2_primary_checks[0]["detail"]
 
 
 def test_fails_without_resolving_when_no_region_has_sufficient_capacity(

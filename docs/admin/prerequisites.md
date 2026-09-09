@@ -88,9 +88,9 @@ TPM は1分あたりのトークン数を表します。
 
 | モデル | デプロイ名 | 1環境あたりの必要な空き容量 | 用途 |
 | --- | --- | --- | --- |
-| `gpt-5.6-luna` | `gpt-5.6-luna` | **20K TPM** | Prompt / Hosted Agent、Foundry IQ、Agent Optimizer（`primary_model_deployment_name`） |
+| `gpt-5.6-luna` | `gpt-5.6-luna` | **40K TPM** | Prompt / Hosted Agent、Foundry IQ、Agent Optimizer（`primary_model_deployment_name`） |
 | `gpt-5.6-sol` | `gpt-5.6-sol` | **100K TPM** | Lab 5 の設定可能な LLM 評価用モデル（`evaluation_model_deployment_name`、クォータ不足時は省略可） |
-| `text-embedding-3-small` | `embedding` | **20K TPM** | ベクトルインデックス用の埋め込み |
+| `text-embedding-3-small` | `embedding` | **40K TPM** | ベクトルインデックス用の埋め込み |
 
 2つのチャットモデル名は教材の固定要件です。**バージョンはカタログから取得**し、推測や別のモデル系列への切り替えは行いません。
 Luna は必須で、Sol は有効化する場合だけバージョンを Terraform に渡します。
@@ -141,7 +141,7 @@ Azure Policy によって教材のリソースがブロックされないか、�
 ```
 
 各モデルの1環境あたりの必要容量に `<n>` を掛けて確認します。
-たとえば12環境では、`gpt-5.6-luna` は **20K × 12 = 240K TPM**、
+たとえば12環境では、`gpt-5.6-luna` は **40K × 12 = 480K TPM**、
 `gpt-5.6-sol` は **100K × 12 = 1,200K TPM** が必要です。
 レポートには環境数に加え、モデル・リージョンごとの計算式と取得した空き容量を表示します。
 `--participant-count` は正の整数で指定してください。不正な値の場合は Azure を呼び出す前に終了コード `1` で停止します。
@@ -222,12 +222,13 @@ Searchの上限緩和はリージョン内の物理容量を予約する申請�
 Luna は Prompt / Hosted Agent、Foundry IQ、Optimizer で共有し、Sol は Lab 5 の評価専用です。
 評価では評価対象の Luna エージェントも呼び出します。
 
-既定の容量単位は Luna / Sol / 埋め込みの順に **20 / 100 / 20** です。
+既定の容量単位は Luna / Sol / 埋め込みの順に **40 / 100 / 40** です。
 開催前に同時実行のリハーサルと最新のクォータ確認を行ってください。
 評価モデルは20単位で7行の Portal 評価を実行した際にスロットリングが発生したため、
 Sol の既定値を100にしています。
-Luna と埋め込みは 20 単位を既定とし、Optimizer は Max candidates = 1、
-評価データは 7 件に限定してトークン消費を抑えます。
+2026-09-09 の Serverless E2E では Luna 20K で7件の Portal 評価を実行した際、
+Foundry IQ の並列呼び出し2件が HTTP 429 になったため、Luna は40Kを維持します。
+Optimizer は Max candidates = 1、評価データは7件に限定してトークン消費を抑えます。
 詳細は[実行時の事象と追加の確認事項](troubleshooting.md#クォータに余裕があるのに-http-429-や-foundry-iq-のタイムアウトが発生する)を参照してください。
 
 `GlobalStandard` の容量は、既存のサブスクリプションのモデル・SKU 別クォータから
@@ -237,7 +238,7 @@ Luna と埋め込みは 20 単位を既定とし、Optimizer は Max candidates 
 100単位でも HTTP 429 が発生しない保証はありません。デプロイ後の `rateLimits` を確認し、
 Agent / IQ / Optimizer の Luna 負荷と、Lab 5 の Sol 評価負荷を分けてリハーサルしてください。
 
-Terraform の容量変数は変更できますが、両方の事前確認スクリプトは既定の **20 / 100 / 20** を確認します。
+Terraform の容量変数は変更できますが、両方の事前確認スクリプトは既定の **40 / 100 / 40** を確認します。
 変更する場合は、スクリプトの確認対象容量と Terraform の入力値をそろえて再確認してください。
 
 ### Portal でのモデル選択

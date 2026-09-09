@@ -11,8 +11,8 @@ report `limit`/`currentValue` in thousands of TPM).
 They assert the behavior this hardening pass requires:
 
 * `--participant-count` defaults to 1 and multiplies each model's
-  per-environment required capacity (gpt-5.6-luna 20K, gpt-5.6-sol 100K,
-  text-embedding-3-small 20K) by the participant count to get the
+  per-environment required capacity (gpt-5.6-luna 40K, gpt-5.6-sol 100K,
+  text-embedding-3-small 40K) by the participant count to get the
   AGGREGATE requirement the whole event needs from a single region's quota
   pool -- not just one environment's worth.
 * Headroom that is sufficient for one environment but not for N
@@ -335,7 +335,7 @@ def test_defaults_participant_count_to_one_and_reports_it(
         c for c in report["checks"] if c["name"] == f"model-sku:{PRIMARY_MODEL}/eastus2"
     )
     assert gpt41_eastus2["status"] == "pass"
-    assert "20K * 1 participant(s) = 20K" in gpt41_eastus2["detail"]
+    assert "40K * 1 participant(s) = 40K" in gpt41_eastus2["detail"]
     model_checks = [c for c in report["checks"] if c["name"].startswith("model-sku:")]
     assert {c["name"].split(":")[1].split("/")[0] for c in model_checks} == {
         PRIMARY_MODEL,
@@ -354,21 +354,21 @@ def test_defaults_participant_count_to_one_and_reports_it(
 def test_aggregate_capacity_scales_with_participant_count(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    # Headroom of 50K covers 2 participants' worth of primary (2*20=40) but
-    # not 3 (3*20=60). Sol headroom of 250K likewise covers 2*100,
+    # Headroom of 90K covers 2 participants' worth of primary (2*40=80) but
+    # not 3 (3*40=120). Sol headroom of 250K likewise covers 2*100,
     # not 3*100 -- proves both requirements scale with participant count.
     env = {
         "FAKE_MODELS_EASTUS2": _write_json(tmp_path, "models-e.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_EASTUS2": _write_json(
             tmp_path,
             "usage-e.json",
-            _usage_fixture_with_headroom(50.0, evaluation_headroom_k=250.0),
+            _usage_fixture_with_headroom(90.0, evaluation_headroom_k=250.0),
         ),
         "FAKE_MODELS_SWEDENCENTRAL": _write_json(tmp_path, "models-s.json", FULL_MODELS_FIXTURE),
         "FAKE_USAGE_SWEDENCENTRAL": _write_json(
             tmp_path,
             "usage-s.json",
-            _usage_fixture_with_headroom(50.0, evaluation_headroom_k=250.0),
+            _usage_fixture_with_headroom(90.0, evaluation_headroom_k=250.0),
         ),
     }
 
@@ -382,7 +382,7 @@ def test_aggregate_capacity_scales_with_participant_count(
         c for c in report_2["checks"] if c["name"] == f"model-sku:{PRIMARY_MODEL}/eastus2"
     )
     assert gpt41_2["status"] == "pass"
-    assert "20K * 2 participant(s) = 40K" in gpt41_2["detail"]
+    assert "40K * 2 participant(s) = 80K" in gpt41_2["detail"]
     evaluation_2 = next(
         c for c in report_2["checks"] if c["name"] == f"model-sku:{EVALUATION_MODEL}/eastus2"
     )
@@ -399,7 +399,7 @@ def test_aggregate_capacity_scales_with_participant_count(
         c for c in report_3["checks"] if c["name"] == f"model-sku:{PRIMARY_MODEL}/eastus2"
     )
     assert gpt41_3["status"] == "warn"
-    assert "20K * 3 participant(s) = 60K" in gpt41_3["detail"]
+    assert "40K * 3 participant(s) = 120K" in gpt41_3["detail"]
     assert "BELOW" in gpt41_3["detail"]
     evaluation_3 = next(
         c for c in report_3["checks"] if c["name"] == f"model-sku:{EVALUATION_MODEL}/eastus2"

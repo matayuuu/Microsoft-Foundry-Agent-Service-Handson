@@ -147,7 +147,7 @@ variable "primary_model_sku" {
 variable "primary_model_capacity" {
   description = "Deployment capacity (TPM in thousands) shared by Prompt/Hosted Agents, Foundry IQ query planning, and Agent Optimizer."
   type        = number
-  default     = 20
+  default     = 40
 }
 
 variable "enable_evaluation_model" {
@@ -206,7 +206,7 @@ variable "embedding_model_sku" {
 variable "embedding_model_capacity" {
   description = "Deployment capacity (TPM in thousands) for the embedding model."
   type        = number
-  default     = 20
+  default     = 40
 }
 
 variable "embedding_dimensions" {

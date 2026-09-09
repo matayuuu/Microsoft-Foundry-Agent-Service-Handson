@@ -93,9 +93,9 @@ search_usage_json="$(az rest --method get --url \
   --subscription "${SUBSCRIPTION_ID}" -o json)"
 
 declare -A REQUIRED_MODEL_CAPACITY_K=(
-  ["gpt-5.6-luna"]="20"
+  ["gpt-5.6-luna"]="40"
   ["gpt-5.6-sol"]="100"
-  ["text-embedding-3-small"]="20"
+  ["text-embedding-3-small"]="40"
 )
 MODEL_REQUESTS="[]"
 

@@ -13,7 +13,7 @@
 # their own resource group and therefore their own set of model
 # deployments, so N participants running concurrently need N times the
 # per-environment TPM capacity (gpt-5.6-luna 20K, gpt-5.6-sol 100K, text-embedding-3-
-# small 20K) in the SAME region/quota pool, not just enough for one
+# small 40K) in the SAME region/quota pool, not just enough for one
 # environment.
 #
 # Usage:
@@ -173,9 +173,9 @@ declare -A REQUIRED_MODEL_SKU=(
   ["text-embedding-3-small"]="GlobalStandard"
 )
 declare -A REQUIRED_MODEL_CAPACITY_K=(
-  ["gpt-5.6-luna"]="20"
+  ["gpt-5.6-luna"]="40"
   ["gpt-5.6-sol"]="100"
-  ["text-embedding-3-small"]="20"
+  ["text-embedding-3-small"]="40"
 )
 
 CHECKS_JSON="[]"

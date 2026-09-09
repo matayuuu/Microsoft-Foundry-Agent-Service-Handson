@@ -93,9 +93,9 @@ def test_calculates_minimum_total_limits(fake_bin: Path, tmp_path: Path) -> None
         request["minimum_requested_total_limit_k_tpm"] for request in report["model_requests"]
     ]
     assert requested_limits == [
-        70,
+        130,
         320,
-        90,
+        150,
     ]
     assert report["search_request"] == {
         "sku": "basic",

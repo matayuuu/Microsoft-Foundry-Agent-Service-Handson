@@ -46,7 +46,7 @@ the repository root `AGENTS.md` for full ownership boundaries.
   `primary_model_version` intentionally has no default; the Sol version is required
   only when `enable_evaluation_model` is true. `scripts/preflight.sh` discovers each version and quota `usageName`
   from the same required-SKU entry returned by `az cognitiveservices model list`.
-  Default capacities are 20/100/20K TPM, checked against live regional headroom.
+  Default capacities are 40/100/40K TPM, checked against live regional headroom.
   The evaluation-only Sol allocation is 100 after throttling at 20 during a Portal
   evaluation. This is GlobalStandard deployment throughput drawn from existing
   quota, not a subscription quota increase or fixed token-spend commitment.

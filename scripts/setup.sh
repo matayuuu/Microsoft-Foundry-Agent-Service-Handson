@@ -571,6 +571,12 @@ else
       --index-name "${SEARCH_INDEX_NAME}"
   done
 
+  if [[ "${SEARCH_PRICING_MODEL}" == "serverless" ]]; then
+    echo "==> [3/5] Preparing Serverless Foundry IQ fallback assets..." >&2
+    retry 3 60 "${SCRIPT_DIR}/prepare_serverless_foundry_iq.sh" \
+      --terraform-outputs "${TF_OUTPUTS_FILE}"
+  fi
+
   echo "==> [3/5] Preparing synthetic evaluation assets..." >&2
   FOUNDRY_PROJECT_ENDPOINT="$(jq -r '.foundry_project_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
   retry 5 20 "${PYTHON_BIN}" "${SCRIPT_DIR}/run_evaluation.py" \

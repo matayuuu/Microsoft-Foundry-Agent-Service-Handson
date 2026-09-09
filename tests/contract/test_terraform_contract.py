@@ -260,9 +260,9 @@ def test_optional_evaluation_model_requires_a_version_only_when_enabled() -> Non
 @pytest.mark.parametrize(
     ("role", "model", "deployment", "capacity"),
     [
-        ("primary", "gpt-5.6-luna", "gpt-5.6-luna", 20),
+        ("primary", "gpt-5.6-luna", "gpt-5.6-luna", 40),
         ("evaluation", "gpt-5.6-sol", "gpt-5.6-sol", 100),
-        ("embedding", "text-embedding-3-small", "embedding", 20),
+        ("embedding", "text-embedding-3-small", "embedding", 40),
     ],
 )
 def test_model_defaults_deployment_ids_and_output_keys_agree(

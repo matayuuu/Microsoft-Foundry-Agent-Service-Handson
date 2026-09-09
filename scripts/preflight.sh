@@ -131,9 +131,9 @@ declare -A REQUIRED_MODEL_SKU=(
   ["text-embedding-3-small"]="GlobalStandard"
 )
 declare -A REQUIRED_MODEL_CAPACITY_K=(
-  ["gpt-5.6-luna"]="20"
+  ["gpt-5.6-luna"]="40"
   ["gpt-5.6-sol"]="100"
-  ["text-embedding-3-small"]="20"
+  ["text-embedding-3-small"]="40"
 )
 
 CHECKS_JSON="[]"

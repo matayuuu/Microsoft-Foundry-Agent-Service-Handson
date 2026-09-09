@@ -104,6 +104,11 @@ Travel Ops tool の都市名には、Tokyo、Osaka、New York のような英語
 
 ## 5. Azure AI Search tool を接続する
 
+`.workshop/context.json` の `search_pricing_model` が `serverless` の場合は、この手順と
+「6. Direct search」をスキップして [Lab 3](03-rag-foundry-iq.md) へ進みます。
+Serverless Developer preview は現在の Agent tool picker が要求する pagination に
+未対応のため、setup が準備した Foundry IQ knowledge base を Lab 3 で接続します。
+
 1. **Tools > Add > Add tools** を選択します。
 
 ![Tools の Add から Add tools を選ぶ](../docs/images/lab03-add-tools.png)
@@ -175,8 +180,8 @@ Search service のトップ URL が開く場合は
 
 - Agents の一覧に `contoso-travel-assistant` が表示される
 - Agent の model と instructions が保存されている
-- Tools に `contoso-travel-policy` を使う Azure AI Search が接続されている
-- 食事日当の回答に金額と番号付きの citation があり、内部表現が本文に露出していない
+- Dedicated の場合は Tools に `contoso-travel-policy` を使う Azure AI Search が接続されている
+- Dedicated の場合は食事日当の回答に金額と番号付きの citation があり、内部表現が本文に露出していない
 - 比較用質問の 4 項目について、根拠の有無を記録している
 
 Direct search では原則として、フライト規程にある 1 項目だけを根拠付きで回答できます。

@@ -13,8 +13,8 @@
      `Microsoft.Search`、`Microsoft.Insights`、`Microsoft.OperationalInsights`、
      `Microsoft.App`）がすべての対象 region
      （`japaneast`、`australiaeast`、`centralus`）で `Registered` であること。
-  2. 想定参加者・チーム数に対して `gpt-5.6-luna`（20K TPM/team）、`gpt-5.6-sol`（100K TPM/team）、
-     `text-embedding-3-small`（20K TPM/team）の model quota/capacity が対応 region の
+  2. 想定参加者・チーム数に対して `gpt-5.6-luna`（40K TPM/team）、`gpt-5.6-sol`（100K TPM/team）、
+     `text-embedding-3-small`（40K TPM/team）の model quota/capacity が対応 region の
      少なくとも一方で足りていること。
      Luna は Prompt/Hosted Agent、Foundry IQ、Optimizer で共有し、Sol は Lab 5 の judge 専用です。
      最大 3 deployment を用途ごとに重複計上せず、初期容量で同時実行をリハーサルします。

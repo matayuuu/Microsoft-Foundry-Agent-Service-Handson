@@ -36,6 +36,14 @@ jq -r '
 
 Agent に接続する前に、**Build > Knowledge** で knowledge base を作成します。
 
+> [!IMPORTANT]
+> `.workshop/context.json` の `search_pricing_model` が `serverless` の場合、setup が
+> `contoso-travel-policy-source`、`contoso-travel-approval-source` と
+> `contoso-travel-knowledge-lab` を REST API で準備済みです。現在の Portal では
+> Serverless の index picker が paging パラメーターを渡さず、Luna も新規作成時の
+> model picker に表示されないためです。**Create a knowledge base** は選ばず、一覧で
+> knowledge base と2 source が **Active** であることを確認して手順2へ進みます。
+
 1. 左 navigation の **Build > Knowledge** を開きます。
 2. **Connection** に `contoso-travel-search` を選択します。
 3. **Create a knowledge base** を選択します。
@@ -95,6 +103,7 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
 ![直接検索の tool だけを Remove し、その後 Agent を Save する](../docs/images/lab03-remove-direct-search.png)
 
 Search service や index を削除する操作ではありません。接続方法だけを切り替えます。
+Serverless では Lab 2 で直接検索 tool を追加していないため、この Remove 操作は不要です。
 
 3. **Knowledge** の一覧から `contoso-travel-knowledge-lab` を開きます。
 4. **Use in an agent > contoso-travel-assistant** を選択します。
