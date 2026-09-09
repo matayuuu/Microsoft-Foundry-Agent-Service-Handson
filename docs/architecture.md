@@ -13,6 +13,25 @@ Cosmos DB、capability host、ACR、プライベートネットワークを扱�
 
 ## 実行時の構成
 
+![Contoso Travel Assistant の Azure 構成。Prompt Agent と Hosted workflow が Foundry IQ と Toolbox を共有し、Azure AI Search、Travel Ops API、監視サービスに接続する](images/workshop-architecture.drawio.svg)
+
+[draw.io で編集する](diagrams/workshop-architecture.drawio) ·
+[SVG を開く](images/workshop-architecture.drawio.svg)
+
+図は Lab 8 までで完成する構成を示します。枠はリソースや論理機能のまとまりであり、
+VNet などのネットワーク境界ではありません。Foundry IQ の knowledge base と 2 つの
+index は Azure AI Search 上に置き、Lab 7 のローカル実行からも同じ資産を参照します。
+Foundry と Search などは Entra ID/RBAC を使いますが、**合成データ専用の公開
+Travel Ops API だけは Anonymous** です。
+
+図形・ラベル・接続線を編集できる `.drawio` と、元の図データも埋め込んだ SVG を
+用意しています。アイコンは
+[Microsoft 公式 Azure Architecture Icons](https://learn.microsoft.com/azure/architecture/icons/)
+の V24（2026-09-09 取得）を使用し、各ファイル内に埋め込んでいます。
+
+<details>
+<summary>テキスト版の構成を開く（Mermaid）</summary>
+
 ```mermaid
 flowchart LR
     browser[参加者のブラウザー] --> portal[Microsoft Foundry ポータル]
@@ -37,6 +56,8 @@ flowchart LR
     prompt --> monitor
     hosted --> monitor
 ```
+
+</details>
 
 ## リソースの管理責任
 

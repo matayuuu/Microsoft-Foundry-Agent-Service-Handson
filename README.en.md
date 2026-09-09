@@ -86,12 +86,14 @@ following its next-lab link.
 
 ## Azure architecture
 
-This is the service layout prepared in Lab 1, not the learning sequence.
+This diagram shows the services, agents, and call paths in the architecture completed
+through Lab 8, rather than the learning sequence.
 You do not need to memorize every service before starting.
 
-![Microsoft Foundry, Azure AI Search, and Travel Ops API resources inside an existing resource group](docs/images/workshop-architecture.svg)
+![Microsoft Foundry, shared Foundry IQ and Toolbox resources, Travel Ops API, and monitoring inside an existing resource group](docs/images/workshop-architecture.drawio.svg)
 
-[Editable architecture diagram](docs/diagrams/workshop-architecture.excalidraw)
+[Edit the architecture in draw.io](docs/diagrams/workshop-architecture.drawio) ·
+[Open the SVG](docs/images/workshop-architecture.drawio.svg)
 
 ## Help
 

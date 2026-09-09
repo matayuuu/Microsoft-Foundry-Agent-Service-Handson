@@ -86,12 +86,14 @@ Codespace の準備を行います。Azure 環境構築のコマンドは Lab 1 
 
 ## Azure 上の構成を知りたいとき
 
-こちらは学習順ではなく、Lab 1 で準備するサービスの配置を示した詳細図です。
+こちらは学習順ではなく、Lab 8 までで完成するサービスと Agent の配置、
+呼び出し関係を示した構成図です。
 初めはすべての名前を覚える必要はありません。
 
-![既存 resource group 内の Microsoft Foundry、Azure AI Search、Travel Ops API などの構成](docs/images/workshop-architecture.svg)
+![既存 resource group 内の Microsoft Foundry、共有する Foundry IQ と Toolbox、Travel Ops API、監視サービスの構成](docs/images/workshop-architecture.drawio.svg)
 
-[構成図を Excalidraw で編集する](docs/diagrams/workshop-architecture.excalidraw)
+[構成図を draw.io で編集する](docs/diagrams/workshop-architecture.drawio) ·
+[SVG を開く](docs/images/workshop-architecture.drawio.svg)
 
 ## 困ったとき
 
