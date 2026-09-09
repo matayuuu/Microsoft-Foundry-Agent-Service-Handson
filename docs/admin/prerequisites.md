@@ -88,7 +88,7 @@ TPM は1分あたりのトークン数を表します。
 
 | モデル | デプロイ名 | 1環境あたりの必要な空き容量 | 用途 |
 | --- | --- | --- | --- |
-| `gpt-5.6-luna` | `gpt-5.6-luna` | **40K TPM** | Prompt / Hosted Agent、Foundry IQ、Agent Optimizer（`primary_model_deployment_name`） |
+| `gpt-5.6-luna` | `gpt-5.6-luna` | **40K TPM** | Prompt / Hosted Agent、Foundry IQ。Optimizer でも唯一許可するモデル（`primary_model_deployment_name`） |
 | `gpt-5.6-sol` | `gpt-5.6-sol` | **100K TPM** | Lab 5 の設定可能な LLM 評価用モデル（`evaluation_model_deployment_name`、クォータ不足時は省略可） |
 | `text-embedding-3-small` | `embedding` | **40K TPM** | ベクトルインデックス用の埋め込み |
 
@@ -219,7 +219,8 @@ Searchの上限緩和はリージョン内の物理容量を予約する申請�
 ### 容量配分と料金の注意
 
 1環境のデプロイは最大3つです。同じデプロイを Lab ごとに重複して数えないでください。
-Luna は Prompt / Hosted Agent、Foundry IQ、Optimizer で共有し、Sol は Lab 5 の評価専用です。
+Luna は Prompt / Hosted Agent と Foundry IQ で共有し、Optimizer でも唯一許可するモデルです。
+Agent Optimizer の対応一覧に Luna がない場合は Lab 6 を省略し、別モデルを追加しません。
 評価では評価対象の Luna エージェントも呼び出します。
 
 既定の容量単位は Luna / Sol / 埋め込みの順に **40 / 100 / 40** です。
@@ -228,7 +229,8 @@ Luna は Prompt / Hosted Agent、Foundry IQ、Optimizer で共有し、Sol は L
 Sol の既定値を100にしています。
 2026-09-09 の Serverless E2E では Luna 20K で7件の Portal 評価を実行した際、
 Foundry IQ の並列呼び出し2件が HTTP 429 になったため、Luna は40Kを維持します。
-Optimizer は Max candidates = 1、評価データは7件に限定してトークン消費を抑えます。
+Luna が Agent Optimizer の最適化モデルに対応した後も、Max candidates = 1、
+評価データは7件に限定してトークン消費を抑えます。
 詳細は[実行時の事象と追加の確認事項](troubleshooting.md#クォータに余裕があるのに-http-429-や-foundry-iq-のタイムアウトが発生する)を参照してください。
 
 `GlobalStandard` の容量は、既存のサブスクリプションのモデル・SKU 別クォータから
@@ -236,19 +238,22 @@ Optimizer は Max candidates = 1、評価データは7件に限定してトー�
 プロビジョニング済みスループットの予約ではありません。**
 料金は実際の使用量に応じて発生し、処理量を増やすと課金対象の呼び出しも増える可能性があります。
 100単位でも HTTP 429 が発生しない保証はありません。デプロイ後の `rateLimits` を確認し、
-Agent / IQ / Optimizer の Luna 負荷と、Lab 5 の Sol 評価負荷を分けてリハーサルしてください。
+Agent / IQ の Luna 負荷と、Lab 5 の Sol 評価負荷を分けてリハーサルしてください。
 
 Terraform の容量変数は変更できますが、両方の事前確認スクリプトは既定の **40 / 100 / 40** を確認します。
 変更する場合は、スクリプトの確認対象容量と Terraform の入力値をそろえて再確認してください。
 
 ### Portal でのモデル選択
 
-Foundry IQ と Optimizer では Luna、Lab 5 の judge では Sol を選択します。
-開催前に各選択欄へ対象デプロイが表示されることを確認してください。
+Foundry IQ では Luna、Lab 5 の judge では Sol を選択します。
+Optimizer でも Luna だけを許可しますが、2026-09-09 時点の公式の最適化モデル対応一覧には
+Luna が含まれず、Portal は **No supported optimization model** と表示します。
+開催前に公式一覧と各選択欄の両方を確認してください。
 カタログ・クォータ上の利用可否や [Search API の対応状況](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
 だけでは、Portal で利用できることの裏付けにはなりません。
-Luna を選択できない場合は作業を止めて原因を調べます。Sol だけを選択できない場合は
-Lab 5 をスキップし、追加デプロイや別モデルへの無断切り替えは行わないでください。
+Foundry IQ で Luna を選択できない場合は作業を止めて原因を調べます。Optimizer で
+Luna を選択できない場合は Lab 6、Sol だけを選択できない場合は Lab 5 をスキップし、
+追加デプロイや別モデルへの無断切り替えは行わないでください。
 
 ## 未登録のリソースプロバイダーを登録する
 

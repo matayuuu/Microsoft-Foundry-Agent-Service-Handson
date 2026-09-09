@@ -232,6 +232,12 @@ Lab 5 ではこの変更を保存したエージェントのバージョンを�
 
 ### Optimizer が改善候補を生成しない
 
+**Optimize** tab に **No supported optimization model** が表示される場合は、
+候補生成を開始できません。2026-09-09 時点では `gpt-5.6-luna` は Agent Optimizer の
+最適化モデル対応一覧に含まれないため、これは想定される互換性ゲートです。
+[Lab 6](../../labs/06-optimization.md) のスキップ手順に従い、別モデルをデプロイしないでください。
+
+Luna を選択でき、run を開始した後に候補が生成されない場合だけ、次を確認します。
 `.workshop/context.json` の `primary_model_deployment_name` の値を
 **Optimization model** と **Evaluation model** の両方に選んでいるか確認します。
 **Criteria** は組み込み評価器ではなく **Contoso Travel Rubric** を選択します。
@@ -239,11 +245,12 @@ Lab 5 ではこの変更を保存したエージェントのバージョンを�
 
 ### 評価モデルとエージェントのモデルが違う
 
-この教材では意図した設定です。回答する Prompt / Hosted Agent は `gpt-5.6-luna`、
-Foundry IQ と Lab 6 の Optimizer は `gpt-5.6-luna` を使います。
+この教材では意図した設定です。回答する Prompt / Hosted Agent と Foundry IQ は
+`gpt-5.6-luna` を使います。
 `gpt-5.6-sol` を使うのは Lab 5 の設定可能な LLM judge だけです。
-Lab 6 の **Evaluation model** と **Optimization model** は、どちらも
-`primary_model_deployment_name` の値を選択します。
+Lab 6 でも許可するのは `primary_model_deployment_name` の Luna だけです。
+Luna が Agent Optimizer の最適化モデルに未対応の場合は Lab 6 を省略し、
+Sol や別のモデルへ切り替えません。
 
 ## Hosted Agent
 

@@ -16,7 +16,8 @@
   2. 想定参加者・チーム数に対して `gpt-5.6-luna`（40K TPM/team）、`gpt-5.6-sol`（100K TPM/team）、
      `text-embedding-3-small`（40K TPM/team）の model quota/capacity が対応 region の
      少なくとも一方で足りていること。
-     Luna は Prompt/Hosted Agent、Foundry IQ、Optimizer で共有し、Sol は Lab 5 の judge 専用です。
+     Luna は Prompt/Hosted Agent と Foundry IQ で共有し、Optimizer でも唯一許可するモデルです。
+     対応モデル一覧に Luna がない場合は Lab 6 を省略し、別モデルを追加しません。
      最大 3 deployment を用途ごとに重複計上せず、初期容量で同時実行をリハーサルします。
      評価モデルは 20 units での評価中に HTTP 429 が発生したため、Sol の既定を 100 にしました。
      これは既存 quota 内での GlobalStandard throughput の割り当てであり、
@@ -136,14 +137,17 @@
   [labs/05-evaluation.md](../labs/05-evaluation.md) の `report_url` 以降の解説（Portal
   での結果確認の見方）に進む。実行自体は各自の宿題として案内する。
 - **Sol 未デプロイの場合**: Lab 5 の手動実行は省略し、completed-run-assets で結果の読み方を
-  説明して Lab 6 へ進む。Lab 6 は Optimization / Evaluation model の両方に Luna を選び、
-  Max candidates = 1 として実行する。
+  説明して Lab 6 の互換性ゲートへ進む。
 
 ### 02:35–02:55 Lab 6 — Agent Optimizer
 
 - **preview の注意喚起**: Optimizer は preview 機能で SLA なし、最適化中は実際に
   Travel Ops API モックを呼び出す旨を伝える（[labs/06-optimization.md](../labs/06-optimization.md)
   の warning を読み上げる）。
+- **2026-09-09 の互換性ゲート**: `gpt-5.6-luna` は現在の最適化モデル対応一覧に含まれず、
+  Portal は **No supported optimization model** と表示する。別モデルを追加せず、
+  completed-run-assets で比較方法を説明して Lab 7 へ進む。将来 Luna が対応した場合だけ、
+  Optimization / Evaluation model の両方に Luna、Max candidates = 1 を設定して live 実行する。
 - **live 実行が難しい場合**: [labs/06-optimization.md](../labs/06-optimization.md) の
   「live 実行ができない場合」の節にあるとおり、事前収録デモの代わりに
   [completed-run-assets/optimizer-run.simulated.json](completed-run-assets/optimizer-run.simulated.json)

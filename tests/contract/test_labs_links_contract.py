@@ -239,6 +239,10 @@ def test_core_labs_isolate_sol_to_evaluation_and_use_luna_elsewhere() -> None:
     assert "optimization_model: .primary_model_deployment_name.value" in optimization
     assert "evaluation_model_deployment_name" not in optimization
     assert "Max candidates | `1`" in optimization
+    assert "No supported optimization model" in optimization
+    assert "optimizer-run.simulated.json" in optimization
+    assert "別モデルを追加せず" in optimization
+    assert "agent-optimizer-overview#models" in optimization
 
 
 def test_toolbox_lab_uses_portal_for_openapi_and_skills() -> None:

@@ -83,7 +83,8 @@ Terraform と SDK ラッパーが同じオブジェクトを管理してはい�
 
 - プロジェクト管理を有効にした Microsoft Foundry アカウント（`AIServices`）
 - Microsoft Foundry プロジェクト
-- Prompt / Hosted Agent、Foundry IQ、Agent Optimizer が共有する `gpt-5.6-luna` デプロイ
+- Prompt / Hosted Agent と Foundry IQ が共有し、Optimizer でも唯一許可する
+  `gpt-5.6-luna` デプロイ
 - Lab 5 の設定可能な LLM 評価用モデルだけに使う、オプションの `gpt-5.6-sol` デプロイ
 - 初期データを投入するベクトルインデックス用に、`embedding` という名前でデプロイする `text-embedding-3-small`
 - Azure AI Search Dedicated Basic（レプリカ 1、パーティション 1）。`--ai-search-serverless`
@@ -95,8 +96,9 @@ Terraform と SDK ラッパーが同じオブジェクトを管理してはい�
 参加者の開始前に、サブスクリプション管理者向けの事前チェックでこれらを検証します。
 
 デプロイは Luna と埋め込みの 2 つが必須で、Sol を利用できる場合は合計 3 つです。
-`primary_model_deployment_name` は `gpt-5.6-luna` を示し、Foundry IQ と
-Optimizer もこのデプロイを共有します。`evaluation_model_deployment_name` は
+`primary_model_deployment_name` は `gpt-5.6-luna` を示し、Foundry IQ もこの
+デプロイを共有します。Optimizer でもこのデプロイだけを許可しますが、対応モデル一覧に
+Luna がない間は Lab 6 を省略します。`evaluation_model_deployment_name` は
 Lab 5 専用の `gpt-5.6-sol` を示しますが、クォータ不足時は `null` です。
 評価では Luna を使用する対象エージェントを呼び出し、設定可能な評価用モデルだけに
 Sol を使用します。サービスが管理する
@@ -111,9 +113,12 @@ Luna のバージョンには Terraform の既定値を設けず、Sol は有効
 サブスクリプションのクォータ上限を引き上げたり、トークン利用料を固定額にしたりするものではありません。
 実際の使用量には引き続き課金され、100 単位でも HTTP 429 応答が発生しない保証はありません。
 共有用途の容量は、ラボごとではなくデプロイごとに 1 回だけ計上します。
-Foundry IQ と Optimizer のモデル選択欄でも Luna を選びます。
+Foundry IQ では Luna を選びます。Optimizer でも Luna だけを選択対象にし、
+対応していなければ別モデルを追加せず Lab 6 を省略します。
 モデルカタログに掲載されているだけでは、選択 UI や API との互換性は確認できません。
 [Search のモデルと API の要件](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
+と
+[Agent Optimizer の対応モデル](https://learn.microsoft.com/azure/foundry/agents/concepts/agent-optimizer-overview#models)
 を実際のポータルの選択欄と照合してください。
 
 ## 認証と認可

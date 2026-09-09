@@ -3,6 +3,7 @@
 この表は **新しい** Microsoft Foundry を対象としています。Toolbox の UI に関する項目は、
 参加者から提供されたポータルのスクリーンショットに基づき **2026-09-05** に更新しました。
 Toolbox Skills の実行経路は公式 Learn と実環境の Trace に基づき **2026-09-08** に確認しました。
+Agent Optimizer のモデル互換性は **2026-09-09** に確認しました。
 その他の項目は 2026-09-01 時点の情報を維持しています。プレビュー機能の画面やポータルのラベルは
 変更される場合があります。現在、Toolbox の公式記事は、確認済みの Web ポータルの操作よりも
 SDK/Toolkit の手順を詳しく説明しています。ポータルの列がないことを、
@@ -23,7 +24,7 @@ UI が利用できない根拠として解釈しないでください。
 | Tool Search | Toolbox の On/Off 設定を確認済み | 対応 | 対応 | 必須。Lab 4 で `tool_search` → `call_tool` → 実 tool を Trace で確認 |
 | エージェント評価の送信 | 対応 | 該当なし | 対応 | 必須手順では、準備済みの合成データセットを使用してポータルで実施 |
 | 評価結果の表示 | 対応 | 対応 | 対応 | 必須。ポータルで実施 |
-| Prompt Agent Optimizer | 対応 | 該当なし | サービスが管理 | プレビュー。ポータルのウィザードを使用 |
+| Prompt Agent Optimizer | UI は対応 | 該当なし | サービスが管理 | プレビュー。Luna は現在、最適化モデル未対応のため Lab 6 は互換性ゲートで省略 |
 | Hosted Agent Optimizer | 非対応 | 対応 | azd/SDK 連携 | 任意 |
 | Agent Framework の Agent / Harness Agent 開発 | 非対応 | 対応 | コード | 必須。Lab 7 で Foundry IQ・Toolbox Tools / Skills を再利用 |
 | Agent Framework Hosted workflow の開発 | 非対応 | 対応 | コード | 必須。Lab 8 で shared Harness factory を participant として再利用 |
@@ -40,7 +41,8 @@ UI が利用できない根拠として解釈しないでください。
 |---|---|
 | リージョン | Japan East（既定）、Australia East、Central US。3つとも Agentic retrieval、Semantic ranker、Serverless preview 対応 |
 | Azure AI Search pricing model | Dedicated Basic（既定）。3 region で容量不足時は `--ai-search-serverless` で Serverless Developer preview |
-| Prompt / Hosted Agent、Foundry IQ、Agent Optimizer | 共有の `gpt-5.6-luna` デプロイ。`primary_model_deployment_name` |
+| Prompt / Hosted Agent、Foundry IQ | 共有の `gpt-5.6-luna` デプロイ。`primary_model_deployment_name` |
+| Agent Optimizer | 評価・最適化とも Luna だけを許可。最適化モデル対応一覧にない間は Lab 6 をスキップ |
 | Lab 5 の設定可能な LLM 評価用モデル | オプションの `gpt-5.6-sol` デプロイ。`evaluation_model_deployment_name`。未デプロイ時は Lab 5 だけスキップ |
 | 埋め込み | `text-embedding-3-small`、デプロイ名 `embedding` |
 | Search | Azure AI Search Basic 以上 |
@@ -53,11 +55,12 @@ UI が利用できない根拠として解釈しないでください。
 - モデルの役割は、**2026-09-06** に新しいポータルで確認しました。必須構成ではデプロイを
   厳密に 3 つ作成します。チャットモデルのバージョンと同一 SKU のクォータ確認情報は、
   事前チェックで取得し、固定値を使用したりモデル名から推測したりしません。
-  ナレッジベースと Optimizer のモデル選択欄では Luna を選択します。
+  ナレッジベースでは Luna を選択します。Optimizer でも Luna だけを許可しますが、
+  対応一覧にない場合は live 実行しません。
   これらは確認したポータルでの観察結果であり、すべての Search API のモデル対応について
   一般化した主張ではありません。
 - Sol は Lab 5 のルーブリック / 設定可能な LLM 評価用モデルだけで使用します。
-  Foundry IQ と Optimizer の 2 つのモデル選択には Luna を使用します。Violence など、
+  Foundry IQ と、対応後の Optimizer の 2 つのモデル選択には Luna を使用します。Violence など、
   サービスが管理する評価器は
   それぞれ固有のモデルを引き続き使用します。
 - Foundry Tool Catalog と Toolboxes は一般提供されていますが、個々のツールは
@@ -78,7 +81,8 @@ UI が利用できない根拠として解釈しないでください。
 - エージェント型検索の Microsoft Foundry ポータルおよび Azure portal の操作経路は、
   新しい Search REST API 操作が一般提供されている場合でも、プレビューとして提供されます。
 - Agent Optimizer はプレビューであり、評価モデルと、対応する最適化モデルの両方を使用します。
-  現在、ポータルのウィザードではカスタム評価器を使用できます。
+  2026-09-09 時点の公式対応一覧に `gpt-5.6-luna` はなく、Japan East の Portal でも
+  **No supported optimization model** を確認しました。別モデルは追加せず Lab 6 を省略します。
 - Agent Framework で独自のオーケストレーションを実装する場合、Hosted Agent と
   ソースコードのリモートビルドがサポートされる手順です。
 - Foundry Workflow Designer は 2026-12-01 に廃止予定です。新しくオーケストレーションを

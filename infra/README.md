@@ -39,7 +39,8 @@ the repository root `AGENTS.md` for full ownership boundaries.
     non-preview version for these resource types as of the 2026-08-21
     retrieval date recorded in `foundry_account.tf`).
 - **Model deployments are variable-driven, not guessed.** Up to three deployments
-  (`gpt-5.6-luna` = Prompt/Hosted Agents, Foundry IQ, and Optimizer,
+  (`gpt-5.6-luna` = Prompt/Hosted Agents, Foundry IQ, and the only permitted model
+  for either Optimizer role when supported,
   optional `gpt-5.6-sol` = Lab 5 configurable LLM judges,
   `embedding` = text-embedding-3-small) have overridable
   model-name/version/sku/capacity variables; deployment names are fixed.
@@ -55,7 +56,9 @@ the repository root `AGENTS.md` for full ownership boundaries.
   expectations must match any intentionally overridden allocation.
   The output keys are `primary_model_deployment_name`,
   `evaluation_model_deployment_name`, and `embedding_model_deployment_name`.
-  The evaluation output is null when Sol quota is unavailable.
+  The evaluation output is null when Sol quota is unavailable. Agent Optimizer is
+  skipped rather than adding another deployment when its supported-model list
+  excludes `gpt-5.6-luna`.
 - **Azure AI Search supports two pricing models.** Dedicated Basic is the default.
   `scripts/setup.sh --ai-search-serverless` selects the Serverless Developer preview,
   provisioned with `Microsoft.Search/searchServices@2026-03-01-preview` and
