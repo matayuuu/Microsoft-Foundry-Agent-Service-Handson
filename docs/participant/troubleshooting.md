@@ -61,7 +61,7 @@ Serverless は従量課金で SLA がなく、Dedicated との相互移行もで
 
 Portal のモデル選択欄に表示されるデプロイを選びます。このハンズオンでは
 `.workshop/context.json` の `primary_model_deployment_name` を使います。
-通常は `gpt-5.6-luna` です。評価専用の `gpt-5.6-sol` は選びません。
+通常は `gpt-5.6-luna` です。評価専用の `gpt-5.5` は選びません。
 エージェントのモデル選択欄に表示されるデプロイが、IQ の選択欄にも表示されるとは限りません。
 
 ### Web search などが最初から追加されている
@@ -233,12 +233,12 @@ Lab 5 ではこの変更を保存したエージェントのバージョンを�
 ### Optimizer が改善候補を生成しない
 
 **Optimize** tab に **No supported optimization model** が表示される場合は、
-候補生成を開始できません。2026-09-09 時点では `gpt-5.6-luna` は Agent Optimizer の
-最適化モデル対応一覧に含まれないため、これは想定される互換性ゲートです。
-[Lab 6](../../labs/06-optimization.md) のスキップ手順に従い、別モデルをデプロイしないでください。
+`.workshop/context.json` の `optimizer_model_deployment_name` が `gpt-5.5` か確認します。
+`null` の場合はクォータ不足により省略されています。
+[Lab 6](../../labs/06-optimization.md) のスキップ手順に従ってください。
 
-Luna を選択でき、run を開始した後に候補が生成されない場合だけ、次を確認します。
-`.workshop/context.json` の `primary_model_deployment_name` の値を
+GPT-5.5 がデプロイ済みで、run を開始した後に候補が生成されない場合だけ、次を確認します。
+`.workshop/context.json` の `optimizer_model_deployment_name` の値を
 **Optimization model** と **Evaluation model** の両方に選んでいるか確認します。
 **Criteria** は組み込み評価器ではなく **Contoso Travel Rubric** を選択します。
 サービス側のエラーの場合は実行を増やさず講師へ連絡します。
@@ -247,10 +247,8 @@ Luna を選択でき、run を開始した後に候補が生成されない場�
 
 この教材では意図した設定です。回答する Prompt / Hosted Agent と Foundry IQ は
 `gpt-5.6-luna` を使います。
-`gpt-5.6-sol` を使うのは Lab 5 の設定可能な LLM judge だけです。
-Lab 6 でも許可するのは `primary_model_deployment_name` の Luna だけです。
-Luna が Agent Optimizer の最適化モデルに未対応の場合は Lab 6 を省略し、
-Sol や別のモデルへ切り替えません。
+`gpt-5.5` は Lab 5 の設定可能な LLM judge と、Lab 6 の **Evaluation model** /
+**Optimization model** に使います。Agent本体のモデルはLunaのまま変更しません。
 
 ## Hosted Agent
 

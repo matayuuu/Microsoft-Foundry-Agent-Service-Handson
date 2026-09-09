@@ -12,7 +12,7 @@
 # the AGGREGATE headroom the whole event needs: each participant/team gets
 # their own resource group and therefore their own set of model
 # deployments, so N participants running concurrently need N times the
-# per-environment TPM capacity (gpt-5.6-luna 20K, gpt-5.6-sol 100K, text-embedding-3-
+# per-environment TPM capacity (gpt-5.6-luna 40K, gpt-5.5 100K, text-embedding-3-
 # small 40K) in the SAME region/quota pool, not just enough for one
 # environment.
 #
@@ -160,21 +160,21 @@ declare -A REQUIRED_RESOURCE_TYPES=(
 
 # Models this workshop deploys, and the exact SKU (deployment type) + TPM
 # capacity (thousands) infra/variables.tf requests for each
-# (primary/evaluation/embedding_model_capacity). Exact version selection is
+# (primary/evaluation/embedding model capacity). Exact version selection is
 # left to scripts/preflight.sh, which must be told a value this script
 # confirms actually exists -- but this report DOES verify the specific
 # SKU/usageName bucket each model deployment needs, with real headroom
 # evidence, so an administrator can see actionable capacity numbers rather
 # than a generic "some quota bucket somewhere is tight" signal.
-REQUIRED_MODELS=("gpt-5.6-luna" "gpt-5.6-sol" "text-embedding-3-small")
+REQUIRED_MODELS=("gpt-5.6-luna" "gpt-5.5" "text-embedding-3-small")
 declare -A REQUIRED_MODEL_SKU=(
   ["gpt-5.6-luna"]="GlobalStandard"
-  ["gpt-5.6-sol"]="GlobalStandard"
+  ["gpt-5.5"]="GlobalStandard"
   ["text-embedding-3-small"]="GlobalStandard"
 )
 declare -A REQUIRED_MODEL_CAPACITY_K=(
   ["gpt-5.6-luna"]="40"
-  ["gpt-5.6-sol"]="100"
+  ["gpt-5.5"]="100"
   ["text-embedding-3-small"]="40"
 )
 
@@ -337,7 +337,7 @@ for loc in "${LOCATION}" "${FALLBACK_LOCATION}"; do
 done
 
 # ---------------------------------------------------------------------------
-# Model quota / capacity (gpt-5.6-luna, gpt-5.6-sol, text-embedding-3-small)
+# Model quota / capacity (gpt-5.6-luna, gpt-5.5, text-embedding-3-small)
 #
 # Reports headroom against the AGGREGATE requirement for the whole event:
 # each of --participant-count participants/teams gets their own resource

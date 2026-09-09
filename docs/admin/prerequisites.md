@@ -88,12 +88,12 @@ TPM は1分あたりのトークン数を表します。
 
 | モデル | デプロイ名 | 1環境あたりの必要な空き容量 | 用途 |
 | --- | --- | --- | --- |
-| `gpt-5.6-luna` | `gpt-5.6-luna` | **40K TPM** | Prompt / Hosted Agent、Foundry IQ。Optimizer でも唯一許可するモデル（`primary_model_deployment_name`） |
-| `gpt-5.6-sol` | `gpt-5.6-sol` | **100K TPM** | Lab 5 の設定可能な LLM 評価用モデル（`evaluation_model_deployment_name`、クォータ不足時は省略可） |
+| `gpt-5.6-luna` | `gpt-5.6-luna` | **40K TPM** | Prompt / Hosted Agent、Foundry IQ（`primary_model_deployment_name`） |
+| `gpt-5.5` | `gpt-5.5` | **100K TPM** | Lab 5 の設定可能な評価と Lab 6 の Agent Optimizer（`evaluation_model_deployment_name` / `optimizer_model_deployment_name`、クォータ不足時は省略可） |
 | `text-embedding-3-small` | `embedding` | **40K TPM** | ベクトルインデックス用の埋め込み |
 
 2つのチャットモデル名は教材の固定要件です。**バージョンはカタログから取得**し、推測や別のモデル系列への切り替えは行いません。
-Luna は必須で、Sol は有効化する場合だけバージョンを Terraform に渡します。
+Luna は必須で、GPT-5.5 は有効化する場合だけバージョンを Terraform に渡します。
 
 スクリプトはモデル・リージョンごとに `model.skus[].usageName` を取得し、
 `az cognitiveservices usage list --location <region>` の同じ使用量区分と照合します。
@@ -111,7 +111,7 @@ Markdown / JSON のレポートには、モデル・リージョンごとに以�
 **確認不能・失敗（`warn`）**として報告します。未確認の容量を十分とみなすことはありません。
 参加者向けの `scripts/preflight.sh` も同じ根拠で判定しますが、
 Luna または埋め込みの空き容量が不明・不足の場合は **エラーで停止**します。
-Sol だけが不明・不足の場合は `warn` とし、setup は Sol のデプロイを省略します。
+GPT-5.5 だけが不明・不足の場合は `warn` とし、setup はそのデプロイを省略します。
 
 ### Azure Policy とリソースグループ
 
@@ -142,7 +142,7 @@ Azure Policy によって教材のリソースがブロックされないか、�
 
 各モデルの1環境あたりの必要容量に `<n>` を掛けて確認します。
 たとえば12環境では、`gpt-5.6-luna` は **40K × 12 = 480K TPM**、
-`gpt-5.6-sol` は **100K × 12 = 1,200K TPM** が必要です。
+`gpt-5.5` は **100K × 12 = 1,200K TPM** が必要です。
 レポートには環境数に加え、モデル・リージョンごとの計算式と取得した空き容量を表示します。
 `--participant-count` は正の整数で指定してください。不正な値の場合は Azure を呼び出す前に終了コード `1` で停止します。
 
@@ -219,18 +219,16 @@ Searchの上限緩和はリージョン内の物理容量を予約する申請�
 ### 容量配分と料金の注意
 
 1環境のデプロイは最大3つです。同じデプロイを Lab ごとに重複して数えないでください。
-Luna は Prompt / Hosted Agent と Foundry IQ で共有し、Optimizer でも唯一許可するモデルです。
-Agent Optimizer の対応一覧に Luna がない場合は Lab 6 を省略し、別モデルを追加しません。
+Luna は Prompt / Hosted Agent と Foundry IQ で共有します。GPT-5.5 は Lab 5 の
+評価と Lab 6 の Agent Optimizer で共有します。
 評価では評価対象の Luna エージェントも呼び出します。
 
-既定の容量単位は Luna / Sol / 埋め込みの順に **40 / 100 / 40** です。
+既定の容量単位は Luna / GPT-5.5 / 埋め込みの順に **40 / 100 / 40** です。
 開催前に同時実行のリハーサルと最新のクォータ確認を行ってください。
-評価モデルは20単位で7行の Portal 評価を実行した際にスロットリングが発生したため、
-Sol の既定値を100にしています。
+GPT-5.5 は評価と最適化で共有するため、既定値を100にしています。
 2026-09-09 の Serverless E2E では Luna 20K で7件の Portal 評価を実行した際、
 Foundry IQ の並列呼び出し2件が HTTP 429 になったため、Luna は40Kを維持します。
-Luna が Agent Optimizer の最適化モデルに対応した後も、Max candidates = 1、
-評価データは7件に限定してトークン消費を抑えます。
+Optimizer は Max candidates = 1、評価データは7件に限定してトークン消費を抑えます。
 詳細は[実行時の事象と追加の確認事項](troubleshooting.md#クォータに余裕があるのに-http-429-や-foundry-iq-のタイムアウトが発生する)を参照してください。
 
 `GlobalStandard` の容量は、既存のサブスクリプションのモデル・SKU 別クォータから
@@ -238,22 +236,21 @@ Luna が Agent Optimizer の最適化モデルに対応した後も、Max candid
 プロビジョニング済みスループットの予約ではありません。**
 料金は実際の使用量に応じて発生し、処理量を増やすと課金対象の呼び出しも増える可能性があります。
 100単位でも HTTP 429 が発生しない保証はありません。デプロイ後の `rateLimits` を確認し、
-Agent / IQ の Luna 負荷と、Lab 5 の Sol 評価負荷を分けてリハーサルしてください。
+Agent / IQ の Luna 負荷と、Labs 5 / 6 の GPT-5.5 負荷を分けてリハーサルしてください。
 
 Terraform の容量変数は変更できますが、両方の事前確認スクリプトは既定の **40 / 100 / 40** を確認します。
 変更する場合は、スクリプトの確認対象容量と Terraform の入力値をそろえて再確認してください。
 
 ### Portal でのモデル選択
 
-Foundry IQ では Luna、Lab 5 の judge では Sol を選択します。
-Optimizer でも Luna だけを許可しますが、2026-09-09 時点の公式の最適化モデル対応一覧には
-Luna が含まれず、Portal は **No supported optimization model** と表示します。
+Foundry IQ では Luna、Lab 5 の judge と Lab 6 の Evaluation / Optimization model では
+GPT-5.5 を選択します。GPT-5.5 は2026-09-09時点の公式の最適化モデル対応一覧に含まれます。
 開催前に公式一覧と各選択欄の両方を確認してください。
 カタログ・クォータ上の利用可否や [Search API の対応状況](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
 だけでは、Portal で利用できることの裏付けにはなりません。
-Foundry IQ で Luna を選択できない場合は作業を止めて原因を調べます。Optimizer で
-Luna を選択できない場合は Lab 6、Sol だけを選択できない場合は Lab 5 をスキップし、
-追加デプロイや別モデルへの無断切り替えは行わないでください。
+Foundry IQ で Luna を選択できない場合は作業を止めて原因を調べます。GPT-5.5 だけを
+選択できない場合は Labs 5 / 6 をスキップし、追加デプロイや別モデルへの
+無断切り替えは行わないでください。
 
 ## 未登録のリソースプロバイダーを登録する
 

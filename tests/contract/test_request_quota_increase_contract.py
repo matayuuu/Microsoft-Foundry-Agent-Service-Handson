@@ -32,7 +32,7 @@ case "${1:-} ${2:-}" in
     cat <<'JSON'
 [
   {"model":{"name":"gpt-5.6-luna","version":"v1","isDefaultVersion":true,"skus":[{"name":"GlobalStandard","usageName":"OpenAI.GlobalStandard.gpt-5.6-luna"}]}},
-  {"model":{"name":"gpt-5.6-sol","version":"v2","isDefaultVersion":true,"skus":[{"name":"GlobalStandard","usageName":"OpenAI.GlobalStandard.gpt-5.6-sol"}]}},
+  {"model":{"name":"gpt-5.5","version":"v2","isDefaultVersion":true,"skus":[{"name":"GlobalStandard","usageName":"OpenAI.GlobalStandard.gpt-5.5"}]}},
   {"model":{"name":"text-embedding-3-small","version":"1","isDefaultVersion":true,"skus":[{"name":"GlobalStandard","usageName":"OpenAI.GlobalStandard.text-embedding-3-small"}]}}
 ]
 JSON
@@ -43,7 +43,7 @@ JSON
       cat <<'JSON'
 {"value":[
   {"name":{"value":"OpenAI.GlobalStandard.gpt-5.6-luna"},"currentValue":10,"limit":1000},
-  {"name":{"value":"OpenAI.GlobalStandard.gpt-5.6-sol"},"currentValue":20,"limit":1000},
+  {"name":{"value":"OpenAI.GlobalStandard.gpt-5.5"},"currentValue":20,"limit":1000},
   {"name":{"value":"OpenAI.GlobalStandard.text-embedding-3-small"},"currentValue":30,"limit":1000}
 ]}
 JSON

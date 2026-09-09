@@ -119,12 +119,12 @@ setup の完了結果を確認してください。
 
 ## 完了チェック
 
-- `preflight.sh` が `pass`、または Sol だけの `warn` で、Travel Ops API の応答が `ok` になった
+- `preflight.sh` が `pass`、または GPT-5.5 だけの `warn` で、Travel Ops API の応答が `ok` になった
 - `.workshop/context.json` が作られ、自分の account / project 名を確認できた
 - Foundry (new) で自分の project を開ける
 
-`gpt-5.6-sol` のクォータ不足だけが警告された場合も環境構築は完了です。
-Lab 5 の評価だけをスキップし、Luna を使うほかの Lab は続行できます。
+`gpt-5.5` のクォータ不足だけが警告された場合も環境構築は完了です。
+Lab 5 の評価と Lab 6 の最適化をスキップし、Luna を使うほかの Lab は続行できます。
 
 ## 次の Lab
 

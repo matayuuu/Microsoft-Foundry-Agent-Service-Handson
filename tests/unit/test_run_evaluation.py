@@ -236,11 +236,11 @@ def test_build_testing_criteria_includes_rubric_first() -> None:
     # plain dicts, so criteria are asserted with subscript access, not
     # attribute access.
     criteria = run_evaluation.build_testing_criteria(
-        rubric_evaluator_name="contoso-travel-rubric", judge_deployment="gpt-5.6-sol"
+        rubric_evaluator_name="contoso-travel-rubric", judge_deployment="gpt-5.5"
     )
 
     assert criteria[0]["evaluator_name"] == "contoso-travel-rubric"
-    assert criteria[0]["initialization_parameters"] == {"deployment_name": "gpt-5.6-sol"}
+    assert criteria[0]["initialization_parameters"] == {"deployment_name": "gpt-5.5"}
 
 
 def test_build_testing_criteria_includes_default_builtins() -> None:
@@ -557,7 +557,7 @@ def fake_evaluation_client(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return client
 
 
-@pytest.mark.parametrize("context_judge", ["gpt-5.6-sol", "custom-context-judge"])
+@pytest.mark.parametrize("context_judge", ["gpt-5.5", "custom-context-judge"])
 @pytest.mark.parametrize("explicit_judge", [None, "explicit-judge"])
 @pytest.mark.parametrize("explicit_endpoint", [False, True])
 def test_main_resolves_evaluation_judge_and_preserves_explicit_override(

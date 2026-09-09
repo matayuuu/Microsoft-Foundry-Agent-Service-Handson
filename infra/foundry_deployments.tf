@@ -1,8 +1,8 @@
 # Model deployments on the Foundry AIServices account.
 #
 # Two required deployments and one optional deployment (see variables.tf):
-#   1. primary    -> gpt-5.6-luna             (Agents + Foundry IQ + Optimizer)
-#   2. evaluation -> gpt-5.6-sol              (optional; Lab 5 LLM judges only)
+#   1. primary    -> gpt-5.6-luna             (Agents + Foundry IQ)
+#   2. evaluation -> gpt-5.5                  (optional; Lab 5 judges + Optimizer)
 #   3. embedding  -> text-embedding-3-small   (Azure AI Search / Foundry IQ vectors)
 #
 # scripts/preflight.sh must confirm the chosen name/version/sku/capacity are
@@ -35,7 +35,7 @@ resource "azapi_resource" "evaluation_model_deployment" {
   count = var.enable_evaluation_model ? 1 : 0
 
   type      = "Microsoft.CognitiveServices/accounts/deployments@2026-05-01"
-  name      = "gpt-5.6-sol"
+  name      = "gpt-5.5"
   parent_id = azapi_resource.ai_services.id
 
   depends_on = [azapi_resource.primary_model_deployment]

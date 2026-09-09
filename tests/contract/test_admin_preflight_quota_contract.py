@@ -11,7 +11,7 @@ report `limit`/`currentValue` in thousands of TPM).
 They assert the behavior this hardening pass requires:
 
 * `--participant-count` defaults to 1 and multiplies each model's
-  per-environment required capacity (gpt-5.6-luna 40K, gpt-5.6-sol 100K,
+  per-environment required capacity (gpt-5.6-luna 40K, gpt-5.5 100K,
   text-embedding-3-small 40K) by the participant count to get the
   AGGREGATE requirement the whole event needs from a single region's quota
   pool -- not just one environment's worth.
@@ -196,12 +196,12 @@ def _search_usage_fixture(limit: int, current: int) -> dict:
     }
 
 
-# Synthetic chat versions/aliases, not verified live Luna/Sol values.
+# Synthetic chat versions/aliases, not verified live Luna/GPT-5.5 values.
 # Historic bucket names exercise the rule that usageName cannot be derived.
 PRIMARY_MODEL = "gpt-5.6-luna"
-EVALUATION_MODEL = "gpt-5.6-sol"
+EVALUATION_MODEL = "gpt-5.5"
 GPT41_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt4.1"
-SOL_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt-5.6-sol"
+GPT55_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.gpt-5.5"
 EMBEDDING_GLOBALSTANDARD_USAGE = "OpenAI.GlobalStandard.text-embedding-3-small"
 
 FULL_MODELS_FIXTURE = [
@@ -210,7 +210,7 @@ FULL_MODELS_FIXTURE = [
         "2025-04-14",
         [("Standard", "OpenAI.Standard.gpt4.1"), ("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry(EVALUATION_MODEL, "2026-08-01", [("GlobalStandard", SOL_GLOBALSTANDARD_USAGE)]),
+    _model_entry(EVALUATION_MODEL, "2026-08-01", [("GlobalStandard", GPT55_GLOBALSTANDARD_USAGE)]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -234,7 +234,7 @@ MODELS_SKU_ONLY_ON_OLDER_VERSION_FIXTURE = [
         "2025-01-01",
         [("GlobalStandard", GPT41_GLOBALSTANDARD_USAGE)],
     ),
-    _model_entry(EVALUATION_MODEL, "2026-08-01", [("GlobalStandard", SOL_GLOBALSTANDARD_USAGE)]),
+    _model_entry(EVALUATION_MODEL, "2026-08-01", [("GlobalStandard", GPT55_GLOBALSTANDARD_USAGE)]),
     _model_entry(
         "text-embedding-3-small",
         "1",
@@ -250,7 +250,7 @@ def _usage_fixture_with_headroom(
         evaluation_headroom_k = headroom_k
     return [
         _usage_entry(GPT41_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
-        _usage_entry(SOL_GLOBALSTANDARD_USAGE, limit=evaluation_headroom_k, current=0.0),
+        _usage_entry(GPT55_GLOBALSTANDARD_USAGE, limit=evaluation_headroom_k, current=0.0),
         _usage_entry(EMBEDDING_GLOBALSTANDARD_USAGE, limit=headroom_k, current=0.0),
     ]
 
@@ -309,7 +309,7 @@ def _report(result: subprocess.CompletedProcess[str]) -> dict:
 def test_defaults_participant_count_to_one_and_reports_it(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    # Headroom of 100K is exactly sufficient for Sol's 100K single-
+    # Headroom of 100K is exactly sufficient for GPT-5.5's 100K single-
     # environment requirement, but would fail for any count > 1.
     result = _run_admin_preflight(
         fake_az_bin,
@@ -355,7 +355,7 @@ def test_aggregate_capacity_scales_with_participant_count(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
     # Headroom of 90K covers 2 participants' worth of primary (2*40=80) but
-    # not 3 (3*40=120). Sol headroom of 250K likewise covers 2*100,
+    # not 3 (3*40=120). GPT-5.5 headroom of 250K likewise covers 2*100,
     # not 3*100 -- proves both requirements scale with participant count.
     env = {
         "FAKE_MODELS_EASTUS2": _write_json(tmp_path, "models-e.json", FULL_MODELS_FIXTURE),

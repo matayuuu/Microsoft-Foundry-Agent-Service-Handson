@@ -228,11 +228,11 @@
     <text x="476" y="424" class="service-subtitle">Shared inference plane</text>
     <g transform="translate(630 397)">
       <rect width="110" height="26" rx="13" fill="#E8F3FF"/><text x="55" y="17" text-anchor="middle" class="chip">gpt-5.6-luna</text>
-      <text x="55" y="43" text-anchor="middle" class="caption">Agents · IQ · Optimizer</text>
+      <text x="55" y="43" text-anchor="middle" class="caption">Agents · IQ</text>
     </g>
     <g transform="translate(750 397)">
-      <rect width="110" height="26" rx="13" fill="#F0EDFC"/><text x="55" y="17" text-anchor="middle" class="chip">gpt-5.6-sol</text>
-      <text x="55" y="43" text-anchor="middle" class="caption">Lab 5 evaluation</text>
+      <rect width="110" height="26" rx="13" fill="#F0EDFC"/><text x="55" y="17" text-anchor="middle" class="chip">gpt-5.5</text>
+      <text x="55" y="43" text-anchor="middle" class="caption">Eval · Optimizer</text>
     </g>
     <g transform="translate(870 397)">
       <rect width="122" height="26" rx="13" fill="#EAF9F7"/><text x="61" y="17" text-anchor="middle" class="chip">embedding</text>

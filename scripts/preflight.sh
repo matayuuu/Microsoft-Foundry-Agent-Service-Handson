@@ -116,32 +116,36 @@ REQUIRED_PROVIDERS=(
   "Microsoft.App"
 )
 REQUIRED_MODELS=("gpt-5.6-luna" "text-embedding-3-small")
-EVALUATION_MODEL="gpt-5.6-sol"
+EVALUATION_MODEL="gpt-5.5"
 ALL_MODELS=("${REQUIRED_MODELS[@]}" "${EVALUATION_MODEL}")
 # The exact SKU (deployment type) and TPM capacity (in thousands) this
 # workshop's Terraform requests for each model (infra/variables.tf:
-# primary/optimizer/embedding_model_capacity). A region is only resolved when
+# primary/evaluation/embedding model capacity). A region is only resolved when
 # every required model's SPECIFIC sku/usageName bucket has this much reported
 # headroom -- a generic cross-bucket floor is not sufficient, because a
 # region can be "not tight" overall while still lacking the one bucket this
 # workshop actually deploys into.
 declare -A REQUIRED_MODEL_SKU=(
   ["gpt-5.6-luna"]="GlobalStandard"
-  ["gpt-5.6-sol"]="GlobalStandard"
+  ["gpt-5.5"]="GlobalStandard"
   ["text-embedding-3-small"]="GlobalStandard"
 )
 declare -A REQUIRED_MODEL_CAPACITY_K=(
   ["gpt-5.6-luna"]="40"
-  ["gpt-5.6-sol"]="100"
+  ["gpt-5.5"]="100"
   ["text-embedding-3-small"]="40"
 )
 
 CHECKS_JSON="[]"
 OVERALL_STATUS="pass"
 RESOLVED_LOCATION=""
+FALLBACK_LOCATION=""
 declare -A RESOLVED_MODEL_VERSION
 declare -A RESOLVED_MODEL_SKU
 declare -A RESOLVED_MODEL_USAGE_NAME
+declare -A FALLBACK_MODEL_VERSION
+declare -A FALLBACK_MODEL_SKU
+declare -A FALLBACK_MODEL_USAGE_NAME
 
 add_check() {
   local name="$1" status="$2" detail="$3" affects_overall="${4:-true}"
@@ -271,10 +275,11 @@ done
 #      (limit - currentValue) >= REQUIRED_MODEL_CAPACITY_K for that model.
 #
 # Any of these being false, OR the usage-list call itself failing, is a hard
-# "fail" check for a required model. gpt-5.6-sol is intentionally optional:
+# "fail" check for a required model. gpt-5.5 is intentionally optional:
 # its failures are warnings and never block region selection, so setup can
-# omit the evaluation-only deployment and participants can skip Lab 5 while
-# completing every Luna-based lab. Candidate failures do not fail the whole
+# omit the shared evaluation/optimization deployment and participants can
+# skip Labs 5 and 6 while completing the remaining Luna-based labs.
+# Candidate failures do not fail the whole
 # preflight when another region resolves successfully; region-resolution
 # below owns that aggregate decision. The FIRST region (starting with
 # --location) where every required model clears all three checks is selected.
@@ -290,6 +295,10 @@ for loc in "${SUPPORTED_LOCATIONS[@]}"; do
   fi
 done
 
+# Prefer the first region that can run every lab, including the optional
+# GPT-5.5 evaluation/optimization path. If no such region exists, retain the
+# first region that satisfies the required Luna and embedding deployments so
+# setup can still complete with Labs 5 and 6 skipped.
 for loc in "${ordered_locations[@]}"; do
   models_json="$(az_json az cognitiveservices model list --location "${loc}")"
   usage_json="$(az_json az cognitiveservices usage list --location "${loc}")"
@@ -300,6 +309,7 @@ for loc in "${ordered_locations[@]}"; do
   fi
 
   loc_ok="true"
+  optional_ok="true"
   declare -A loc_versions
   declare -A loc_skus
   declare -A loc_usage_names
@@ -318,7 +328,11 @@ for loc in "${ordered_locations[@]}"; do
     count="$(jq 'length' <<<"${matches}")"
     if [[ "${count}" -eq 0 ]]; then
       add_check "model:${model}/${loc}" "${failure_status}" "Model '${model}' is not offered in ${loc} for this subscription." "false"
-      [[ "${is_optional}" == "true" ]] || loc_ok="false"
+      if [[ "${is_optional}" == "true" ]]; then
+        optional_ok="false"
+      else
+        loc_ok="false"
+      fi
       continue
     fi
 
@@ -333,7 +347,11 @@ for loc in "${ordered_locations[@]}"; do
     if [[ "${sku_count}" -eq 0 ]]; then
       offered_versions="$(jq -r '[.[].model.version] | unique | join(", ")' <<<"${matches}")"
       add_check "model-sku:${model}/${loc}" "${failure_status}" "Model '${model}' is offered in ${loc} (version(s)=[${offered_versions}]) but none of those versions expose the required SKU '${required_sku}' in their skus[] list. This workshop's Terraform requests '${required_sku}' capacity for this model; ${loc} cannot satisfy it." "false"
-      [[ "${is_optional}" == "true" ]] || loc_ok="false"
+      if [[ "${is_optional}" == "true" ]]; then
+        optional_ok="false"
+      else
+        loc_ok="false"
+      fi
       continue
     fi
 
@@ -372,7 +390,11 @@ for loc in "${ordered_locations[@]}"; do
 
     if [[ "${usage_json}" == "null" ]]; then
       add_check "quota-usage:${model}/${loc}" "${failure_status}" "'az cognitiveservices usage list --location ${loc}' failed; TPM headroom for usageName='${usage_name}' (required ${required_capacity}K) is UNKNOWN in ${loc} -- not treated as sufficient." "false"
-      [[ "${is_optional}" == "true" ]] || loc_ok="false"
+      if [[ "${is_optional}" == "true" ]]; then
+        optional_ok="false"
+      else
+        loc_ok="false"
+      fi
       continue
     fi
 
@@ -387,7 +409,11 @@ for loc in "${ordered_locations[@]}"; do
     found="$(jq -r '.found' <<<"${quota_result}")"
     if [[ "${found}" != "true" ]]; then
       add_check "quota-usage:${model}/${loc}" "${failure_status}" "Quota bucket usageName='${usage_name}' (SKU '${required_sku}' for model '${model}') was not present in 'az cognitiveservices usage list --location ${loc}' output; headroom is UNKNOWN, not treated as sufficient." "false"
-      [[ "${is_optional}" == "true" ]] || loc_ok="false"
+      if [[ "${is_optional}" == "true" ]]; then
+        optional_ok="false"
+      else
+        loc_ok="false"
+      fi
       continue
     fi
 
@@ -397,7 +423,11 @@ for loc in "${ordered_locations[@]}"; do
     headroom_k="$(jq -r '.headroom' <<<"${quota_result}")"
     if [[ "${sufficient}" != "true" ]]; then
       add_check "quota-usage:${model}/${loc}" "${failure_status}" "Insufficient TPM headroom for usageName='${usage_name}' in ${loc}: headroom=${headroom_k}K (limit=${limit_k}K, current=${current_k}K) < required ${required_capacity}K." "false"
-      [[ "${is_optional}" == "true" ]] || loc_ok="false"
+      if [[ "${is_optional}" == "true" ]]; then
+        optional_ok="false"
+      else
+        loc_ok="false"
+      fi
       continue
     fi
 
@@ -407,7 +437,15 @@ for loc in "${ordered_locations[@]}"; do
     add_check "model:${model}/${loc}" "pass" "Offered, resolved version='${chosen_version}' (${selection_basis}), sku='${required_sku}', usageName='${usage_name}', headroom=${headroom_k}K (limit=${limit_k}K, current=${current_k}K) >= required ${required_capacity}K TPM." "false"
   done
 
-  if [[ "${loc_ok}" == "true" && -z "${RESOLVED_LOCATION}" ]]; then
+  if [[ "${loc_ok}" == "true" && -z "${FALLBACK_LOCATION}" ]]; then
+    FALLBACK_LOCATION="${loc}"
+    for model in "${ALL_MODELS[@]}"; do
+      FALLBACK_MODEL_VERSION["${model}"]="${loc_versions[${model}]:-}"
+      FALLBACK_MODEL_SKU["${model}"]="${loc_skus[${model}]:-}"
+      FALLBACK_MODEL_USAGE_NAME["${model}"]="${loc_usage_names[${model}]:-}"
+    done
+  fi
+  if [[ "${loc_ok}" == "true" && "${optional_ok}" == "true" && -z "${RESOLVED_LOCATION}" ]]; then
     RESOLVED_LOCATION="${loc}"
     for model in "${ALL_MODELS[@]}"; do
       RESOLVED_MODEL_VERSION["${model}"]="${loc_versions[${model}]:-}"
@@ -418,14 +456,23 @@ for loc in "${ordered_locations[@]}"; do
   unset loc_versions loc_skus loc_usage_names
 done
 
+if [[ -z "${RESOLVED_LOCATION}" && -n "${FALLBACK_LOCATION}" ]]; then
+  RESOLVED_LOCATION="${FALLBACK_LOCATION}"
+  for model in "${ALL_MODELS[@]}"; do
+    RESOLVED_MODEL_VERSION["${model}"]="${FALLBACK_MODEL_VERSION[${model}]:-}"
+    RESOLVED_MODEL_SKU["${model}"]="${FALLBACK_MODEL_SKU[${model}]:-}"
+    RESOLVED_MODEL_USAGE_NAME["${model}"]="${FALLBACK_MODEL_USAGE_NAME[${model}]:-}"
+  done
+fi
+
 if [[ -z "${RESOLVED_LOCATION}" ]]; then
   add_check "region-resolution" "fail" "Neither ${ordered_locations[*]} had every required model with sufficient reported headroom. Ask your subscription administrator to check quota (scripts/admin-preflight.sh) or request a quota increase."
 else
   add_check "region-resolution" "pass" "Resolved region: ${RESOLVED_LOCATION}."
   if [[ -z "${RESOLVED_MODEL_VERSION[${EVALUATION_MODEL}]:-}" ]]; then
-    add_check "evaluation-model" "warn" "${EVALUATION_MODEL} could not be deployed with 100K TPM in ${RESOLVED_LOCATION}. setup.sh will omit the optional evaluation model; skip Lab 5 and continue with the Luna-based labs."
+    add_check "evaluation-model" "warn" "${EVALUATION_MODEL} could not be deployed with 100K TPM in ${RESOLVED_LOCATION}. setup.sh will omit the optional shared evaluation/optimization model; skip Labs 5 and 6 and continue with the remaining Luna-based labs."
   else
-    add_check "evaluation-model" "pass" "${EVALUATION_MODEL} is available for the optional Lab 5 evaluation deployment."
+    add_check "evaluation-model" "pass" "${EVALUATION_MODEL} is available for the optional shared Lab 5 evaluation and Lab 6 optimization deployment."
   fi
 fi
 
@@ -453,9 +500,9 @@ fi
 
 MODEL_VERSIONS_JSON="$(jq -n \
   --arg primary "${RESOLVED_MODEL_VERSION[gpt-5.6-luna]:-}" \
-  --arg evaluation "${RESOLVED_MODEL_VERSION[gpt-5.6-sol]:-}" \
+  --arg evaluation "${RESOLVED_MODEL_VERSION[gpt-5.5]:-}" \
   --arg emb "${RESOLVED_MODEL_VERSION[text-embedding-3-small]:-}" \
-  '{"gpt-5.6-luna": $primary, "gpt-5.6-sol": $evaluation, "text-embedding-3-small": $emb}')"
+  '{"gpt-5.6-luna": $primary, "gpt-5.5": $evaluation, "text-embedding-3-small": $emb}')"
 
 # Per-model SKU/usageName evidence for the resolved region (empty object
 # fields when no region resolved), so setup.sh/participants can see exactly
@@ -464,15 +511,15 @@ MODEL_CAPACITY_EVIDENCE_JSON="$(jq -n \
   --arg primary_sku "${RESOLVED_MODEL_SKU[gpt-5.6-luna]:-}" \
   --arg primary_usage "${RESOLVED_MODEL_USAGE_NAME[gpt-5.6-luna]:-}" \
   --argjson primary_capacity "${REQUIRED_MODEL_CAPACITY_K[gpt-5.6-luna]}" \
-  --arg evaluation_sku "${RESOLVED_MODEL_SKU[gpt-5.6-sol]:-}" \
-  --arg evaluation_usage "${RESOLVED_MODEL_USAGE_NAME[gpt-5.6-sol]:-}" \
-  --argjson evaluation_capacity "${REQUIRED_MODEL_CAPACITY_K[gpt-5.6-sol]}" \
+  --arg evaluation_sku "${RESOLVED_MODEL_SKU[gpt-5.5]:-}" \
+  --arg evaluation_usage "${RESOLVED_MODEL_USAGE_NAME[gpt-5.5]:-}" \
+  --argjson evaluation_capacity "${REQUIRED_MODEL_CAPACITY_K[gpt-5.5]}" \
   --arg emb_sku "${RESOLVED_MODEL_SKU[text-embedding-3-small]:-}" \
   --arg emb_usage "${RESOLVED_MODEL_USAGE_NAME[text-embedding-3-small]:-}" \
   --argjson emb_capacity "${REQUIRED_MODEL_CAPACITY_K[text-embedding-3-small]}" \
   '{
     "gpt-5.6-luna": {sku: $primary_sku, usage_name: $primary_usage, required_capacity_k: $primary_capacity},
-    "gpt-5.6-sol": {sku: $evaluation_sku, usage_name: $evaluation_usage, required_capacity_k: $evaluation_capacity},
+    "gpt-5.5": {sku: $evaluation_sku, usage_name: $evaluation_usage, required_capacity_k: $evaluation_capacity},
     "text-embedding-3-small": {sku: $emb_sku, usage_name: $emb_usage, required_capacity_k: $emb_capacity}
   }')"
 

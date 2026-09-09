@@ -61,13 +61,12 @@ API が返す費用内訳と合計を確認します。これは**学ぶ内容�
   で実行します。
 
 モデルは合計 **3 deployment**（モデルを呼び出すための配置単位）です。
-**Luna（`gpt-5.6-luna`）** は Prompt / Hosted Agent と Foundry IQ で共有し、
-Optimizer でも使用を許可する唯一のモデルです。
-**Sol（`gpt-5.6-sol`）** は Lab 5 の設定可能な評価 judge だけに使います。
+**Luna（`gpt-5.6-luna`）** は Prompt / Hosted Agent と Foundry IQ で共有します。
+**GPT-5.5（`gpt-5.5`）** は Lab 5 の設定可能な評価 judge と、
+Lab 6 の Evaluation / Optimization model で共有します。
 文書検索用の **`text-embedding-3-small`** は文章を検索用の数値に変換します。
-Sol のクォータが間に合わない場合はそのデプロイと Lab 5 だけを省略でき、
-ほかの Lab へ進めます。2026-09-09 時点の Agent Optimizer は Luna を
-最適化モデルとして受け付けないため、Lab 6 は互換性ゲートで代替モデルを追加せず省略します。
+GPT-5.5 のクォータが間に合わない場合はそのデプロイと Lab 5 / 6 を省略し、
+Luna を使うほかの Lab は完遂できます。
 選択する名前と役割は [Lab 0](labs/00-overview.md) で確認します。
 
 ## 参加条件

@@ -42,7 +42,12 @@ output "primary_model_deployment_name" {
 }
 
 output "evaluation_model_deployment_name" {
-  description = "Optional gpt-5.6-sol deployment used only by Lab 5 evaluation judges; null when quota was unavailable during setup."
+  description = "Optional shared gpt-5.5 deployment used by Lab 5 evaluation judges and Agent Optimizer; null when quota was unavailable during setup."
+  value       = try(azapi_resource.evaluation_model_deployment[0].name, null)
+}
+
+output "optimizer_model_deployment_name" {
+  description = "Alias for the optional shared gpt-5.5 deployment used as both the Agent Optimizer evaluation and optimization model."
   value       = try(azapi_resource.evaluation_model_deployment[0].name, null)
 }
 

@@ -261,7 +261,7 @@ def test_optional_evaluation_model_requires_a_version_only_when_enabled() -> Non
     ("role", "model", "deployment", "capacity"),
     [
         ("primary", "gpt-5.6-luna", "gpt-5.6-luna", 40),
-        ("evaluation", "gpt-5.6-sol", "gpt-5.6-sol", 100),
+        ("evaluation", "gpt-5.5", "gpt-5.5", 100),
         ("embedding", "text-embedding-3-small", "embedding", 40),
     ],
 )
@@ -300,7 +300,7 @@ def test_model_defaults_deployment_ids_and_output_keys_agree(
     assert f'output "{role}_model_deployment_name"' in _read("outputs.tf")
 
 
-def test_three_declared_model_deployments_and_existing_model_outputs() -> None:
+def test_three_declared_model_deployments_and_shared_optimizer_output_alias() -> None:
     deployments = re.findall(r'resource "azapi_resource" "(\w+_model_deployment)"', _all_tf_text())
     outputs = re.findall(r'output "(\w+_model_deployment_name)"', _read("outputs.tf"))
     assert set(deployments) == {
@@ -310,9 +310,17 @@ def test_three_declared_model_deployments_and_existing_model_outputs() -> None:
     }
     assert len(deployments) == 3
     assert set(outputs) == {
-        f"{role}_model_deployment_name" for role in ("primary", "evaluation", "embedding")
+        f"{role}_model_deployment_name"
+        for role in ("primary", "evaluation", "optimizer", "embedding")
     }
-    assert len(outputs) == 3
+    assert len(outputs) == 4
+    optimizer_output = re.search(
+        r'output "optimizer_model_deployment_name" \{(.*?)\n\}',
+        _read("outputs.tf"),
+        re.DOTALL,
+    )
+    assert optimizer_output is not None
+    assert "evaluation_model_deployment[0].name" in optimizer_output.group(1)
 
 
 def test_tfvars_example_requires_discovered_chat_versions() -> None:

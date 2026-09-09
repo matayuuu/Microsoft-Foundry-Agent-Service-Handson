@@ -39,26 +39,25 @@ the repository root `AGENTS.md` for full ownership boundaries.
     non-preview version for these resource types as of the 2026-08-21
     retrieval date recorded in `foundry_account.tf`).
 - **Model deployments are variable-driven, not guessed.** Up to three deployments
-  (`gpt-5.6-luna` = Prompt/Hosted Agents, Foundry IQ, and the only permitted model
-  for either Optimizer role when supported,
-  optional `gpt-5.6-sol` = Lab 5 configurable LLM judges,
+  (`gpt-5.6-luna` = Prompt/Hosted Agents and Foundry IQ,
+  optional `gpt-5.5` = Lab 5 configurable LLM judges plus both Agent Optimizer roles,
   `embedding` = text-embedding-3-small) have overridable
   model-name/version/sku/capacity variables; deployment names are fixed.
-  `primary_model_version` intentionally has no default; the Sol version is required
+  `primary_model_version` intentionally has no default; the GPT-5.5 version is required
   only when `enable_evaluation_model` is true. `scripts/preflight.sh` discovers each version and quota `usageName`
   from the same required-SKU entry returned by `az cognitiveservices model list`.
   Default capacities are 40/100/40K TPM, checked against live regional headroom.
-  The evaluation-only Sol allocation is 100 after throttling at 20 during a Portal
-  evaluation. This is GlobalStandard deployment throughput drawn from existing
+  The shared GPT-5.5 allocation is 100 to cover both evaluation and optimization.
+  This is GlobalStandard deployment throughput drawn from existing
   quota, not a subscription quota increase or fixed token-spend commitment.
   Consumption remains billable, and 100 does not guarantee zero HTTP 429 responses.
   Capacity overrides still use the existing Terraform variables; the preflight
   expectations must match any intentionally overridden allocation.
   The output keys are `primary_model_deployment_name`,
-  `evaluation_model_deployment_name`, and `embedding_model_deployment_name`.
-  The evaluation output is null when Sol quota is unavailable. Agent Optimizer is
-  skipped rather than adding another deployment when its supported-model list
-  excludes `gpt-5.6-luna`.
+  `evaluation_model_deployment_name`, `optimizer_model_deployment_name`, and
+  `embedding_model_deployment_name`. The two GPT-5.5 outputs are aliases for one
+  deployment and are null when its quota is unavailable; Labs 5 and 6 then use
+  their documented skip paths.
 - **Azure AI Search supports two pricing models.** Dedicated Basic is the default.
   `scripts/setup.sh --ai-search-serverless` selects the Serverless Developer preview,
   provisioned with `Microsoft.Search/searchServices@2026-03-01-preview` and
@@ -119,9 +118,10 @@ value.
   time. `outputs.tf` and `scripts/setup.sh` print the guaranteed-correct
   generic portal URL plus resource names/IDs a participant can use to
   navigate manually.
-- Exact Luna/Sol versions are intentionally not hardcoded. Luna must be
-  resolved by `scripts/preflight.sh`; Sol is enabled only when the same check confirms
-  its 100K allocation. Model catalog/quota checks do not prove Portal picker support.
+- Exact Luna/GPT-5.5 versions are intentionally not hardcoded. Luna must be
+  resolved by `scripts/preflight.sh`; GPT-5.5 is enabled only when the same check
+  confirms its 100K allocation. Model catalog/quota checks do not prove Portal
+  picker support.
 - Renaming old `primary`/`optimizer` deployments to `primary`/`evaluation` can replace resources.
   Review the plan and update saved consumers; retain state and cleanup inputs
   until cleanup succeeds. Recovery uses the exact current deployment IDs.

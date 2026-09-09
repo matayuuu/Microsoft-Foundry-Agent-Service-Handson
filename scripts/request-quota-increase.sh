@@ -94,12 +94,12 @@ search_usage_json="$(az rest --method get --url \
 
 declare -A REQUIRED_MODEL_CAPACITY_K=(
   ["gpt-5.6-luna"]="40"
-  ["gpt-5.6-sol"]="100"
+  ["gpt-5.5"]="100"
   ["text-embedding-3-small"]="40"
 )
 MODEL_REQUESTS="[]"
 
-for model in "gpt-5.6-luna" "gpt-5.6-sol" "text-embedding-3-small"; do
+for model in "gpt-5.6-luna" "gpt-5.5" "text-embedding-3-small"; do
   selected_entry="$(jq -c --arg model "${model}" --arg sku "GlobalStandard" '
     [.[] | select(
       .model.name == $model and

@@ -290,14 +290,14 @@ def test_setup_persists_cleanup_inputs_before_terraform_can_create_resources() -
 
 @pytest.mark.skipif(shutil.which("jq") is None, reason="model input harness requires jq")
 @pytest.mark.parametrize(
-    "missing_model", [None, "gpt-5.6-luna", "gpt-5.6-sol", "text-embedding-3-small"]
+    "missing_model", [None, "gpt-5.6-luna", "gpt-5.5", "text-embedding-3-small"]
 )
-def test_setup_uses_discovered_versions_and_omits_only_optional_sol(
+def test_setup_uses_discovered_versions_and_omits_only_optional_gpt55(
     tmp_path: Path, missing_model: str | None
 ) -> None:
     versions = {
         "gpt-5.6-luna": "fixture-primary-version",
-        "gpt-5.6-sol": "fixture-evaluation-version",
+        "gpt-5.5": "fixture-evaluation-version",
         "text-embedding-3-small": "fixture-embedding-version",
     }
     if missing_model:
@@ -368,7 +368,7 @@ def test_setup_uses_discovered_versions_and_omits_only_optional_sol(
             version = f"fixture-{role}-version"
             assert recovery["terraform_inputs"][f"{role}_model_version"] == version
             assert f"{role}_model_version={version}" in arguments
-        evaluation_enabled = missing_model != "gpt-5.6-sol"
+        evaluation_enabled = missing_model != "gpt-5.5"
         expected_evaluation_version = "fixture-evaluation-version" if evaluation_enabled else ""
         assert recovery["terraform_inputs"]["enable_evaluation_model"] is evaluation_enabled
         assert (

@@ -83,9 +83,9 @@ Terraform と SDK ラッパーが同じオブジェクトを管理してはい�
 
 - プロジェクト管理を有効にした Microsoft Foundry アカウント（`AIServices`）
 - Microsoft Foundry プロジェクト
-- Prompt / Hosted Agent と Foundry IQ が共有し、Optimizer でも唯一許可する
-  `gpt-5.6-luna` デプロイ
-- Lab 5 の設定可能な LLM 評価用モデルだけに使う、オプションの `gpt-5.6-sol` デプロイ
+- Prompt / Hosted Agent と Foundry IQ が共有する `gpt-5.6-luna` デプロイ
+- Lab 5 の設定可能な LLM 評価と Lab 6 の Agent Optimizer が共有する、
+  オプションの `gpt-5.5` デプロイ
 - 初期データを投入するベクトルインデックス用に、`embedding` という名前でデプロイする `text-embedding-3-small`
 - Azure AI Search Dedicated Basic（レプリカ 1、パーティション 1）。`--ai-search-serverless`
   指定時は Serverless Developer preview
@@ -95,26 +95,25 @@ Terraform と SDK ラッパーが同じオブジェクトを管理してはい�
 正確なモデルバージョン、デプロイ SKU、容量は入力値として指定します。
 参加者の開始前に、サブスクリプション管理者向けの事前チェックでこれらを検証します。
 
-デプロイは Luna と埋め込みの 2 つが必須で、Sol を利用できる場合は合計 3 つです。
+デプロイは Luna と埋め込みの 2 つが必須で、GPT-5.5 を利用できる場合は合計 3 つです。
 `primary_model_deployment_name` は `gpt-5.6-luna` を示し、Foundry IQ もこの
-デプロイを共有します。Optimizer でもこのデプロイだけを許可しますが、対応モデル一覧に
-Luna がない間は Lab 6 を省略します。`evaluation_model_deployment_name` は
-Lab 5 専用の `gpt-5.6-sol` を示しますが、クォータ不足時は `null` です。
-評価では Luna を使用する対象エージェントを呼び出し、設定可能な評価用モデルだけに
-Sol を使用します。サービスが管理する
+デプロイを共有します。`evaluation_model_deployment_name` と
+`optimizer_model_deployment_name` は同じ optional の `gpt-5.5` デプロイを示し、
+クォータ不足時は両方とも `null` です。Lab 5 の judge と Lab 6 の Evaluation /
+Optimization model に GPT-5.5 を使用します。サービスが管理する
 安全性評価器には、判定モデルのデプロイを上書きする設定を渡しません。
-Luna のバージョンには Terraform の既定値を設けず、Sol は有効化時だけバージョンを必須にします。
+Luna のバージョンには Terraform の既定値を設けず、GPT-5.5 は有効化時だけ
+バージョンを必須にします。
 事前チェックで、各モデルのバージョンとクォータの `usageName` を、
 それぞれ同一の必須 SKU カタログエントリから取得します。
 
 既定の容量はそれぞれ 40/100/40K TPM ですが、実環境の事前チェック結果に従います。
-評価専用 Sol の割り当ては、ポータルでの評価中に 20 でスロットリングが発生したため
-引き上げました。これは既存のクォータ内で GlobalStandard のスループットを割り当てるものであり、
+共有の GPT-5.5 には評価と最適化の両方を実行できるよう100を割り当てます。
+これは既存のクォータ内で GlobalStandard のスループットを割り当てるものであり、
 サブスクリプションのクォータ上限を引き上げたり、トークン利用料を固定額にしたりするものではありません。
 実際の使用量には引き続き課金され、100 単位でも HTTP 429 応答が発生しない保証はありません。
 共有用途の容量は、ラボごとではなくデプロイごとに 1 回だけ計上します。
-Foundry IQ では Luna を選びます。Optimizer でも Luna だけを選択対象にし、
-対応していなければ別モデルを追加せず Lab 6 を省略します。
+Foundry IQ では Luna、Optimizer の2つのモデル選択では GPT-5.5 を選びます。
 モデルカタログに掲載されているだけでは、選択 UI や API との互換性は確認できません。
 [Search のモデルと API の要件](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base)
 と

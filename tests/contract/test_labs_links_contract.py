@@ -226,22 +226,20 @@ def test_portal_labs_use_setup_prepared_evaluation_assets() -> None:
     assert "Contoso Travel Rubric" in optimization
 
 
-def test_core_labs_isolate_sol_to_evaluation_and_use_luna_elsewhere() -> None:
+def test_core_labs_use_gpt55_for_evaluation_and_optimizer() -> None:
     retrieval = (LABS_DIR / "03-rag-foundry-iq.md").read_text(encoding="utf-8")
     evaluation = (LABS_DIR / "05-evaluation.md").read_text(encoding="utf-8")
     optimization = (LABS_DIR / "06-optimization.md").read_text(encoding="utf-8")
 
     assert "knowledge_model: .primary_model_deployment_name.value" in retrieval
-    assert "gpt-5.6-sol" not in retrieval
+    assert "gpt-5.5" not in retrieval
     assert "evaluation_model_deployment_name" in evaluation
-    assert "gpt-5.6-sol" in evaluation
-    assert "evaluation_model: .primary_model_deployment_name.value" in optimization
-    assert "optimization_model: .primary_model_deployment_name.value" in optimization
-    assert "evaluation_model_deployment_name" not in optimization
+    assert "gpt-5.5" in evaluation
+    assert "evaluation_model: .optimizer_model_deployment_name.value" in optimization
+    assert "optimization_model: .optimizer_model_deployment_name.value" in optimization
+    assert "gpt-5.5" in optimization
     assert "Max candidates | `1`" in optimization
-    assert "No supported optimization model" in optimization
     assert "optimizer-run.simulated.json" in optimization
-    assert "別モデルを追加せず" in optimization
     assert "agent-optimizer-overview#models" in optimization
 
 

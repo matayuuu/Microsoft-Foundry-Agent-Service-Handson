@@ -319,6 +319,7 @@ REQUIRED_TERRAFORM_OUTPUTS = (
     "foundry_project_endpoint",
     "primary_model_deployment_name",
     "evaluation_model_deployment_name",
+    "optimizer_model_deployment_name",
     "embedding_model_deployment_name",
     "search_service_name",
     "search_service_endpoint",

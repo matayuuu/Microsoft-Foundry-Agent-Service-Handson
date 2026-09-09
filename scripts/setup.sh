@@ -405,7 +405,7 @@ elif [[ ${PREFLIGHT_EXIT} -ne 0 ]]; then
 fi
 
 RESOLVED_LOCATION="$(jq -r '.resolved_location' "${PREFLIGHT_REPORT}")"
-EVALUATION_MODEL_VERSION="$(jq -r '.resolved_model_versions["gpt-5.6-sol"] // empty' "${PREFLIGHT_REPORT}")"
+EVALUATION_MODEL_VERSION="$(jq -r '.resolved_model_versions["gpt-5.5"] // empty' "${PREFLIGHT_REPORT}")"
 PRIMARY_MODEL_VERSION="$(jq -r '.resolved_model_versions["gpt-5.6-luna"] // empty' "${PREFLIGHT_REPORT}")"
 EMBEDDING_MODEL_VERSION="$(jq -r '.resolved_model_versions["text-embedding-3-small"] // empty' "${PREFLIGHT_REPORT}")"
 ENABLE_EVALUATION_MODEL="true"
@@ -430,10 +430,10 @@ fi
 echo "    Resolved region: ${RESOLVED_LOCATION}" >&2
 echo "    Resolved shared Luna model version: ${PRIMARY_MODEL_VERSION}" >&2
 if [[ "${ENABLE_EVALUATION_MODEL}" == "true" ]]; then
-  echo "    Resolved optional Sol evaluation model version: ${EVALUATION_MODEL_VERSION}" >&2
+  echo "    Resolved optional GPT-5.5 evaluation/optimization model version: ${EVALUATION_MODEL_VERSION}" >&2
 else
-  echo "    WARNING: gpt-5.6-sol quota is unavailable; omitting the optional evaluation deployment." >&2
-  echo "    Continue with all Luna-based labs and skip Lab 5." >&2
+  echo "    WARNING: gpt-5.5 quota is unavailable; omitting the optional evaluation/optimization deployment." >&2
+  echo "    Skip Labs 5 and 6, then continue with the remaining Luna-based labs." >&2
 fi
 
 PYTHON_BIN="${WORKSHOP_PYTHON:-${REPO_ROOT}/.venv/bin/python}"

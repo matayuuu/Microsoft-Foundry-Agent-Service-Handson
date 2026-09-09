@@ -33,7 +33,7 @@ locals {
     ], var.enable_evaluation_model ? [
     {
       address           = "azapi_resource.evaluation_model_deployment[0]"
-      id                = "${local.ai_services_id}/deployments/gpt-5.6-sol"
+      id                = "${local.ai_services_id}/deployments/gpt-5.5"
       api_version       = "2026-05-01"
       owner_id          = local.ai_services_id
       owner_api_version = "2026-05-01"

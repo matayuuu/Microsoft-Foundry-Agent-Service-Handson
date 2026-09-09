@@ -21,13 +21,13 @@ search_pricing_model = "dedicated"
 
 # Model deployment overrides. Run scripts/preflight.sh first to discover
 # versions that are actually available in your subscription/region; do not
-# guess them. The evaluation model is optional so setup can continue without
-# it when Sol quota is unavailable.
+# guess them. The shared evaluation/optimization model is optional so setup can
+# continue without it when GPT-5.5 quota is unavailable.
 primary_model_name    = "gpt-5.6-luna"
 primary_model_version = "REPLACE_WITH_PREFLIGHT_VERIFIED_VERSION"
 
 enable_evaluation_model = true
-evaluation_model_name    = "gpt-5.6-sol"
+evaluation_model_name    = "gpt-5.5"
 evaluation_model_version = "REPLACE_WITH_PREFLIGHT_VERIFIED_VERSION"
 
 embedding_model_name    = "text-embedding-3-small"
