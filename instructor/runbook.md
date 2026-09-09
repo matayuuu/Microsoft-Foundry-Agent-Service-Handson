@@ -259,8 +259,7 @@ Cloud Shell は非対話20分で終了し得ます。Notebook を保存し、切
   3. Codespace または Cloud Shell の storage / HOME image は cleanup 完了まで削除させない。
      ローカル Terraform state と復旧用 `.workshop` がそこにあるため。
   4. 成功後に保存する Notebook / 安全な結果を取得し、選択した環境ガイドの終了手順へ進む。
-     Cloud ShellはJupyter shutdown、Web previewの **Close port**、すべてのsessionの
-     `exit`、設定解除の後、**Cloud Shellが自動作成した専用RG一式だけ**をAzure portalで削除する。
+     Cloud Shellは設定解除の後、**Cloud Shellが自動作成した専用RG一式だけ**をAzure portalで削除する。
      workloadの`destroy.sh`はCloud Shell storageを管理しない。workload用RG、他人・他用途の
      storage、検証前からあるCloud Shell設定は削除しない。
   5. 残存 resource、実行できなかった検証、cleanup の未完了は明記して引き継ぐ。

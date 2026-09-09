@@ -109,7 +109,7 @@ Terraform state、`.azure`、Jupyter の認証情報は配布物やスクリー�
 準備時に選んだ環境の終了手順へ進んでください。
 
 - [Codespaces の停止](../docs/participant/environments/codespaces.md#stop)
-- [Cloud Shell の Jupyter 停止・Web preview 閉鎖・専用ストレージの削除](../docs/participant/environments/cloud-shell.md#stop)
+- [Cloud Shell の設定解除・専用ストレージの削除](../docs/participant/environments/cloud-shell.md#stop)
 
 ブラウザーや実行環境を閉じるだけでは Azure resources は削除されません。
 Cloud Shell の場合も、resource group 自体や以前からある他用途のストレージは削除しません。

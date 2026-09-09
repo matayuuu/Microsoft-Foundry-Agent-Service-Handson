@@ -204,18 +204,13 @@ Notebookはこまめに保存してください。保存してもPythonの変数
 
 ## Lab 9後に終了する
 
-**順序: workloadのcleanup → 必要ファイルの保存 → JupyterLab停止 →
-Web preview停止 → Cloud Shell終了 → 専用Storage削除**
+**順序: workloadのcleanup → Cloud Shell設定解除 → 専用Storage削除**
 
 1. [Lab 9](../../../labs/09-observability-cleanup.md)の`./scripts/destroy.sh`が成功したことを確認します。
    失敗した場合は先へ進まず、Terraform stateと`.workshop/`を保持してください。
-2. 必要なNotebookを保存し、残したいファイルだけPCへダウンロードします。
-3. JupyterLabの **File > Shut Down**、またはTerminal Aの **Ctrl+C** でJupyterLabを停止します。
-4. **Web preview > Close port 5000** を選び、previewタブを閉じます。
-5. Terminal AとTerminal Bの両方で`exit`を実行します。
-6. 自動作成した専用Storageを使った場合だけ、Cloud Shellの
+2. 自動作成した専用Storageを使った場合だけ、Cloud Shellの
    **Settings > Reset User Settings** で関連付けを解除します。
-7. Azure portalで控えたCloud Shell専用RGを開き、他用途のresourceがないことを確認して
+3. Azure portalで控えたCloud Shell専用RGを開き、他用途のresourceがないことを確認して
    **Delete resource group** を実行します。
 
 教材workload用RGは`destroy.sh`でもこの手順でも削除しません。

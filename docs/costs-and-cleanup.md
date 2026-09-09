@@ -62,8 +62,7 @@ Toolbox または Skill の参照が原因で削除に失敗した場合は、
 PC にダウンロードし、準備時に選んだ
 [Codespaces の停止](participant/environments/codespaces.md#stop) /
 [Cloud Shell の終了](participant/environments/cloud-shell.md#stop) を行います。
-Cloud Shell は Jupyter shutdown → Web preview の **Close port** → 各 session の `exit` の後、
-Cloud Shell設定を解除し、初回UIが**その回専用に自動作成したRG一式**だけを削除します。
+Cloud Shellは設定を解除し、初回UIが**その回専用に自動作成したRG一式**だけを削除します。
 既存Storageの代替を使った場合は、許可されたStorage account / File shareだけを扱います。
 Cloud Shell storageはTerraform / `destroy.sh`の対象外であり、教材workload用RG、他用途・
 他ユーザーのstorage、検証前からあるCloud Shell設定は削除しません。

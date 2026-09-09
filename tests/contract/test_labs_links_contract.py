@@ -407,6 +407,10 @@ def test_cloud_shell_guide_keeps_a_concise_participant_workflow() -> None:
         "Secure / HttpOnly",
     ):
         assert removed not in cloud_shell
+    stop = cloud_shell.split("## Lab 9後に終了する", 1)[1].split("## 公式資料", 1)[0]
+    assert re.findall(r"^\d+\.", stop, re.MULTILINE) == ["1.", "2.", "3."]
+    assert "File > Shut Down" not in stop
+    assert "Close port" not in stop
     commands = "\n".join(re.findall(r"```bash\n(.*?)```", cloud_shell, re.DOTALL))
     for forbidden in (
         "sudo ",
