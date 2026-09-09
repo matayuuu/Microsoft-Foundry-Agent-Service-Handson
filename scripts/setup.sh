@@ -77,9 +77,9 @@ Options:
                                 to v1.0.3 (the latest validated workshop
                                 release). May also be supplied via the
                                 TRAVEL_API_IMAGE_TAG environment variable.
-  --location <region>   Preferred region: eastus2 (default) or swedencentral.
-                        scripts/preflight.sh may resolve to the other region
-                        if the preferred one lacks required model/quota.
+  --location <region>   Preferred region: eastus2 (default), swedencentral,
+                        or japaneast. scripts/preflight.sh may resolve to
+                        another supported region if required capacity is absent.
   --source-base <url>   Public base URL substituted for data/manifest.json's
                         source_url_base_placeholder token (used for citations
                         and each indexed chunk's source_url field). Must be a

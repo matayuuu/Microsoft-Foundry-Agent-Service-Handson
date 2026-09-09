@@ -294,7 +294,13 @@ def _write_json(tmp_path: Path, name: str, payload: list[dict]) -> str:
     return str(path)
 
 
-def _run_preflight(fake_az_bin: Path, tmp_path: Path, env_overrides: dict[str, str]) -> dict:
+def _run_preflight(
+    fake_az_bin: Path,
+    tmp_path: Path,
+    env_overrides: dict[str, str],
+    *,
+    preferred_location: str = "eastus2",
+) -> dict:
     env = dict(os.environ)
     env["PATH"] = str(fake_az_bin) + os.pathsep + env.get("PATH", "")
     env["FAKE_SUBSCRIPTION_ID"] = "11111111-1111-1111-1111-111111111111"
@@ -309,6 +315,8 @@ def _run_preflight(fake_az_bin: Path, tmp_path: Path, env_overrides: dict[str, s
             env["FAKE_SUBSCRIPTION_ID"],
             "--resource-group",
             env["FAKE_RESOURCE_GROUP"],
+            "--location",
+            preferred_location,
             "--format",
             "json",
         ],
@@ -372,6 +380,25 @@ def test_resolves_preferred_region_with_sufficient_capacity_evidence(
     }
     assert report["resolved_model_versions"][PRIMARY_MODEL] == "2025-04-14"
     assert report["resolved_model_versions"][EVALUATION_MODEL] == "2026-08-01"
+
+
+def test_resolves_japaneast_when_explicitly_preferred(fake_az_bin: Path, tmp_path: Path) -> None:
+    report = _run_preflight(
+        fake_az_bin,
+        tmp_path,
+        {
+            "FAKE_MODELS_JAPANEAST": _write_json(
+                tmp_path, "models-japaneast.json", FULL_MODELS_FIXTURE
+            ),
+            "FAKE_USAGE_JAPANEAST": _write_json(
+                tmp_path, "usage-japaneast.json", _sufficient_usage_fixture()
+            ),
+        },
+        preferred_location="japaneast",
+    )
+
+    assert report["resolved_location"] == "japaneast"
+    assert report["overall_status"] == "pass"
 
 
 def test_falls_back_to_swedencentral_when_eastus2_headroom_insufficient(

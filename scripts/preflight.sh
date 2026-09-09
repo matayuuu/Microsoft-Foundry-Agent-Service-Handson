@@ -30,9 +30,9 @@ Usage: preflight.sh --subscription <subscription-id> --resource-group <name> [op
 Options:
   --subscription <id>     Azure subscription ID (required).
   --resource-group <name> EXISTING resource group name the participant owns (required).
-  --location <region>     Preferred region. Default: eastus2. Falls back to
-                          swedencentral automatically if eastus2 does not
-                          have the required model/quota availability.
+  --location <region>     Preferred region. Default: eastus2. Supported:
+                          eastus2, swedencentral, japaneast. Falls back
+                          through the remaining supported regions if needed.
   --format <fmt>          Output format: json (default) or markdown.
   --output <file>         Write the report to <file> instead of stdout.
   -h, --help              Show this help and exit.
@@ -95,8 +95,8 @@ if [[ "${FORMAT}" != "json" && "${FORMAT}" != "markdown" ]]; then
   exit 1
 fi
 
-if [[ "${PREFERRED_LOCATION}" != "eastus2" && "${PREFERRED_LOCATION}" != "swedencentral" ]]; then
-  echo "${SCRIPT_NAME}: --location must be 'eastus2' or 'swedencentral'" >&2
+if [[ "${PREFERRED_LOCATION}" != "eastus2" && "${PREFERRED_LOCATION}" != "swedencentral" && "${PREFERRED_LOCATION}" != "japaneast" ]]; then
+  echo "${SCRIPT_NAME}: --location must be 'eastus2', 'swedencentral', or 'japaneast'" >&2
   exit 1
 fi
 
@@ -107,7 +107,7 @@ for tool in az jq; do
   fi
 done
 
-SUPPORTED_LOCATIONS=("eastus2" "swedencentral")
+SUPPORTED_LOCATIONS=("eastus2" "swedencentral" "japaneast")
 REQUIRED_PROVIDERS=(
   "Microsoft.CognitiveServices"
   "Microsoft.Search"
@@ -247,7 +247,7 @@ for provider in "${REQUIRED_PROVIDERS[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
-# Region + model/SKU/quota resolution: eastus2 first, swedencentral fallback.
+# Region + model/SKU/quota resolution: preferred region first, then supported fallbacks.
 #
 # For each candidate region, every required model must:
 #   1. Be offered at all (model.name match), and

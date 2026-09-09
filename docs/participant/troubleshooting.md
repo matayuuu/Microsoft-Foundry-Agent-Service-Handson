@@ -26,6 +26,8 @@
   --location swedencentral
 ```
 
+Sweden Central でも同じエラーになる場合は `--location japaneast` を指定します。
+
 ### セットアップが途中で失敗した
 
 同じコマンドを再実行します。Terraform の状態ファイル、Azure リソース、`.workshop/` を手動で

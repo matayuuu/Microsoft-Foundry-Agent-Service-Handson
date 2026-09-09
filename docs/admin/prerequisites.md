@@ -31,7 +31,7 @@ Azure Policy の確認には、サブスクリプション全体に対する権�
   **Azure Resource Manager Provider Registration** の権限が例に挙げられます。
   教材では特定のロール名の付与や保有を前提としないため、テナントの運用ルールを確認してください。
 - `management.azure.com` へのネットワーク接続。
-- 対象リージョンの確認。既定は `eastus2`、代替は `swedencentral` です。
+- 対象リージョンの確認。既定は `eastus2`、代替は `swedencentral`、次に `japaneast` です。
   参加者が切り替える際に管理者の再確認が不要になるよう、常に両方を確認します。
 
 ## 事前確認スクリプトの実行
@@ -43,7 +43,8 @@ Azure Policy の確認には、サブスクリプション全体に対する権�
 ```
 
 既定では **読み取り専用**です。リソースグループの作成・削除、クォータや Azure Policy の変更、
-ロールの割り当ては行いません。`eastus2` と `swedencentral` を対象に、以下を報告します。
+ロールの割り当ては行いません。既定では `eastus2` と `swedencentral` を報告します。
+両方で Search の物理容量が不足する場合は `--location japaneast` でも再確認します。
 
 ### リソースプロバイダーの登録状態
 
@@ -59,7 +60,7 @@ Azure Policy の確認には、サブスクリプション全体に対する権�
 
 ### Azure AI Search のサービス数クォータ
 
-`Microsoft.Search/locations/usages` から、`eastus2` と `swedencentral` の **Basic SKU の
+`Microsoft.Search/locations/usages` から、指定リージョンと代替リージョンの **Basic SKU の
 サービス数**について、現在値、上限、空きを取得します。1環境につき1つの Search serviceを
 作るため、空きが `--participant-count` 以上かを判定します。
 
@@ -269,7 +270,7 @@ Lab 5 をスキップし、追加デプロイや別モデルへの無断切り�
 ## 参加者への引き継ぎ
 
 想定する環境数を `--participant-count` に指定し、`--apply` なしで `admin-preflight.sh` を実行します。
-必要なプロバイダーがすべて `Registered` であり、`eastus2` / `swedencentral` の少なくとも一方に
+必要なプロバイダーがすべて `Registered` であり、`eastus2` / `swedencentral` / `japaneast` の少なくとも一方に
 全環境分のモデルのクォータ・容量があることを確認してください。
 
 その後、参加者・チームごとにリソースグループを作成するか既存のものを割り当て、
