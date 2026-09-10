@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
-from collections.abc import Generator
+import threading
+import time
+from collections.abc import Awaitable, Callable, Generator
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +14,8 @@ import httpx
 from agent_framework import (
     Agent,
     AgentModeProvider,
+    ChatContext,
+    ChatMiddleware,
     FileSystemAgentFileStore,
     InMemoryHistoryProvider,
     MCPStreamableHTTPTool,
@@ -36,6 +41,8 @@ DEFAULT_TOOLBOX_NAME = "contoso-travel-toolbox"
 # Luna is supported by the August API (Microsoft Learn, retrieved 2026-09-10).
 FOUNDRY_IQ_API_VERSION = "2026-08-01-preview"
 SEARCH_TOKEN_SCOPE = "https://search.azure.com/.default"
+CHAT_REQUEST_INTERVAL_SECONDS = 20.0
+HARNESS_MAX_OUTPUT_TOKENS = 4_096
 
 HARNESS_AGENT_NAME = "travel_harness_agent"
 HARNESS_AGENT_DESCRIPTION = (
@@ -84,6 +91,42 @@ class AzureTokenCredentialAuth(httpx.Auth):
     def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response]:
         request.headers["Authorization"] = f"Bearer {self._credential.get_token(self._scope).token}"
         yield request
+
+
+class ChatRequestPacer(ChatMiddleware):
+    """Space model calls so the workshop's default 40K TPM deployment can recover."""
+
+    def __init__(
+        self,
+        interval_seconds: float = CHAT_REQUEST_INTERVAL_SECONDS,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> None:
+        if interval_seconds < 0:
+            raise ValueError("interval_seconds must be non-negative")
+        self._interval_seconds = interval_seconds
+        self._clock = clock
+        self._sleep = sleep
+        self._reservation_lock = threading.Lock()
+        self._next_start_at = 0.0
+
+    async def process(
+        self,
+        context: ChatContext,
+        call_next: Callable[[], Awaitable[None]],
+    ) -> None:
+        del context
+        with self._reservation_lock:
+            now = self._clock()
+            start_at = max(now, self._next_start_at)
+            self._next_start_at = start_at + self._interval_seconds
+        if start_at > now:
+            await self._sleep(start_at - now)
+        await call_next()
+
+
+CHAT_REQUEST_PACER = ChatRequestPacer()
 
 
 class FoundryIQTool(MCPStreamableHTTPTool):
@@ -136,6 +179,7 @@ def create_chat_client(
         project_endpoint=project_endpoint or os.environ[FOUNDRY_PROJECT_ENDPOINT_ENV],
         model=model or os.environ[FOUNDRY_MODEL_ENV],
         credential=credential,
+        middleware=[CHAT_REQUEST_PACER],
     )
 
 
@@ -220,7 +264,7 @@ def build_harness_travel_agent(
             history_provider if history_provider is not None else InMemoryHistoryProvider()
         ),
         max_context_window_tokens=128_000,
-        max_output_tokens=16_384,
+        max_output_tokens=HARNESS_MAX_OUTPUT_TOKENS,
         file_memory_store=memory_store,
         skills_provider=skills_provider,
         mode_provider=AgentModeProvider(default_mode=default_mode),

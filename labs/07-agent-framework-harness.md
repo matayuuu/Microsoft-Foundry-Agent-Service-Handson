@@ -22,7 +22,8 @@ Toolbox へ登録しただけの状態と、Agent が実際に利用した状態
 > [!WARNING]
 > モデル、Foundry IQ、Code Interpreter、Web Search の利用には料金が発生します。
 > Harness Agent の loop には反復上限を設定しています。同じ cell を結果待ちの間に再実行
-> しないでください。
+> しないでください。既定の 40K TPM deployment で急な連続呼び出しを避けるため、model call
+> の間に最大 20 秒ほど待つことがあります。
 
 ## 通常の Agent と Harness Agent
 

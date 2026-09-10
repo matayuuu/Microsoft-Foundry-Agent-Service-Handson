@@ -82,6 +82,66 @@ def test_create_toolbox_uses_workshop_name_and_explicit_endpoint(
     }
 
 
+def test_create_chat_client_shares_request_pacer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+    sentinel = object()
+
+    def create(**kwargs: Any) -> object:
+        captured.update(kwargs)
+        return sentinel
+
+    monkeypatch.setattr(travel_agents, "FoundryChatClient", create)
+    credential = object()
+
+    result = travel_agents.create_chat_client(
+        credential,  # type: ignore[arg-type]
+        project_endpoint="https://project.example.invalid",
+        model="model-deployment",
+    )
+
+    assert result is sentinel
+    assert captured == {
+        "project_endpoint": "https://project.example.invalid",
+        "model": "model-deployment",
+        "credential": credential,
+        "middleware": [travel_agents.CHAT_REQUEST_PACER],
+    }
+
+
+def test_chat_request_pacer_spaces_consecutive_calls() -> None:
+    now = [100.0]
+    starts: list[float] = []
+    waits: list[float] = []
+
+    async def sleep(seconds: float) -> None:
+        waits.append(seconds)
+        now[0] += seconds
+
+    async def call_next() -> None:
+        starts.append(now[0])
+
+    async def run() -> None:
+        pacer = travel_agents.ChatRequestPacer(
+            20.0,
+            clock=lambda: now[0],
+            sleep=sleep,
+        )
+        for _ in range(3):
+            await pacer.process(None, call_next)  # type: ignore[arg-type]
+
+    asyncio.run(run())
+
+    assert starts == [100.0, 120.0, 140.0]
+    assert waits == [20.0, 20.0]
+
+
+def test_chat_request_pacer_rejects_negative_interval() -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        travel_agents.ChatRequestPacer(-1.0)
+
+
 def test_harness_wires_iq_toolbox_skills_modes_todos_and_bounded_loop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -119,6 +179,7 @@ def test_harness_wires_iq_toolbox_skills_modes_todos_and_bounded_loop(
     assert captured["disable_web_search"] is True
     assert captured["disable_tool_auto_approval"] is True
     assert captured["loop_max_iterations"] == 6
+    assert captured["max_output_tokens"] == travel_agents.HARNESS_MAX_OUTPUT_TOKENS
     assert captured["default_options"] == {"store": False}
     assert toolbox.skills_options == {
         "disable_load_skill_approval": True,

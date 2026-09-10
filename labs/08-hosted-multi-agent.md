@@ -31,7 +31,9 @@ plan 承認は workflow の途中では行いません。
 > [!WARNING]
 > Notebook のモデル呼び出し、Foundry IQ、Toolbox、Hosted Agent の稼働、
 > source remote build には料金がかかります。
-> Notebook の Run All は deploy しません。
+> Notebook の Run All は deploy しません。既定の 40K TPM deployment では model call
+> の間に最大 20 秒ほど待つことがあります。処理中の cell や Hosted Agent 呼び出しを
+> 再送しないでください。
 
 ## 1. Notebook で作成・可視化・テストする
 
