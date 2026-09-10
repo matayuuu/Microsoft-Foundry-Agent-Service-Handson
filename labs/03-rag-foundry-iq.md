@@ -20,17 +20,12 @@ Lab 7 の plain / Harness Agent と Lab 8 の Hosted workflow も、同じ remot
 
 ## 使用する値
 
-```bash
-jq -r '
-  .terraform_outputs
-  | {
-      search_connection: "contoso-travel-search",
-      policy_search_index: "contoso-travel-policy",
-      approval_search_index: "contoso-travel-approval",
-      knowledge_model: .evaluation_model_deployment_name.value
-    }
-' .workshop/context.json
-```
+PC に展開した `.workshop/context.json` の `resource_outputs` で
+`evaluation_model_deployment_name = gpt-5.5` を確認します。Search connection は
+`contoso-travel-search`、indexes は `contoso-travel-policy` と
+`contoso-travel-approval` です。Agent から knowledge base の MCP endpoint を keyless に
+呼ぶ `contoso-travel-knowledge-lab-mcp` connection も Lab 1 で作成済みです。
+Cloud Shell は使いません。
 
 ## 1. Foundry IQ knowledge base を作成する
 

@@ -8,12 +8,12 @@
 #      their parent Foundry account/project. Missing optional scripts are
 #      reported explicitly and skipped -- never silently ignored.
 #   2. `terraform destroy` for everything infra/ manages.
-#   3. Verification that no workshop-managed Azure resource remains in the
-#      resource group (via `az resource list`, filtered by this workshop's
-#      tag and name-prefix convention). If any are found -- or the
-#      verification call itself fails -- the script exits non-zero WITHOUT
-#      touching any local state, so a partial/failed teardown is never
-#      masked by deleting the evidence needed to retry or investigate it.
+#   3. Removal of the untagged Application Insights Smart Detection action
+#      group that Azure creates outside Terraform, followed by verification
+#      that the dedicated workload resource group is empty. If any resources
+#      remain -- or a verification/delete call fails -- the script exits
+#      non-zero WITHOUT touching local state, so a partial/failed teardown is
+#      never masked by deleting the evidence needed to retry or investigate.
 #   4. Local, non-secret .workshop/ state AND the local Terraform state
 #      files (terraform.tfstate[.backup]) -- deleted ONLY after steps 1-3
 #      above all succeed.
@@ -47,12 +47,7 @@ if [[ ! -x "${PYTHON_BIN}" ]]; then
   PYTHON_BIN="$(command -v python3 || true)"
 fi
 
-# Must match infra/variables.tf's `tags` default (`workshop` key) and
-# infra/locals.tf's name prefix. If an organizer overrode either via a
-# Terraform variable, update these to match before running destroy.sh, or
-# the post-destroy remnant check below may under- or over-report.
-WORKSHOP_TAG_VALUE="foundry-agent-service-handson"
-WORKSHOP_NAME_PREFIX="fdyws"
+APP_INSIGHTS_SMART_DETECTION_ACTION_GROUP="Application Insights Smart Detection"
 
 usage() {
   cat <<'EOF'
@@ -83,11 +78,13 @@ Options:
   -h, --help                    Show this help and exit.
 
 The resource group itself is never deleted. After `terraform destroy`, this
-script verifies (via `az resource list`) that no workshop-managed resource
-remains in the resource group; local Terraform state and .workshop/ state are
-only removed once that verification passes. On any failure -- including the
-verification call itself failing, or it finding leftover resources -- all
-local state is left in place so you can investigate and retry safely.
+script removes the untagged Application Insights Smart Detection action group
+that Azure creates outside Terraform, then verifies (via `az resource list`)
+that the dedicated workload resource group is empty. Local Terraform state
+and .workshop/ state are only removed once that verification passes. On any
+failure -- including the verification or targeted delete failing, or any
+leftover resource -- all local state is left in place so you can investigate
+and retry safely.
 EOF
 }
 
@@ -269,44 +266,72 @@ fi
 retry 2 15 terraform -chdir="${INFRA_DIR}" destroy "${DESTROY_ARGS[@]}"
 
 # ---------------------------------------------------------------------------
-# Step 3: verify no workshop-managed resource remains in the resource group.
+# Step 3: remove the known platform-created artifact, then verify the
+# dedicated workload resource group is empty.
 #
 # `terraform destroy` can partially fail (a single resource stuck deleting,
 # an eventually-consistent RBAC/lock issue, etc.) and still exit 0 for the
 # rest of the plan in rare cases, or a participant may have run an earlier,
 # manual partial cleanup. This is a defense-in-depth check, independent of
-# Terraform's own state, before any local state is deleted: it lists every
-# resource actually present in the resource group and fails loudly if any of
-# them still carry this workshop's tag or name-prefix. A failed `az resource
-# list` call is treated the same as "resources remain" (fail-safe default:
-# never assume success when the check itself could not run).
+# Terraform's own state, before any local state is deleted.
+#
+# Azure creates an untagged "Application Insights Smart Detection" action
+# group outside Terraform when Application Insights is provisioned. The
+# workshop uses a dedicated workload resource group, so the exact untagged
+# action group is safe to remove after Terraform has deleted Application
+# Insights. Every other leftover resource is reported and blocks local state
+# removal. A failed list/delete call is also treated as failure (fail-safe
+# default: never assume success when the check itself could not run).
 # ---------------------------------------------------------------------------
 
-echo "==> [3/4] Verifying no workshop-managed resources remain in '${RESOURCE_GROUP_NAME}'..." >&2
+echo "==> [3/4] Removing known platform artifacts and verifying '${RESOURCE_GROUP_NAME}' is empty..." >&2
 
 verify_no_remnants() {
-  local resources_json remnants_json remnant_count remnant_names
+  local resources_json platform_artifact_count
+  local remnant_count remnant_names
   if ! resources_json="$(az resource list --resource-group "${RESOURCE_GROUP_NAME}" --subscription "${SUBSCRIPTION_ID}" -o json 2>&1)"; then
     echo "${SCRIPT_NAME}: 'az resource list' failed while verifying teardown; leaving local Terraform state and .workshop/ context in place so you can investigate safely. Error:" >&2
     echo "${resources_json}" >&2
     return 1
   fi
 
-  remnants_json="$(jq -c --arg tag "${WORKSHOP_TAG_VALUE}" --arg prefix "${WORKSHOP_NAME_PREFIX}" \
-    '[.[] | select((.tags.workshop // "") == $tag or (.name // "" | contains($prefix)))]' <<<"${resources_json}")" || {
+  platform_artifact_count="$(jq --arg action_group "${APP_INSIGHTS_SMART_DETECTION_ACTION_GROUP}" \
+    '[.[] | select(
+      ((.type // "" | ascii_downcase) == "microsoft.insights/actiongroups")
+      and (.name // "") == $action_group
+      and ((.tags // {}) | length) == 0
+    )] | length' <<<"${resources_json}")" || {
     echo "${SCRIPT_NAME}: could not parse 'az resource list' output while verifying teardown; leaving local Terraform state and .workshop/ context in place. Raw output:" >&2
     echo "${resources_json}" >&2
     return 1
   }
-  remnant_count="$(jq 'length' <<<"${remnants_json}")"
+
+  if [[ "${platform_artifact_count}" -gt 0 ]]; then
+    echo "    Removing Azure-created '${APP_INSIGHTS_SMART_DETECTION_ACTION_GROUP}' action group..." >&2
+    if ! az monitor action-group delete \
+      --name "${APP_INSIGHTS_SMART_DETECTION_ACTION_GROUP}" \
+      --resource-group "${RESOURCE_GROUP_NAME}" \
+      --subscription "${SUBSCRIPTION_ID}"; then
+      echo "${SCRIPT_NAME}: failed to delete Azure-created action group '${APP_INSIGHTS_SMART_DETECTION_ACTION_GROUP}'; leaving local Terraform state and .workshop/ context in place." >&2
+      return 1
+    fi
+    # Re-list on the retry path so ARM has time to reach an empty state.
+    return 1
+  fi
+
+  remnant_count="$(jq 'length' <<<"${resources_json}")" || {
+    echo "${SCRIPT_NAME}: could not parse 'az resource list' output while verifying teardown; leaving local Terraform state and .workshop/ context in place. Raw output:" >&2
+    echo "${resources_json}" >&2
+    return 1
+  }
 
   if [[ "${remnant_count}" -gt 0 ]]; then
-    remnant_names="$(jq -r '[.[].name] | join(", ")' <<<"${remnants_json}")"
-    echo "${SCRIPT_NAME}: ${remnant_count} workshop-managed resource(s) still exist in resource group '${RESOURCE_GROUP_NAME}' after 'terraform destroy': ${remnant_names}. Leaving local Terraform state and .workshop/ context in place; investigate and re-run scripts/destroy.sh once these are removed." >&2
+    remnant_names="$(jq -r '[.[] | "\(.name // "<unnamed>") [\(.type // "<unknown type>")]"] | join(", ")' <<<"${resources_json}")"
+    echo "${SCRIPT_NAME}: ${remnant_count} resource(s) still exist in dedicated workload resource group '${RESOURCE_GROUP_NAME}' after 'terraform destroy': ${remnant_names}. Leaving local Terraform state and .workshop/ context in place; investigate and re-run scripts/destroy.sh once these are removed." >&2
     return 2
   fi
 
-  echo "    No workshop-managed resources remain (matched by tag 'workshop=${WORKSHOP_TAG_VALUE}' or name containing '${WORKSHOP_NAME_PREFIX}')." >&2
+  echo "    Resource group '${RESOURCE_GROUP_NAME}' is empty." >&2
   return 0
 }
 

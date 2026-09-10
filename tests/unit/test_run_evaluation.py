@@ -572,7 +572,7 @@ def test_main_resolves_evaluation_judge_and_preserves_explicit_override(
     context_path.write_text(
         json.dumps(
             {
-                "terraform_outputs": {
+                "resource_outputs": {
                     "foundry_project_endpoint": {"value": endpoint},
                     "primary_model_deployment_name": {"value": "gpt-5.6-luna"},
                     "evaluation_model_deployment_name": {"value": context_judge},
@@ -626,7 +626,7 @@ def test_missing_evaluation_output_fails_before_azure_calls(
     context_path.write_text(
         json.dumps(
             {
-                "terraform_outputs": {
+                "resource_outputs": {
                     "foundry_project_endpoint": {"value": "https://example"},
                     "primary_model_deployment_name": {"value": "gpt-5.6-luna"},
                 }

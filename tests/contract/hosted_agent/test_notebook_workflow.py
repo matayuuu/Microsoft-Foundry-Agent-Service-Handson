@@ -75,7 +75,7 @@ def notebook_namespace(
     context_dir.joinpath("context.json").write_text(
         json.dumps(
             {
-                "terraform_outputs": {
+                "resource_outputs": {
                     "foundry_project_endpoint": {"value": "https://project.example.invalid"},
                     "primary_model_deployment_name": {"value": "synthetic-model"},
                     "search_service_endpoint": {"value": "https://search.example.invalid"},

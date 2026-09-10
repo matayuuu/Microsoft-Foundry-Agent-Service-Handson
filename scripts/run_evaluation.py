@@ -19,7 +19,7 @@ retrieved 2026-08-21):
    manual ``create_version`` -- no LLM generation job, so authoring is free
    and deterministic; see build_rubric_definition()).
    ``--prepare-only`` stops here; ``scripts/setup.sh`` uses this mode to make
-   the synthetic dataset and rubric available to the Portal-only Labs 5 and 6.
+   the synthetic dataset and rubric available to Labs 5 and 6.
 4. Without ``--prepare-only``, creates an evaluation
    (``client.evals.create``) pairing that rubric with sensible built-in
    evaluators (task adherence, coherence, and one content-safety evaluator).
@@ -42,10 +42,8 @@ Authentication: az login only, via AzureCliCredential (default) or
 DefaultAzureCredential (--credential default). No API keys or connection
 strings are read anywhere in this script.
 
-Prerequisite (already granted by ./scripts/setup.sh -- see infra/rbac.tf):
-the participant and the Foundry project's managed identity both hold the
-**Foundry User** role on the AI Services account. No extra role assignment
-is needed to run this script.
+Prerequisite: Lab 1 verifies that the participant and the Foundry project's
+managed identity both hold **Foundry User** on the Foundry resource.
 """
 
 from __future__ import annotations
@@ -82,7 +80,7 @@ from lib.workshop_context import (
     build_credential,
     load_context,
     project_endpoint,
-    terraform_output,
+    workshop_output,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -637,7 +635,7 @@ def main(argv: list[str] | None = None) -> int:
         endpoint = args.project_endpoint or project_endpoint(context)
         judge_deployment = args.judge_deployment
         if not args.prepare_only and not judge_deployment:
-            judge_deployment = terraform_output(context, "evaluation_model_deployment_name")
+            judge_deployment = workshop_output(context, "evaluation_model_deployment_name")
         schema = json.loads(args.schema.read_text(encoding="utf-8"))
         cases = load_eval_cases(args.dataset, schema)  # fail before touching Azure
         if not args.prepare_only:

@@ -25,7 +25,7 @@ from agent_framework import (
 )
 from agent_framework.foundry import FoundryChatClient, FoundryToolbox
 from azure.core.credentials import TokenCredential
-from azure.identity import DefaultAzureCredential
+from azure.identity import AzureCliCredential, DefaultAzureCredential
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,6 +35,7 @@ FOUNDRY_MODEL_ENV = "FOUNDRY_MODEL"
 SEARCH_SERVICE_ENDPOINT_ENV = "AZURE_AI_SEARCH_SERVICE_ENDPOINT"
 KNOWLEDGE_BASE_NAME_ENV = "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME"
 TOOLBOX_NAME_ENV = "TOOLBOX_NAME"
+CREDENTIAL_MODE_ENV = "WORKSHOP_CREDENTIAL_MODE"
 
 DEFAULT_KNOWLEDGE_BASE_NAME = "contoso-travel-knowledge-lab"
 DEFAULT_TOOLBOX_NAME = "contoso-travel-toolbox"
@@ -164,7 +165,18 @@ class FoundryIQTool(MCPStreamableHTTPTool):
 
 
 def create_credential() -> TokenCredential:
-    """Use Azure CLI locally and the Hosted Agent identity after deployment."""
+    """Select Azure CLI only when a local notebook explicitly opts in.
+
+    The deployed Hosted Agent does not set ``WORKSHOP_CREDENTIAL_MODE`` and
+    therefore retains ``DefaultAzureCredential`` managed-identity behavior.
+    """
+    mode = os.environ.get(CREDENTIAL_MODE_ENV)
+    if mode == "azure-cli":
+        return AzureCliCredential()
+    if mode not in (None, "", "default"):
+        raise ValueError(
+            f"{CREDENTIAL_MODE_ENV} must be 'azure-cli', 'default', or unset; got {mode!r}"
+        )
     return DefaultAzureCredential()
 
 

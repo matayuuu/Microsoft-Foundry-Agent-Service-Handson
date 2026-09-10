@@ -14,9 +14,13 @@ def test_serverless_foundry_iq_uses_preview_api_and_keyless_auth() -> None:
     assert "az account get-access-token" in text
     assert "https://search.azure.com" in text
     assert "api-key" not in text
-    assert "printf 'Authorization: Bearer %s\\n'" in text
-    assert text.count("-H @-") == 2
+    assert "AUTH_HEADER_FILE" in text
+    assert "chmod 600" in text
+    assert "printf 'Authorization: Bearer %s\\n' \"${ACCESS_TOKEN}\"" in text
+    assert text.count('-H "@${AUTH_HEADER_FILE}"') == 2
+    assert "-H @-" not in text
     assert '-H "Authorization:' not in text
+    assert 'echo "${ACCESS_TOKEN}"' not in text
     assert "--connect-timeout 15 --max-time 90" in text
 
 
@@ -33,6 +37,7 @@ def test_serverless_foundry_iq_prepares_sources_gpt55_base_and_smoke_retrieve() 
         "knowledgebases",
         "/retrieve?api-version=",
         "maxOutputSize: 100000",
+        'RETRIEVE_PAYLOAD="$(jq -nac',
     ):
         assert expected in text
     assert "maxOutputSizeInTokens" not in text
@@ -48,7 +53,7 @@ def test_foundry_iq_fallback_accepts_completed_workshop_context() -> None:
         "openai_endpoint",
         "evaluation_model_deployment_name",
     ):
-        assert f"(.terraform_outputs // .).{output}.value // empty" in text
+        assert f"(.resource_outputs // .terraform_outputs // .).{output}.value // empty" in text
 
 
 def test_setup_runs_fallback_only_for_serverless_search() -> None:

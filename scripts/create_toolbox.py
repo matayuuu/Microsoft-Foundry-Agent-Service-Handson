@@ -7,10 +7,9 @@ This adapter ensures the Travel Ops OpenAPI tool, Code Interpreter, Web Search,
 and Tool Search while preserving every other UI-managed tool, Skill, metadata
 field, and guardrail.
 
-Why a script and not Terraform: per docs/architecture.md, toolbox versions are
-a Foundry data-plane object owned by SDK wrappers, not Terraform. The adapter
-reuses an unchanged default version and creates a version only when the desired
-tool definition changes.
+Toolbox versions are Foundry data-plane objects owned by SDK wrappers. The
+adapter reuses an unchanged default version and creates a version only when the
+desired tool definition changes.
 
 Design, mirroring scripts/validate_environment.py: the OpenAPI tool payload
 and the "does a new version need to be created" decision are pure functions
@@ -227,15 +226,17 @@ def ensure_lab_tool_set(
     existing_types = {getattr(tool, "type", None) for tool in merged}
     defaults: list[ToolboxTool] = [
         CodeInterpreterToolboxTool(
-            description="Compare Travel Ops numeric results and format tables; do not invent data."
+            name="code_interpreter",
+            description="Compare Travel Ops numeric results and format tables; do not invent data.",
         ),
         WebSearchToolboxTool(
+            name="web_search",
             description=(
                 "Search current public travel information only when the user "
                 "explicitly requests it."
-            )
+            ),
         ),
-        ToolSearchToolboxTool(),
+        ToolSearchToolboxTool(name="tool_search"),
     ]
     for tool in defaults:
         if tool.type not in existing_types:

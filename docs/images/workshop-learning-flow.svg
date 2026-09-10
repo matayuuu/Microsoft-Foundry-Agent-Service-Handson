@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1152" viewBox="0 0 1440 1152" role="img" aria-labelledby="diagram-title diagram-description">
   <title id="diagram-title">学習の流れ — ひとつの Agent から、workflow へ</title>
-  <desc id="diagram-description">Lab 0・1 で準備し、Lab 2〜6 で同じ Prompt Agent を拡張する。Lab 7 では Foundry IQ・Toolbox・Skills を plain Agent と Harness Agent から再利用する。Lab 8 では token 消費を抑えるため intake、policy、reviewer の通常 Agent を sequential workflow として Hosted Agent にデプロイする。Lab 7 の session state には依存しない。Lab 9 で Prompt と Hosted の trace を比較し、既存 resource group を残して演習リソースを片付ける。実際の予約・承認・精算は行わない。</desc>
+  <desc id="diagram-description">Lab 0・1 で Azure Portal と Azure ML を準備し、Lab 2〜6 で同じ Prompt Agent を拡張する。Lab 7 では Foundry IQ・Toolbox・Skills を plain Agent と Harness Agent から再利用する。Lab 8 では token 消費を抑えるため intake、policy、reviewer の通常 Agent を sequential workflow として Hosted Agent にデプロイする。Lab 7 の session state には依存しない。Lab 9 で Prompt と Hosted の trace を比較し、専用 resource group を削除する。実際の予約・承認・精算は行わない。</desc>
   <defs>
     <radialGradient id="ambient" cx="100%" cy="0%" r="90%">
       <stop offset="0" stop-color="#18334e"/>
@@ -36,7 +36,7 @@
   <text id="preparation-stage" class="mono muted" x="88" y="224" font-size="20">01 / PREPARE</text>
   <text id="preparation-labs" class="mono blue" x="88" y="257" font-size="22">Lab 0–1</text>
   <text id="shared-preparation-text" x="320" y="224" font-size="28" font-weight="600">共通の準備</text>
-  <text id="preparation-outcome" class="muted" x="320" y="260" font-size="23">Codespaces を開く → 既存 RG 内に Azure 環境を準備</text>
+  <text id="preparation-outcome" class="muted" x="320" y="260" font-size="23">Portal で専用 RG → Cloud Shell で構築・ZIP → Azure ML へ upload</text>
   <path id="prepare-to-build" class="edge" data-from="shared-preparation" data-to="prompt-learning-container" d="M 104 284 V 322" marker-end="url(#arrowhead)"/>
 
   <path id="prompt-learning-container" class="rule" d="M 64 340 H 656"/>
@@ -74,7 +74,7 @@
   <path id="hosted-learning-container" class="rule" d="M 752 340 H 1376"/>
   <path d="M 752 340 H 832" fill="none" stroke="#55dbd0" stroke-width="3"/>
   <text id="hosted-stage" class="mono cyan" x="752" y="374" font-size="20" letter-spacing="1">03 / REUSE &amp; DEPLOY</text>
-  <text id="hosted-learning-surface" class="mono muted" x="1376" y="374" font-size="19" text-anchor="end">PYTHON</text>
+  <text id="hosted-learning-surface" class="mono muted" x="1376" y="374" font-size="19" text-anchor="end">AZURE ML</text>
   <text id="hosted-learning-title" x="752" y="422" font-size="30" font-weight="600">同じ資産をコードで再利用</text>
   <text id="lab7-independent-note-text" class="muted" x="752" y="458" font-size="22">Lab 7–8 / Foundry IQ をコードで再利用</text>
 
@@ -100,6 +100,6 @@
   <text id="cleanup-stage" class="mono muted" x="88" y="1024" font-size="20">04 / FINISH</text>
   <text id="cleanup-lab" class="mono cyan" x="88" y="1057" font-size="22">Lab 9</text>
   <text id="shared-cleanup-text" x="320" y="1024" font-size="28" font-weight="600">trace の比較と cleanup</text>
-  <text id="cleanup-outcome" class="muted" x="320" y="1060" font-size="22">Prompt / Hosted を比較 → 演習リソースを削除（既存 RG は残す）</text>
+  <text id="cleanup-outcome" class="muted" x="320" y="1060" font-size="22">Prompt / Hosted を比較 → 専用 RG を削除</text>
   <text id="learning-footer" class="muted" x="64" y="1124" font-size="20">合成データのみ。実際の予約・承認・精算は行いません。</text>
 </svg>

@@ -1,5 +1,5 @@
 """Hermetic, mocked-`az`/`terraform` contract tests for scripts/destroy.sh's
-post-destroy resource-remnant verification and gated local-state removal.
+post-destroy resource-group verification and gated local-state removal.
 
 These tests never call real Azure or run real Terraform. They copy the real
 scripts/destroy.sh into an isolated fixture "repo" (preserving the real
@@ -15,15 +15,16 @@ transparently redirected without editing any of the script's actual logic.
 
 They assert the behavior this hardening pass requires:
 
-* After a clean `terraform destroy`, `az resource list` returning no
-  workshop-tagged/named resource in the resource group lets the script
-  proceed to remove local `.workshop/` state AND
+* After a clean `terraform destroy`, `az resource list` returning an empty
+  dedicated workload resource group lets the script remove local `.workshop/`
+  state AND
   `infra/terraform.tfstate[.backup]`, and exit 0.
-* If any remaining resource matches this workshop's tag
-  (`workshop=foundry-agent-service-handson`) or name-prefix (`fdyws`)
-  convention, the script exits non-zero and leaves EVERY local state file
-  (`.workshop/context.json` and both `terraform.tfstate*` files) untouched --
-  never a partial cleanup.
+* If Azure's untagged Application Insights Smart Detection action group
+  remains, the script removes that exact platform-created artifact, confirms
+  the resource group is empty, and only then removes local state.
+* If any other resource remains, the script exits non-zero and leaves EVERY
+  local state file (`.workshop/context.json` and both `terraform.tfstate*`
+  files) untouched -- never a partial cleanup.
 * If the `az resource list` call itself fails, the script fails the same
   fail-safe way -- exits non-zero, touches no local state -- rather than
   assuming an unqueried resource group is clean.
@@ -96,6 +97,22 @@ az() {
 ]
 JSON
         ;;
+      smart-detection)
+        if [[ -f "${REPO_ROOT}/smart-detection-deleted" ]]; then
+          echo "[]"
+          return 0
+        fi
+        cat <<'JSON'
+[
+  {
+    "id": "/providers/microsoft.insights/actionGroups/Application Insights Smart Detection",
+    "name": "Application Insights Smart Detection",
+    "type": "microsoft.insights/actiongroups",
+    "tags": null
+  }
+]
+JSON
+        ;;
       call-fails|transient-error)
         if [[ "${FAKE_AZ_RESOURCE_LIST_MODE}" == "transient-error" && ${count} -gt 1 ]]; then
           echo "[]"
@@ -109,6 +126,15 @@ JSON
         return 1
         ;;
     esac
+    return 0
+  fi
+  if [[ "$1 $2 $3" == "monitor action-group delete" ]]; then
+    if [[ "$*" != *"--name Application Insights Smart Detection"* ]]; then
+      echo "fake-az: refusing unexpected action-group delete: az $*" >&2
+      return 1
+    fi
+    printf '%s\n' "$*" > "${REPO_ROOT}/smart-detection-delete-call"
+    touch "${REPO_ROOT}/smart-detection-deleted"
     return 0
   fi
   echo "fake-az: unexpected/unhandled invocation, refusing to silently succeed: az $*" >&2
@@ -219,7 +245,7 @@ def test_remaining_resources_fail_and_preserve_all_local_state(fixture_repo: Pat
     result = _run_destroy(fixture_repo, "remnants")
     assert result.returncode != 0
     assert "stfdywsabc12345" in result.stderr
-    assert "workshop-managed resource(s) still exist" in result.stderr
+    assert "resource(s) still exist in dedicated workload resource group" in result.stderr
 
     workshop_dir = fixture_repo / ".workshop"
     infra_dir = fixture_repo / "infra"
@@ -229,6 +255,21 @@ def test_remaining_resources_fail_and_preserve_all_local_state(fixture_repo: Pat
     assert (infra_dir / "terraform.tfstate.backup").exists()
     assert (fixture_repo / "resource-list-calls").read_text().strip() == "6"
     assert (fixture_repo / "verification-sleeps").read_text().splitlines() == ["10"] * 5
+
+
+def test_platform_created_smart_detection_action_group_is_removed(
+    fixture_repo: Path,
+) -> None:
+    result = _run_destroy(fixture_repo, "smart-detection")
+
+    assert result.returncode == 0, result.stderr
+    assert "Removing Azure-created 'Application Insights Smart Detection'" in result.stderr
+    assert (fixture_repo / "resource-list-calls").read_text().strip() == "2"
+    assert (fixture_repo / "verification-sleeps").read_text().splitlines() == ["10"]
+    delete_call = (fixture_repo / "smart-detection-delete-call").read_text()
+    assert "--name Application Insights Smart Detection" in delete_call
+    assert not (fixture_repo / ".workshop" / "context.json").exists()
+    assert not (fixture_repo / "infra" / "terraform.tfstate").exists()
 
 
 def test_resource_list_call_failure_fails_safe_and_preserves_all_local_state(

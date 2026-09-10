@@ -95,7 +95,7 @@ def test_main_fetches_live_openapi_without_creating_a_foundry_client(
     context_path.write_text(
         json.dumps(
             {
-                "terraform_outputs": {
+                "resource_outputs": {
                     "foundry_project_endpoint": {"value": "https://project.example.invalid"},
                     "travel_api_fqdn": {"value": "travel.example.invalid"},
                 }

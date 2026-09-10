@@ -7,10 +7,12 @@ resource "azapi_resource" "search_connection" {
 
   body = {
     properties = {
-      category      = "CognitiveSearch"
-      target        = "https://${local.search_service_name}.search.windows.net"
-      authType      = "AAD"
-      isSharedToAll = true
+      category = "CognitiveSearch"
+      target   = "https://${local.search_service_name}.search.windows.net"
+      authType = "AAD"
+      # Project-scoped ARM connections are normalized to false by the service.
+      # Access is granted through project RBAC, not an account-wide share.
+      isSharedToAll = false
       metadata = {
         ApiType    = "Azure"
         ResourceId = local.search_service_id
@@ -22,6 +24,37 @@ resource "azapi_resource" "search_connection" {
   depends_on = [
     azurerm_search_service.workshop,
     azapi_resource.search_service_serverless,
+  ]
+}
+
+# Foundry IQ exposes each knowledge base as a RemoteTool MCP endpoint. Prompt
+# Agents require a dedicated ProjectManagedIdentity connection for that MCP
+# endpoint; the CognitiveSearch/AAD connection above cannot authenticate a
+# generic MCP call. The endpoint can be registered before setup creates the
+# knowledge base because the connection stores routing metadata only.
+resource "azapi_resource" "knowledge_mcp_connection" {
+  type                      = "Microsoft.CognitiveServices/accounts/projects/connections@2026-05-15-preview"
+  name                      = "contoso-travel-knowledge-lab-mcp"
+  parent_id                 = azapi_resource.project.id
+  schema_validation_enabled = false
+
+  body = {
+    properties = {
+      category                    = "RemoteTool"
+      target                      = "https://${local.search_service_name}.search.windows.net/knowledgebases/contoso-travel-knowledge-lab/mcp?api-version=2026-08-01-preview"
+      authType                    = "ProjectManagedIdentity"
+      useWorkspaceManagedIdentity = true
+      isSharedToAll               = false
+      audience                    = "https://search.azure.com"
+      metadata = {
+        ApiType = "Azure"
+      }
+    }
+  }
+
+  depends_on = [
+    azurerm_role_assignment.project_mi_search_index_data_contributor,
+    azurerm_role_assignment.project_mi_search_service_contributor,
   ]
 }
 
@@ -40,10 +73,12 @@ resource "azapi_resource" "application_insights_connection" {
 
   body = {
     properties = {
-      category      = "AppInsights"
-      target        = azurerm_application_insights.workshop.id
-      authType      = "ProjectManagedIdentity"
-      isSharedToAll = true
+      category = "AppInsights"
+      target   = azurerm_application_insights.workshop.id
+      authType = "ProjectManagedIdentity"
+      # Project-scoped ARM connections are normalized to false by the service.
+      # Access is granted through project RBAC, not an account-wide share.
+      isSharedToAll = false
       metadata = {
         ApiType                             = "Azure"
         ResourceId                          = azurerm_application_insights.workshop.id

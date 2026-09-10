@@ -109,6 +109,5 @@ silently drift apart.
 
 `.github/workflows/publish-travel-api.yml` builds and pushes a public GHCR
 image on tagged releases (`travel-api-v*`) and manual dispatch. It never
-publishes `latest` as the documented tag — Terraform (owned by the
-`infra/` workstream) should pin to the immutable digest the workflow job
-summary exposes.
+publishes `latest` as the documented tag. The workshop setup resolves and Terraform
+pins the immutable digest exposed by the workflow job summary.

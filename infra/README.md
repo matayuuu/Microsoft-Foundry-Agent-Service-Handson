@@ -23,15 +23,15 @@ the repository root `AGENTS.md` for full ownership boundaries.
   session; local/shared-key auth is disabled wherever the resource supports
   it (Search `local_authentication_enabled = false`, Foundry account
   `disableLocalAuth = true`).
-- **Basic Agent Setup only.** No Cosmos DB, no Agent capability host, no
-  ACR, no Key Vault. Matches
-  `foundry-samples`' Basic Agent Setup template, not the Standard/BYO-Cosmos
-  setup.
+- **Basic Agent Setup only.** No Cosmos DB, Agent capability host, or ACR.
+  The separate Azure ML workspace still receives its required Storage and
+  Key Vault backing resources. This matches Foundry Basic Agent Setup rather
+  than Standard/BYO-Cosmos while keeping Labs 7/8 in Azure ML.
 - **AzureRM vs AzAPI split.**
   - `azurerm` (~> 5.0): resource group data source, Azure AI Search service,
     Log Analytics workspace, Application Insights, Container Apps
-    environment/app, and all role assignments -- resources with stable,
-    well-supported azurerm coverage.
+    environment/app, Azure ML workspace/Storage/Key Vault, and role
+    assignments -- resources with stable, well-supported azurerm coverage.
   - `azapi` (~> 2.0): the Foundry `AIServices` account, its `projects`
     sub-resource, `deployments` (model deployments), and `projects/connections`
     -- the new Foundry resource model, which azurerm does not yet reliably
@@ -66,6 +66,15 @@ the repository root `AGENTS.md` for full ownership boundaries.
   the same managed identity, RBAC, endpoint outputs, bootstrap, and Foundry connection.
   Source retrieved 2026-09-09:
   https://learn.microsoft.com/azure/search/search-sku-tier
+- **Foundry IQ uses a dedicated MCP connection.** `contoso-travel-search`
+  remains the CognitiveSearch/AAD resource connection used by Search authoring
+  and the direct Search tool. `contoso-travel-knowledge-lab-mcp` is a
+  `RemoteTool` connection with `ProjectManagedIdentity` and the Search
+  audience, which Prompt Agents need to call the knowledge-base MCP endpoint.
+- **Azure ML owns its default Storage grant.** Workspace creation automatically
+  adds Storage Blob Data Contributor for the workspace identity. Terraform
+  does not declare a duplicate assignment because the service-created grant
+  otherwise causes `RoleAssignmentExists` on every fresh deployment.
 - **State is local by default and treated as sensitive.** No backend block
   is declared in `versions.tf`, so Terraform defaults to a local state file
   (already gitignored). `backend.remote.tf.example` documents how an
@@ -91,7 +100,7 @@ the repository root `AGENTS.md` for full ownership boundaries.
 | `foundry_account.tf` | Foundry `AIServices` account (AzAPI) |
 | `foundry_project.tf` | Foundry project (AzAPI, Basic Agent Setup) |
 | `foundry_deployments.tf` | Three model deployments (AzAPI) |
-| `foundry_connections.tf` | Project connections to Search and Application Insights |
+| `foundry_connections.tf` | Project connections to Search, Foundry IQ MCP, and Application Insights |
 | `rbac.tf` | All role assignments (participant + managed identities) |
 | `outputs.tf` | Non-secret outputs consumed by `scripts/setup.sh` |
 | `backend.remote.tf.example` | Inert example of an organizer-managed remote state backend |

@@ -4,15 +4,14 @@
 Deploys the Microsoft Agent Framework Hosted Agent in ``src/hosted-agent/`` to
 the workshop's Microsoft Foundry project, used in labs/08-hosted-multi-agent.md.
 
-What this does, per docs/architecture.md ("Terraform owns Azure
-infrastructure; Python SDK wrappers own Foundry data-plane objects") and the
-current ``azure-ai-projects`` source-code remote-build contract
+What this does, per docs/architecture.md (Azure Portal owns control-plane
+resources; Python SDK wrappers own Foundry data-plane objects) and the current
+``azure-ai-projects`` source-code remote-build contract
 (``AIProjectClient.agents.create_version_from_code``, inspected directly from
 the installed 2.5.x SDK -- retrieved 2026-08-21):
 
-1. Reads ``.workshop/context.json`` (written by ``scripts/setup.sh``) for the
-   Foundry project endpoint. No endpoint or resource name is ever hardcoded
-   here.
+1. Reads ``.workshop/context.json`` written by ``scripts/setup.sh`` for the
+   Foundry project endpoint.
 2. Zips ``src/hosted-agent/`` in-memory, excluding everything matched by its
    ``.agentignore`` (a small, gitignore-style subset -- comments, blank
    lines, ``dir/`` suffixes, and ``fnmatch`` globs; no negation or ``**``,
@@ -93,7 +92,7 @@ from lib.workshop_context import (
     build_credential,
     load_context,
     project_endpoint,
-    terraform_output,
+    workshop_output,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -255,8 +254,8 @@ def resolve_environment_variables(
 ) -> dict[str, str]:
     """Merge ``--env`` overrides with the workshop's runtime dependencies.
 
-    The model and Search endpoint come from Terraform outputs. The knowledge
-    base uses the fixed name participants create in Lab 3. An explicit
+    The model and Search endpoint come from Portal-verified resource outputs.
+    The knowledge base uses the fixed name participants create in Lab 3. An explicit
     ``--env KEY=VALUE`` always wins for that key.
 
     ``FOUNDRY_PROJECT_ENDPOINT`` is intentionally never set here: the Hosted
@@ -267,9 +266,9 @@ def resolve_environment_variables(
     """
     resolved = dict(explicit_env)
     if FOUNDRY_MODEL_VAR not in resolved:
-        resolved[FOUNDRY_MODEL_VAR] = terraform_output(context, PRIMARY_MODEL_DEPLOYMENT_OUTPUT)
+        resolved[FOUNDRY_MODEL_VAR] = workshop_output(context, PRIMARY_MODEL_DEPLOYMENT_OUTPUT)
     if SEARCH_SERVICE_ENDPOINT_VAR not in resolved:
-        resolved[SEARCH_SERVICE_ENDPOINT_VAR] = terraform_output(
+        resolved[SEARCH_SERVICE_ENDPOINT_VAR] = workshop_output(
             context, SEARCH_SERVICE_ENDPOINT_OUTPUT
         )
     resolved.setdefault(KNOWLEDGE_BASE_NAME_VAR, DEFAULT_KNOWLEDGE_BASE_NAME)
@@ -448,7 +447,7 @@ def search_service_resource_id(context: dict[str, Any]) -> str:
         raise WorkshopContextError("context is missing subscription_id")
     if not isinstance(resource_group, str) or not resource_group:
         raise WorkshopContextError("context is missing resource_group_name")
-    search_name = terraform_output(context, "search_service_name")
+    search_name = workshop_output(context, "search_service_name")
     return (
         f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/"
         f"Microsoft.Search/searchServices/{search_name}"
@@ -457,7 +456,7 @@ def search_service_resource_id(context: dict[str, Any]) -> str:
 
 def foundry_account_resource_id(context: dict[str, Any]) -> str:
     """Return the parent Foundry account ID from the project resource ID."""
-    project_id = terraform_output(context, "foundry_project_id").rstrip("/")
+    project_id = workshop_output(context, "foundry_project_id").rstrip("/")
     marker = "/projects/"
     if marker not in project_id:
         raise WorkshopContextError(f"invalid Foundry project resource ID: {project_id!r}")
@@ -487,7 +486,7 @@ def configure_runtime_identity_access(
     )
     grant_monitoring_metrics_publisher(
         credential=credential,
-        application_insights_id=terraform_output(context, APPLICATION_INSIGHTS_ID_OUTPUT),
+        application_insights_id=workshop_output(context, APPLICATION_INSIGHTS_ID_OUTPUT),
         principal_id=principal_id,
     )
 
@@ -608,9 +607,9 @@ def build_result(
         "status": status,
         "succeeded": status == "active",
         "project_endpoint": endpoint,
-        "portal_url": terraform_output(context, "foundry_portal_url"),
-        "ai_services_account_name": terraform_output(context, "ai_services_account_name"),
-        "foundry_project_name": terraform_output(context, "foundry_project_name"),
+        "portal_url": workshop_output(context, "foundry_portal_url"),
+        "ai_services_account_name": workshop_output(context, "ai_services_account_name"),
+        "foundry_project_name": workshop_output(context, "foundry_project_name"),
     }
     if status == "failed":
         error_detail = _extract_version_error(version)

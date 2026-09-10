@@ -20,18 +20,10 @@ Lab 5 を実行できた場合は、`sample.output_items` / `sample.tool_calls`�
 
 ## 使用する値
 
-```bash
-jq -r '
-  .terraform_outputs
-  | {
-      evaluation_model: .optimizer_model_deployment_name.value,
-      optimization_model: .optimizer_model_deployment_name.value
-    }
-' .workshop/context.json
-```
-
-両方が `gpt-5.5` であることを確認します。この output は必須です。欠落している場合は、
-Lab 1 の preflight と setup を修復してから続行します。
+PC に展開した `.workshop/context.json` の `resource_outputs` で
+`evaluation_model_deployment_name` と `optimizer_model_deployment_name` がどちらも
+`gpt-5.5` であることを確認します。この output は必須です。欠落している場合は、
+Lab 1 の model deployment と validation を修復してから続行します。
 
 GPT-5.5 は2026-09-09時点の
 [Agent Optimizer の対応モデル](https://learn.microsoft.com/azure/foundry/agents/concepts/agent-optimizer-overview#models)
@@ -90,7 +82,7 @@ task-level/custom rubric/Trace で確認する対象であり、Optimizer の li
 
 ## 4. Criteria を選択する
 
-**Criteria** では、setup が登録したカスタム評価器 **Contoso Travel Rubric** の行に
+**Criteria** では、Lab 1 で登録したカスタム評価器 **Contoso Travel Rubric** の行に
 チェックを付け、**Next** を選択します。この演習では、ほかの評価器は追加しません。
 
 この rubric は回答と期待する振る舞いを task-level で比較します。Tool Search の

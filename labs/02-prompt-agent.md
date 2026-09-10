@@ -25,7 +25,7 @@ Lab 4 では費用を計算する機能を追加します。
 
 ## 始める前に
 
-Lab 1 の setup が完了し、自分の Foundry project を開いていることを確認します。
+Lab 1 の Terraform setup と validation が完了し、自分の Foundry project を開いていることを確認します。
 以後、同じ `contoso-travel-assistant` を編集して機能を追加します。
 Lab ごとに別の Agent を作る必要はありません。
 Labs 2〜6 ではこの 1 つの Prompt Agent を育てます。Lab 7 / 8 は別の Agent を
@@ -33,17 +33,10 @@ Labs 2〜6 ではこの 1 つの Prompt Agent を育てます。Lab 7 / 8 は別
 
 ## 使用する値
 
-```bash
-jq -r '
-  .terraform_outputs
-  | {
-      project: .foundry_project_name.value,
-      model: .primary_model_deployment_name.value,
-      search_service: .search_service_name.value,
-      direct_search_index: "contoso-travel-policy"
-    }
-' .workshop/context.json
-```
+PC に展開した `.workshop/context.json` を text editor で開き、
+`resource_outputs` の `foundry_project_name`、`primary_model_deployment_name`、
+`search_service_name` を確認します。direct search index は
+`contoso-travel-policy` です。Cloud Shell を再度開く必要はありません。
 
 ## 1. Prompt Agent を作成する
 
@@ -68,7 +61,7 @@ jq -r '
 すでに選ばれていれば変更不要です。下側の **Models** は新しいモデルを選ぶための
 一覧なので、この演習では使いません。`gpt-5.5` は Lab 3 の Foundry IQ、
 Lab 5 の評価、Lab 6 の Optimizer で使います。Agent 本体には Luna を使います。
-Luna が見つからない場合は、対象 project と setup の完了を確認してください。
+Luna が見つからない場合は、対象 project と Lab 1 の Terraform setup を確認してください。
 
 ## 3. 自動追加された Web search を外す
 
@@ -123,7 +116,8 @@ Serverless Developer preview は現在の Agent tool picker が要求する pagi
 ![接続欄で自分の Search service を選択する](../docs/images/lab03-search-connection.png)
 
 `contoso-travel-search` は project connection 名です。この選択欄では
-service 名が表示されるため、`search_service_name` と見比べてください。
+service 名が表示されるため、`search_service_name` と見比べてください。connection name は
+`contoso-travel-search`、Auth Type は **Project Managed Identity** です。
 
 4. `contoso-travel-policy` の行の丸い選択ボタンを選び、**Add** を押します。
   `contoso-travel-approval` はまだ選びません。

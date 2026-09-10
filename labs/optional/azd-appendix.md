@@ -78,9 +78,9 @@ agent 用 Microsoft Entra identity の作成・必要な RBAC 割り当てまで
 |---|---|---|
 | 認証 | `az login` のみ | `az login` + `azd auth login` |
 | デプロイ方式 | source zip + `REMOTE_BUILD`（Foundry がサーバー側でビルド） | ローカルでコンテナビルド → ACR へ push |
-| 追加インフラ | 不要（本編 Terraform の範囲内） | ACR（既存のものを使うか、`azd provision` が新規作成） |
+| 追加インフラ | 不要（本編 Terraform resources の範囲内） | ACR（既存のものを使うか、`azd provision` が新規作成） |
 | 対象読者 | 全参加者（本編必須） | azd に慣れた参加者向けの任意経路 |
-| べき等性・cleanup | `scripts/delete_hosted_agent.py`、`destroy.sh` の対象 | azd 独自の state・ACR イメージは別途 cleanup が必要（[Advanced Hosted Agent](advanced-hosted-agent.md) §7 参照） |
+| べき等性・cleanup | `scripts/delete_hosted_agent.py` と Lab 9 の対象 | azd 独自の state・ACR イメージは別途 cleanup が必要（[Advanced Hosted Agent](advanced-hosted-agent.md) §7 参照） |
 
 ## 6. この付録を使わない場合
 

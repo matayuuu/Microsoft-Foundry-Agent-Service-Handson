@@ -42,7 +42,10 @@ CHUNKING = {
 
 EMBEDDING = {
     "default_dimensions": 1536,
-    "configurable_by": ["scripts/setup.sh", "scripts/bootstrap_data.py"],
+    "configurable_by": [
+        "scripts/setup.sh",
+        "scripts/bootstrap_data.py",
+    ],
 }
 
 CITATION = {

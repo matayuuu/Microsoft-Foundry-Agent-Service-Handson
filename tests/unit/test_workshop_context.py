@@ -16,7 +16,7 @@ from azure.identity import AzureCliCredential, DefaultAzureCredential
 from scripts.lib import workshop_context as ctx
 
 
-def _write_context(tmp_path: Path, terraform_outputs: dict[str, dict[str, str]]) -> Path:
+def _write_context(tmp_path: Path, resource_outputs: dict[str, dict[str, str]]) -> Path:
     path = tmp_path / "context.json"
     path.write_text(
         json.dumps(
@@ -25,8 +25,11 @@ def _write_context(tmp_path: Path, terraform_outputs: dict[str, dict[str, str]])
                 "subscription_id": "00000000-0000-0000-0000-000000000000",
                 "resource_group_name": "rg-test",
                 "location": "eastus2",
-                "terraform_inputs": {},
-                "terraform_outputs": terraform_outputs,
+                "schema_version": "1.0",
+                "provisioning_method": "azure-portal",
+                "setup_status": "ready",
+                "source_base": "https://example.invalid/repository",
+                "resource_outputs": resource_outputs,
             }
         ),
         encoding="utf-8",
@@ -52,11 +55,11 @@ def test_load_context_raises_on_invalid_json(tmp_path: Path) -> None:
         ctx.load_context(path)
 
 
-def test_load_context_raises_when_terraform_outputs_missing(tmp_path: Path) -> None:
+def test_load_context_raises_when_resource_outputs_missing(tmp_path: Path) -> None:
     path = tmp_path / "context.json"
     path.write_text(json.dumps({"subscription_id": "x"}), encoding="utf-8")
 
-    with pytest.raises(ctx.WorkshopContextError, match="terraform_outputs"):
+    with pytest.raises(ctx.WorkshopContextError, match="resource_outputs"):
         ctx.load_context(path)
 
 
@@ -66,18 +69,18 @@ def test_load_context_returns_parsed_dict(tmp_path: Path) -> None:
     context = ctx.load_context(path)
 
     assert context["resource_group_name"] == "rg-test"
-    assert context["terraform_outputs"]["foundry_project_endpoint"]["value"] == "https://example"
+    assert context["resource_outputs"]["foundry_project_endpoint"]["value"] == "https://example"
 
 
 # ---------------------------------------------------------------------------
-# terraform_output / project_endpoint / travel_api_base_url
+# workshop_output / project_endpoint / travel_api_base_url
 # ---------------------------------------------------------------------------
 
 
-def test_terraform_output_returns_value() -> None:
-    context = {"terraform_outputs": {"search_service_name": {"value": "srch-workshop-abc123"}}}
+def test_workshop_output_returns_value() -> None:
+    context = {"resource_outputs": {"search_service_name": {"value": "srch-workshop-abc123"}}}
 
-    assert ctx.terraform_output(context, "search_service_name") == "srch-workshop-abc123"
+    assert ctx.workshop_output(context, "search_service_name") == "srch-workshop-abc123"
 
 
 @pytest.mark.parametrize(
@@ -95,33 +98,33 @@ def test_model_deployment_output_uses_context_without_fixed_defaults(
     tmp_path: Path, key: str, deployment: str
 ) -> None:
     context = ctx.load_context(_write_context(tmp_path, {key: {"value": deployment}}))
-    assert ctx.terraform_output(context, key) == deployment
+    assert ctx.workshop_output(context, key) == deployment
 
 
-def test_terraform_output_raises_with_available_keys_listed() -> None:
-    context = {"terraform_outputs": {"foo": {"value": "bar"}}}
+def test_workshop_output_raises_with_available_keys_listed() -> None:
+    context = {"resource_outputs": {"foo": {"value": "bar"}}}
 
     with pytest.raises(ctx.WorkshopContextError, match="foo"):
-        ctx.terraform_output(context, "missing_key")
+        ctx.workshop_output(context, "missing_key")
 
 
-def test_terraform_output_rejects_empty_required_evaluation_output() -> None:
-    context = {"terraform_outputs": {"evaluation_model_deployment_name": {"value": None}}}
+def test_workshop_output_rejects_empty_required_evaluation_output() -> None:
+    context = {"resource_outputs": {"evaluation_model_deployment_name": {"value": None}}}
 
     with pytest.raises(ctx.WorkshopContextError, match="required output is empty"):
-        ctx.terraform_output(context, "evaluation_model_deployment_name")
+        ctx.workshop_output(context, "evaluation_model_deployment_name")
 
 
 def test_optimizer_output_rejects_empty_required_output() -> None:
-    context = {"terraform_outputs": {"optimizer_model_deployment_name": {"value": None}}}
+    context = {"resource_outputs": {"optimizer_model_deployment_name": {"value": None}}}
 
     with pytest.raises(ctx.WorkshopContextError, match="required output is empty"):
-        ctx.terraform_output(context, "optimizer_model_deployment_name")
+        ctx.workshop_output(context, "optimizer_model_deployment_name")
 
 
 def test_project_endpoint_reads_foundry_project_endpoint_output() -> None:
     context = {
-        "terraform_outputs": {
+        "resource_outputs": {
             "foundry_project_endpoint": {
                 "value": "https://acct.services.ai.azure.com/api/projects/proj"
             }
@@ -132,7 +135,7 @@ def test_project_endpoint_reads_foundry_project_endpoint_output() -> None:
 
 
 def test_travel_api_base_url_prefixes_https_onto_fqdn() -> None:
-    context = {"terraform_outputs": {"travel_api_fqdn": {"value": "travel-api.example.io"}}}
+    context = {"resource_outputs": {"travel_api_fqdn": {"value": "travel-api.example.io"}}}
 
     assert ctx.travel_api_base_url(context) == "https://travel-api.example.io"
 

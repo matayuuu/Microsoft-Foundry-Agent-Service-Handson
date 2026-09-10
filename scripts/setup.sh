@@ -144,10 +144,8 @@ if [[ -z "${SUBSCRIPTION_ID}" || -z "${RESOURCE_GROUP_NAME}" ]]; then
   exit 1
 fi
 
-if [[ -n "${ACC_VERSION:-}" || "${AZUREPS_HOST_ENVIRONMENT:-}" == cloud-shell* || -n "${WORKSHOP_CLOUD_SHELL_REPO:-}" ]]; then
-  source "${SCRIPT_DIR}/cloud-shell-common.sh"
-  cloud_shell_guard "${REPO_ROOT}"
-fi
+source "${SCRIPT_DIR}/cloud-shell-common.sh"
+cloud_shell_guard "${REPO_ROOT}" --subscription "${SUBSCRIPTION_ID}"
 
 if [[ -n "${TRAVEL_API_IMAGE_REF}" && ( -n "${TRAVEL_API_IMAGE_REPO}" || "${TRAVEL_API_IMAGE_TAG}" != "v1.0.3" ) ]]; then
   echo "${SCRIPT_NAME}: --travel-api-image-repo/--travel-api-image-tag are ignored because --travel-api-image-ref was given explicitly" >&2
@@ -325,7 +323,11 @@ mkdir -p "${WORKSHOP_DIR}"
 
 write_json_atomically() {
   local target="$1" json="$2" temp_file
-  temp_file="$(mktemp "${target}.XXXXXX")"
+  temp_file="${target}.part.$$"
+  if [[ -L "${target}" || -L "${temp_file}" ]]; then
+    echo "${SCRIPT_NAME}: refusing symlinked context output: ${target}" >&2
+    return 1
+  fi
   if ! printf '%s\n' "${json}" | jq '.' >"${temp_file}"; then
     rm -f "${temp_file}"
     return 1
@@ -509,16 +511,22 @@ retry 3 15 apply_terraform_plan
 
 TF_OUTPUTS_JSON="$(terraform -chdir="${INFRA_DIR}" output -json)"
 
-# Written once to a stable file (not a process substitution) because both
-# bootstrap_data.py and validate_environment.py below are wrapped in
-# retry() -- a process substitution's underlying pipe is only readable once,
-# so re-invoking a command against the same `<(...)` path on a retry attempt
-# would see EOF instead of the real content. Non-secret (identical to the
-# `terraform_outputs` field later written to .workshop/context.json);
-# removed on exit regardless of success or failure.
-TF_OUTPUTS_FILE="$(mktemp "${WORKSHOP_DIR}/tf-outputs.XXXXXX.json")"
+# Written once to a stable repository-local file because the serverless
+# adapter may be retried. It contains only non-secret Terraform outputs.
+TF_OUTPUTS_FILE="${WORKSHOP_DIR}/tf-outputs.$$.json"
 echo "${TF_OUTPUTS_JSON}" >"${TF_OUTPUTS_FILE}"
 trap 'rm -f "${TF_OUTPUTS_FILE}"' EXIT
+
+CONTEXT_JSON="$(jq \
+  --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --argjson resource_outputs "${TF_OUTPUTS_JSON}" \
+  '.schema_version = "1.0"
+   | .provisioning_method = "cloud-shell-terraform"
+   | .generated_at = $generated_at
+   | .setup_status = "infrastructure-ready"
+   | .resource_outputs = $resource_outputs' \
+  <<<"${RESOLVED_INPUTS_JSON}")"
+write_json_atomically "${WORKSHOP_DIR}/context.json" "${CONTEXT_JSON}"
 
 # ---------------------------------------------------------------------------
 # Step 3: bootstrap_data.py
@@ -600,9 +608,7 @@ else
     SEARCH_INDEX_ARGS+=(--index-name "${SEARCH_INDEX_NAME}")
   done
   retry 5 15 "${PYTHON_BIN}" "${SCRIPT_DIR}/validate_environment.py" \
-    --subscription "${SUBSCRIPTION_ID}" \
-    --resource-group "${RESOURCE_GROUP_NAME}" \
-    --terraform-outputs "${TF_OUTPUTS_FILE}" \
+    --context "${WORKSHOP_DIR}/context.json" \
     "${SEARCH_INDEX_ARGS[@]}"
 fi
 
@@ -614,11 +620,9 @@ echo "==> [5/5] Writing .workshop/context.json and .workshop/.env..." >&2
 
 CONTEXT_JSON="$(jq \
   --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --argjson terraform_outputs "${TF_OUTPUTS_JSON}" \
   '.generated_at = $generated_at
-   | .setup_status = "complete"
-   | .terraform_outputs = $terraform_outputs' \
-  <<<"${RESOLVED_INPUTS_JSON}")"
+   | .setup_status = "complete"' \
+  <<<"${CONTEXT_JSON}")"
 write_json_atomically "${WORKSHOP_DIR}/context.json" "${CONTEXT_JSON}"
 
 {
@@ -636,6 +640,31 @@ FOUNDRY_PROJECT_NAME="$(jq -r '.foundry_project_name.value' <<<"${TF_OUTPUTS_JSO
 FOUNDRY_PROJECT_ENDPOINT="$(jq -r '.foundry_project_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"
 TRAVEL_API_FQDN="$(jq -r '.travel_api_fqdn.value' <<<"${TF_OUTPUTS_JSON}")"
 
+echo "==> Preparing Toolbox upload assets..." >&2
+retry 3 15 "${PYTHON_BIN}" "${SCRIPT_DIR}/prepare_toolbox_assets.py" \
+  --context "${WORKSHOP_DIR}/context.json" \
+  --output-dir "${WORKSHOP_DIR}/toolbox"
+
+# Parent-owned packager contract. It must consume the canonical non-secret
+# context and write exactly one participant download ZIP at the requested path.
+PACKAGER="${SCRIPT_DIR}/prepare_participant_download.py"
+DOWNLOAD_ZIP="${WORKSHOP_DIR}/download/foundry-workshop-files.zip"
+if [[ ! -f "${PACKAGER}" ]]; then
+  echo "${SCRIPT_NAME}: REQUIRED participant packager is missing: ${PACKAGER}" >&2
+  echo "Expected contract: python scripts/prepare_participant_download.py --context .workshop/context.json --output .workshop/download/foundry-workshop-files.zip" >&2
+  exit 1
+fi
+"${PYTHON_BIN}" "${PACKAGER}" \
+  --context "${WORKSHOP_DIR}/context.json" \
+  --output "${DOWNLOAD_ZIP}"
+if [[ ! -s "${DOWNLOAD_ZIP}" ]]; then
+  echo "${SCRIPT_NAME}: participant packager did not create a non-empty ZIP: ${DOWNLOAD_ZIP}" >&2
+  exit 1
+fi
+DOWNLOAD_ZIP_ABSOLUTE="$("${PYTHON_BIN}" -c \
+  'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' \
+  "${DOWNLOAD_ZIP}")"
+
 cat <<EOF
 
 Setup complete.
@@ -652,4 +681,10 @@ Travel Ops API:   https://${TRAVEL_API_FQDN}
 Non-secret context written to:
   ${WORKSHOP_DIR}/context.json
   ${WORKSHOP_DIR}/.env
+
+Download this one file:
+  ${DOWNLOAD_ZIP_ABSOLUTE}
+
+After the ZIP download finishes, type 'exit' immediately to release this
+Cloud Shell tenant slot. Do not run notebooks or web previews in Cloud Shell.
 EOF

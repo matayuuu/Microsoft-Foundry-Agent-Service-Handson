@@ -18,7 +18,6 @@ jpserver-*-open.html
 kernel-*.json
 jupyter_cookie_secret
 jupyter-cookie-secret
-cloud-shell-resume-check.txt
 
 # Local workshop state and credentials
 .workshop/
@@ -26,6 +25,7 @@ cloud-shell-resume-check.txt
 .env
 .env.*
 !.env.example
+portal-config.json
 
 # Terraform state and local inputs
 .terraform/

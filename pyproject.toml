@@ -7,14 +7,14 @@ name = "microsoft-foundry-agent-service-handson"
 version = "0.1.0"
 description = "Automation and samples for a Microsoft Foundry Agent Service workshop"
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.10,<3.14"
 dependencies = [
   "azure-ai-projects==2.5.0",
   "azure-identity>=1.25.0",
   "azure-search-documents>=11.6.0",
   "httpx>=0.28.0",
   "jsonschema>=4.25.0",
-  "openai>=2.15.0",
+  "openai>=3.0.0,<4",
   "pydantic>=2.11.0",
   "python-dotenv>=1.1.0",
   "PyYAML>=6.0.2",
@@ -22,10 +22,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cloud-shell = [
-  "jupyterlab==4.6.3",
-  "jupyter-server==2.21.0",
-]
 dev = [
   "agent-framework-core==1.15.0",
   "agent-framework-orchestrations==1.1.1",
@@ -46,9 +42,9 @@ markers = [
 ]
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py310"
 line-length = 100
-extend-exclude = [".terraform", ".venv", "artifacts"]
+extend-exclude = [".venv", "artifacts", "dist"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

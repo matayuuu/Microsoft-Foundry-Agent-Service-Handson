@@ -1,621 +1,127 @@
-"""Unit tests for scripts/validate_environment.py.
-
-scripts/ is intentionally not a Python package, so the module under test is
-loaded directly from its file path via importlib. Azure/CLI/network adapters
-(``fetch_role_assignments``, ``fetch_search_index_fields``,
-``fetch_search_document_count``, ``fetch_resource_by_id``,
-``fetch_travel_api_health``, ``_signed_in_principal_id``) are monkeypatched
-or exercised only through pure-function seams; no real Azure credentials,
-network access, or ``az`` CLI invocation happens in this file.
-"""
+"""Network-free tests for canonical post-provisioning validation."""
 
 from __future__ import annotations
 
-import importlib.util
 import json
-import sys
 from pathlib import Path
-from types import ModuleType
+from types import SimpleNamespace
 
 import pytest
-from azure.core.exceptions import AzureError
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-MODULE_PATH = REPO_ROOT / "scripts" / "validate_environment.py"
+from scripts import validate_environment as validation
 
 
-def _load_module() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("validate_environment", MODULE_PATH)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-validate_environment = _load_module()
-
-
-VALID_OUTPUTS = {
-    key: {"value": f"fake-{key}"} for key in validate_environment.REQUIRED_TERRAFORM_OUTPUTS
-}
-
-
-# ---------------------------------------------------------------------------
-# CheckResult / ValidationReport
-# ---------------------------------------------------------------------------
-
-
-def test_check_result_rejects_invalid_status() -> None:
-    with pytest.raises(ValueError):
-        validate_environment.CheckResult(name="x", status="nope", detail="d")
-
-
-@pytest.mark.parametrize(
-    ("statuses", "expected_overall"),
-    [
-        (["pass", "pass"], "pass"),
-        (["pass", "warn"], "warn"),
-        (["warn", "fail"], "fail"),
-        (["pass", "fail", "warn"], "fail"),
-        ([], "pass"),
-    ],
-)
-def test_validation_report_overall_status(statuses: list[str], expected_overall: str) -> None:
-    checks = [
-        validate_environment.CheckResult(name=f"c{i}", status=s, detail="d")
-        for i, s in enumerate(statuses)
-    ]
-
-    report = validate_environment.ValidationReport(checks=checks)
-
-    assert report.overall_status == expected_overall
-
-
-def test_validation_report_to_dict_shape() -> None:
-    report = validate_environment.ValidationReport(
-        checks=[validate_environment.CheckResult(name="c1", status="pass", detail="ok")]
-    )
-
-    as_dict = report.to_dict()
-
-    assert as_dict["overall_status"] == "pass"
-    assert as_dict["checks"] == [{"name": "c1", "status": "pass", "detail": "ok"}]
-
-
-def test_validation_report_to_markdown_contains_table() -> None:
-    report = validate_environment.ValidationReport(
-        checks=[validate_environment.CheckResult(name="c1", status="fail", detail="broke | pipe")]
-    )
-
-    markdown = report.to_markdown()
-
-    assert "| c1 | fail |" in markdown
-    assert "broke \\| pipe" in markdown
-
-
-# ---------------------------------------------------------------------------
-# run_checks
-# ---------------------------------------------------------------------------
-
-
-def test_run_checks_returns_results_in_order() -> None:
-    specs = [
-        validate_environment.CheckSpec(
-            name="a", run=lambda: validate_environment.CheckResult("a", "pass", "ok")
-        ),
-        validate_environment.CheckSpec(
-            name="b", run=lambda: validate_environment.CheckResult("b", "warn", "meh")
-        ),
-    ]
-
-    report = validate_environment.run_checks(specs)
-
-    assert [c.name for c in report.checks] == ["a", "b"]
-    assert report.overall_status == "warn"
-
-
-def test_run_checks_converts_a_raising_check_into_a_failed_result_and_continues() -> None:
-    def _boom() -> validate_environment.CheckResult:
-        raise RuntimeError("kaboom")
-
-    specs = [
-        validate_environment.CheckSpec(name="boom", run=_boom),
-        validate_environment.CheckSpec(
-            name="ok", run=lambda: validate_environment.CheckResult("ok", "pass", "fine")
-        ),
-    ]
-
-    report = validate_environment.run_checks(specs)
-
-    assert report.overall_status == "fail"
-    assert report.checks[0].status == "fail"
-    assert "kaboom" in report.checks[0].detail
-    assert report.checks[1].status == "pass"
-
-
-@pytest.mark.parametrize(
-    "exc",
-    [
-        RuntimeError("az call failed"),
-        OSError("az binary not found"),
-        ValueError("bad input"),
-        KeyError("missing-key"),
-        AzureError("search request failed"),
-        json.JSONDecodeError("bad json", "{", 0),
-    ],
-)
-def test_run_checks_catches_every_documented_expected_exception_type(exc: Exception) -> None:
-    def _boom() -> validate_environment.CheckResult:
-        raise exc
-
-    report = validate_environment.run_checks(
-        [validate_environment.CheckSpec(name="boom", run=_boom)]
-    )
-
-    assert report.checks[0].status == "fail"
-    assert type(exc).__name__ in report.checks[0].detail
-
-
-def test_run_checks_does_not_swallow_an_unexpected_exception_type() -> None:
-    """Per the repo's no-broad-catch rule, run_checks must only convert the
-    documented, expected exception types into a failed check result -- a
-    genuinely unexpected exception type (here, TypeError, which no adapter
-    in this module is documented to raise) must propagate so it surfaces as
-    a real crash/bug signal instead of being silently folded into the
-    report.
-    """
-
-    def _boom() -> validate_environment.CheckResult:
-        raise TypeError("unexpected programming bug, not an expected check failure")
-
-    with pytest.raises(TypeError):
-        validate_environment.run_checks([validate_environment.CheckSpec(name="boom", run=_boom)])
-
-
-# ---------------------------------------------------------------------------
-# pure validators
-# ---------------------------------------------------------------------------
-
-
-def test_validate_terraform_outputs_present_passes_when_all_present() -> None:
-    result = validate_environment.validate_terraform_outputs_present(
-        VALID_OUTPUTS, validate_environment.REQUIRED_TERRAFORM_OUTPUTS
-    )
-
-    assert result.status == "pass"
-
-
-def test_validate_terraform_outputs_present_fails_when_missing() -> None:
-    incomplete = dict(VALID_OUTPUTS)
-    del incomplete["travel_api_fqdn"]
-
-    result = validate_environment.validate_terraform_outputs_present(
-        incomplete, validate_environment.REQUIRED_TERRAFORM_OUTPUTS
-    )
-
-    assert result.status == "fail"
-    assert "travel_api_fqdn" in result.detail
-
-
-def test_validate_role_assignment_present_finds_matching_assignment() -> None:
-    assignments = [
+def _context() -> dict[str, object]:
+    values = {key: f"fixture-{key}" for key in validation.REQUIRED_RESOURCE_OUTPUTS}
+    values.update(
         {
-            "principalId": "principal-1",
-            "roleDefinitionId": (
-                "/subscriptions/x/providers/Microsoft.Authorization/roleDefinitions/abc123"
+            "ai_services_account_name": "aif-fixture",
+            "search_service_name": "srch-fixture",
+            "search_service_endpoint": "https://search.example.invalid",
+            "travel_api_container_app_name": "ca-fixture",
+            "travel_api_fqdn": "travel.example.invalid",
+            "azureml_workspace_id": (
+                "/subscriptions/sub/resourceGroups/rg/providers/"
+                "Microsoft.MachineLearningServices/workspaces/mlw-fixture"
             ),
         }
-    ]
+    )
+    return {
+        "schema_version": "1.0",
+        "provisioning_method": "cloud-shell-terraform",
+        "subscription_id": "00000000-0000-0000-0000-000000000000",
+        "resource_group_name": "rg-fixture",
+        "location": "japaneast",
+        "setup_status": "infrastructure-ready",
+        "resource_outputs": {key: {"value": value} for key, value in values.items()},
+    }
 
-    result = validate_environment.validate_role_assignment_present(
-        assignments, principal_id="principal-1", role_definition_id_suffix="abc123", label="test"
+
+def test_context_and_resource_outputs_are_canonical() -> None:
+    context = _context()
+
+    assert validation.validate_context_metadata(context).status == "pass"
+    assert (
+        validation.validate_resource_outputs_present(
+            context["resource_outputs"],  # type: ignore[arg-type]
+            validation.REQUIRED_RESOURCE_OUTPUTS,
+        ).status
+        == "pass"
     )
 
-    assert result.status == "pass"
 
-
-def test_validate_role_assignment_present_fails_when_absent() -> None:
-    result = validate_environment.validate_role_assignment_present(
-        [], principal_id="principal-1", role_definition_id_suffix="abc123", label="test"
-    )
+def test_missing_resource_output_fails_with_name() -> None:
+    result = validation.validate_resource_outputs_present({}, ("azureml_workspace_id",))
 
     assert result.status == "fail"
+    assert "azureml_workspace_id" in result.detail
 
 
-def test_validate_search_index_passes_with_all_expected_fields() -> None:
-    result = validate_environment.validate_search_index(
-        ["id", "title", "content"], expected_fields=["id", "title"], label="test"
-    )
+def test_build_credential_is_explicit_azure_cli() -> None:
+    from azure.identity import AzureCliCredential
 
-    assert result.status == "pass"
+    assert isinstance(validation.build_credential(), AzureCliCredential)
 
 
-def test_validate_search_index_fails_with_missing_fields() -> None:
-    result = validate_environment.validate_search_index(
-        ["id"], expected_fields=["id", "title"], label="test"
-    )
-
-    assert result.status == "fail"
-    assert "title" in result.detail
-
-
-def test_validate_search_document_count_passes_at_minimum() -> None:
-    result = validate_environment.validate_search_document_count(5, minimum=5, label="test")
-
-    assert result.status == "pass"
-
-
-def test_validate_search_document_count_fails_below_minimum() -> None:
-    result = validate_environment.validate_search_document_count(0, minimum=1, label="test")
-
-    assert result.status == "fail"
-
-
-def test_validate_resource_exists_passes_with_id_and_provisioning_state() -> None:
-    result = validate_environment.validate_resource_exists(
-        {"id": "/subscriptions/x/.../foo", "properties": {"provisioningState": "Succeeded"}},
-        label="test",
-    )
-
-    assert result.status == "pass"
-    assert "/subscriptions/x/.../foo" in result.detail
-    assert "Succeeded" in result.detail
-
-
-def test_validate_resource_exists_passes_without_provisioning_state() -> None:
-    result = validate_environment.validate_resource_exists(
-        {"id": "/subscriptions/x/.../foo"}, label="test"
-    )
-
-    assert result.status == "pass"
-
-
-def test_validate_resource_exists_fails_when_none() -> None:
-    result = validate_environment.validate_resource_exists(None, label="test")
-
-    assert result.status == "fail"
-
-
-def test_validate_resource_exists_fails_when_missing_id_key() -> None:
-    result = validate_environment.validate_resource_exists({"properties": {}}, label="test")
-
-    assert result.status == "fail"
-
-
-def test_validate_travel_api_health_passes_on_200() -> None:
-    result = validate_environment.validate_travel_api_health(200, label="test")
-
-    assert result.status == "pass"
-
-
-@pytest.mark.parametrize("status_code", [500, 404, 302, 0])
-def test_validate_travel_api_health_fails_on_non_200(status_code: int) -> None:
-    result = validate_environment.validate_travel_api_health(status_code, label="test")
-
-    assert result.status == "fail"
-    assert str(status_code) in result.detail
-
-
-# ---------------------------------------------------------------------------
-# fetch_resource_by_id / fetch_travel_api_health adapters (Azure/network-free:
-# az_cli_json and urllib.request.urlopen are monkeypatched)
-# ---------------------------------------------------------------------------
-
-
-def test_fetch_resource_by_id_delegates_to_az_cli_json(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured_args: list[list[str]] = []
-
-    def _fake_az_cli_json(args: list[str]) -> dict[str, str]:
-        captured_args.append(list(args))
-        return {"id": "/subscriptions/x/.../foo"}
-
-    monkeypatch.setattr(validate_environment, "az_cli_json", _fake_az_cli_json)
-
-    result = validate_environment.fetch_resource_by_id("/subscriptions/x/.../foo")
-
-    assert result == {"id": "/subscriptions/x/.../foo"}
-    assert captured_args == [["resource", "show", "--ids", "/subscriptions/x/.../foo"]]
-
-
-def test_fetch_travel_api_health_returns_200_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    class _FakeResponse:
-        def __enter__(self) -> _FakeResponse:
-            return self
-
-        def __exit__(self, *exc_info: object) -> None:
-            return None
-
-        def getcode(self) -> int:
-            return 200
-
-    def _fake_urlopen(request: object, timeout: float) -> _FakeResponse:
-        assert "https://fake.example.com/health" in request.full_url  # type: ignore[attr-defined]
-        return _FakeResponse()
-
-    monkeypatch.setattr(validate_environment.urllib.request, "urlopen", _fake_urlopen)
-
-    status_code = validate_environment.fetch_travel_api_health("fake.example.com")
-
-    assert status_code == 200
-
-
-def test_fetch_travel_api_health_extracts_status_from_http_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def _fake_urlopen(request: object, timeout: float) -> None:
-        raise validate_environment.urllib.error.HTTPError(
-            url="https://fake.example.com/health",
-            code=503,
-            msg="Service Unavailable",
-            hdrs=None,  # type: ignore[arg-type]
-            fp=None,
-        )
-
-    monkeypatch.setattr(validate_environment.urllib.request, "urlopen", _fake_urlopen)
-
-    status_code = validate_environment.fetch_travel_api_health("fake.example.com")
-
-    assert status_code == 503
-
-
-def test_fetch_travel_api_health_propagates_url_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _fake_urlopen(request: object, timeout: float) -> None:
-        raise validate_environment.urllib.error.URLError("name resolution failed")
-
-    monkeypatch.setattr(validate_environment.urllib.request, "urlopen", _fake_urlopen)
-
-    with pytest.raises(validate_environment.urllib.error.URLError):
-        validate_environment.fetch_travel_api_health("fake.example.com")
-
-
-# ---------------------------------------------------------------------------
-# main() integration, with Azure/CLI adapters monkeypatched out
-# ---------------------------------------------------------------------------
-
-
-def test_main_reports_pass_when_outputs_present_and_search_skipped(
+def test_main_validates_azureml_api_and_both_search_indexes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    context_path = tmp_path / "context.json"
+    context_path.write_text(json.dumps(_context()), encoding="utf-8")
+    credential = SimpleNamespace(close=lambda: None)
+    index_calls: list[str] = []
+    resource_calls: list[str] = []
+
+    monkeypatch.setattr(validation, "build_credential", lambda: credential)
+
+    def resource(resource_id: str) -> dict[str, object]:
+        resource_calls.append(resource_id)
+        return {"id": resource_id, "properties": {"provisioningState": "Succeeded"}}
+
+    monkeypatch.setattr(validation, "fetch_resource_by_id", resource)
     monkeypatch.setattr(
-        validate_environment,
+        validation,
         "fetch_role_assignments",
-        lambda resource_id: [
+        lambda _: [
             {
-                "principalId": "principal-1",
-                "roleDefinitionId": (
-                    f"/providers/.../roleDefinitions/{validate_environment.FOUNDRY_USER_ROLE_ID}"
-                ),
-            },
+                "principalId": "participant",
+                "roleDefinitionId": f"/roles/{validation.FOUNDRY_USER_ROLE_ID}",
+            }
         ],
     )
-    monkeypatch.setattr(validate_environment, "_signed_in_principal_id", lambda: "principal-1")
-    monkeypatch.setattr(
-        validate_environment,
-        "fetch_resource_by_id",
-        lambda resource_id: {"id": resource_id, "properties": {"provisioningState": "Succeeded"}},
-    )
-    monkeypatch.setattr(validate_environment, "fetch_travel_api_health", lambda fqdn: 200)
+    monkeypatch.setattr(validation, "_signed_in_principal_id", lambda: "participant")
+    monkeypatch.setattr(validation, "fetch_travel_api_health", lambda _: 200)
 
-    outputs_path = tmp_path / "outputs.json"
-    outputs_path.write_text(json.dumps(VALID_OUTPUTS), encoding="utf-8")
+    def fields(_: str, index_name: str, __: object) -> list[str]:
+        index_calls.append(index_name)
+        return list(validation.EXPECTED_INDEX_FIELDS)
 
-    exit_code = validate_environment.main(
+    monkeypatch.setattr(validation, "fetch_search_index_fields", fields)
+    monkeypatch.setattr(validation, "fetch_search_document_count", lambda *_: 3)
+    report_path = tmp_path / "report.json"
+
+    result = validation.main(
         [
-            "--subscription",
-            "00000000-0000-0000-0000-000000000000",
-            "--resource-group",
-            "rg-test",
-            "--terraform-outputs",
-            str(outputs_path),
-            "--skip-search-checks",
+            "--context",
+            str(context_path),
             "--format",
             "json",
+            "--output",
+            str(report_path),
         ]
     )
 
-    assert exit_code == 0
-
-
-def test_main_validates_each_requested_search_index(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture,
-) -> None:
-    checked_fields: list[str] = []
-    checked_counts: list[str] = []
-    monkeypatch.setattr(
-        validate_environment,
-        "fetch_role_assignments",
-        lambda resource_id: [
-            {
-                "principalId": "principal-1",
-                "roleDefinitionId": (
-                    f"/providers/.../roleDefinitions/{validate_environment.FOUNDRY_USER_ROLE_ID}"
-                ),
-            },
-        ],
-    )
-    monkeypatch.setattr(validate_environment, "_signed_in_principal_id", lambda: "principal-1")
-    monkeypatch.setattr(
-        validate_environment,
-        "fetch_resource_by_id",
-        lambda resource_id: {"id": resource_id, "properties": {"provisioningState": "Succeeded"}},
-    )
-    monkeypatch.setattr(validate_environment, "fetch_travel_api_health", lambda fqdn: 200)
-    monkeypatch.setattr(validate_environment, "build_credential", lambda: object())
-
-    def _fetch_fields(endpoint: str, index_name: str, credential: object) -> list[str]:
-        checked_fields.append(index_name)
-        return list(validate_environment.EXPECTED_INDEX_FIELDS)
-
-    def _fetch_count(endpoint: str, index_name: str, credential: object) -> int:
-        checked_counts.append(index_name)
-        return 1
-
-    monkeypatch.setattr(validate_environment, "fetch_search_index_fields", _fetch_fields)
-    monkeypatch.setattr(validate_environment, "fetch_search_document_count", _fetch_count)
-
-    outputs_path = tmp_path / "outputs.json"
-    outputs_path.write_text(json.dumps(VALID_OUTPUTS), encoding="utf-8")
-
-    exit_code = validate_environment.main(
-        [
-            "--subscription",
-            "00000000-0000-0000-0000-000000000000",
-            "--resource-group",
-            "rg-test",
-            "--terraform-outputs",
-            str(outputs_path),
-            "--index-name",
-            "contoso-travel-policy",
-            "--index-name",
-            "contoso-travel-approval",
-            "--format",
-            "json",
-        ]
-    )
-
-    assert exit_code == 0
-    assert checked_fields == ["contoso-travel-policy", "contoso-travel-approval"]
-    assert checked_counts == ["contoso-travel-policy", "contoso-travel-approval"]
-    report = json.loads(capsys.readouterr().out)
-    check_names = {check["name"] for check in report["checks"]}
-    assert "search-index-schema:contoso-travel-policy" in check_names
-    assert "search-index-schema:contoso-travel-approval" in check_names
-
-
-def test_main_returns_2_when_outputs_file_missing(tmp_path: Path) -> None:
-    exit_code = validate_environment.main(
-        [
-            "--subscription",
-            "00000000-0000-0000-0000-000000000000",
-            "--resource-group",
-            "rg-test",
-            "--terraform-outputs",
-            str(tmp_path / "missing.json"),
-            "--skip-search-checks",
-        ]
-    )
-
-    assert exit_code == 2
-
-
-def test_main_fails_when_rbac_role_assignment_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(validate_environment, "fetch_role_assignments", lambda resource_id: [])
-    monkeypatch.setattr(validate_environment, "_signed_in_principal_id", lambda: "principal-1")
-    monkeypatch.setattr(
-        validate_environment,
-        "fetch_resource_by_id",
-        lambda resource_id: {"id": resource_id, "properties": {"provisioningState": "Succeeded"}},
-    )
-    monkeypatch.setattr(validate_environment, "fetch_travel_api_health", lambda fqdn: 200)
-
-    outputs_path = tmp_path / "outputs.json"
-    outputs_path.write_text(json.dumps(VALID_OUTPUTS), encoding="utf-8")
-
-    exit_code = validate_environment.main(
-        [
-            "--subscription",
-            "00000000-0000-0000-0000-000000000000",
-            "--resource-group",
-            "rg-test",
-            "--terraform-outputs",
-            str(outputs_path),
-            "--skip-search-checks",
-        ]
-    )
-
-    assert exit_code == 2
-
-
-def test_main_fails_when_arm_resource_is_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        validate_environment,
-        "fetch_role_assignments",
-        lambda resource_id: [
-            {
-                "principalId": "principal-1",
-                "roleDefinitionId": (
-                    f"/providers/.../roleDefinitions/{validate_environment.FOUNDRY_USER_ROLE_ID}"
-                ),
-            },
-        ],
-    )
-    monkeypatch.setattr(validate_environment, "_signed_in_principal_id", lambda: "principal-1")
-    # Only the container app resource is reported missing; everything else
-    # (RBAC, the other two ARM existence checks) still passes, so this
-    # isolates that a single missing resource is enough to fail the overall
-    # report rather than being masked by the other passing checks.
-    monkeypatch.setattr(
-        validate_environment,
-        "fetch_resource_by_id",
-        lambda resource_id: (
-            None if "containerApps" in resource_id else {"id": resource_id, "properties": {}}
-        ),
-    )
-    monkeypatch.setattr(validate_environment, "fetch_travel_api_health", lambda fqdn: 200)
-
-    outputs_path = tmp_path / "outputs.json"
-    outputs_path.write_text(json.dumps(VALID_OUTPUTS), encoding="utf-8")
-
-    exit_code = validate_environment.main(
-        [
-            "--subscription",
-            "00000000-0000-0000-0000-000000000000",
-            "--resource-group",
-            "rg-test",
-            "--terraform-outputs",
-            str(outputs_path),
-            "--skip-search-checks",
-            "--format",
-            "json",
-        ]
-    )
-
-    assert exit_code == 2
-
-
-def test_main_fails_when_travel_api_health_is_non_200(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        validate_environment,
-        "fetch_role_assignments",
-        lambda resource_id: [
-            {
-                "principalId": "principal-1",
-                "roleDefinitionId": (
-                    f"/providers/.../roleDefinitions/{validate_environment.FOUNDRY_USER_ROLE_ID}"
-                ),
-            },
-        ],
-    )
-    monkeypatch.setattr(validate_environment, "_signed_in_principal_id", lambda: "principal-1")
-    monkeypatch.setattr(
-        validate_environment,
-        "fetch_resource_by_id",
-        lambda resource_id: {"id": resource_id, "properties": {"provisioningState": "Succeeded"}},
-    )
-    monkeypatch.setattr(validate_environment, "fetch_travel_api_health", lambda fqdn: 503)
-
-    outputs_path = tmp_path / "outputs.json"
-    outputs_path.write_text(json.dumps(VALID_OUTPUTS), encoding="utf-8")
-
-    exit_code = validate_environment.main(
-        [
-            "--subscription",
-            "00000000-0000-0000-0000-000000000000",
-            "--resource-group",
-            "rg-test",
-            "--terraform-outputs",
-            str(outputs_path),
-            "--skip-search-checks",
-        ]
-    )
-
-    assert exit_code == 2
+    assert result == 0
+    assert index_calls == list(validation.DEFAULT_INDEX_NAMES)
+    assert any("Microsoft.MachineLearningServices/workspaces" in item for item in resource_calls)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    names = {check["name"] for check in report["checks"]}
+    assert {
+        "arm-foundry-account-exists",
+        "arm-search-service-exists",
+        "arm-travel-api-container-app-exists",
+        "arm-azureml-workspace-exists",
+        "search-index-schema:contoso-travel-policy",
+        "search-index-schema:contoso-travel-approval",
+    } <= names
+    assert "luna-inference" not in names

@@ -33,15 +33,14 @@ deployment を確認します。
 
 ## 1. Notebook で通常 Agent と workflow を確認する
 
-1. 選んだ実行環境のファイルブラウザーで
+1. Azure ML Studio の **Notebooks > User files** で
    [`notebooks/08-hosted-agent.ipynb`](../notebooks/08-hosted-agent.ipynb) を開きます。
 2. kernel に **Python (Foundry Hosted Agent)** を選択します。
-   Python の path が `src/hosted-agent/.venv/bin/python` であることも確認してください。
+   Lab 7 の `00-azureml-setup.ipynb` が作成した `foundry-hosted-agent` Conda environment を
+   指すことも確認してください。
 3. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばしません。
 
-画面固有の操作は [Codespaces](../docs/participant/environments/codespaces.md#notebook) /
-[Cloud Shell の JupyterLab](../docs/participant/environments/cloud-shell.md#notebook)
-を参照してください。
+画面固有の操作は [Azure ML 実行環境](../docs/participant/environments/azure-ml.md)を参照してください。
 
 Notebook は次の順に進みます。
 
@@ -80,12 +79,8 @@ Lab 7 を実行していなくても Lab 8 を開始できます。
 
 ## 2. Hosted Agent を deploy する
 
-Notebook と contract test を確認後、repository root の Terminal で実行します。
-Notebook kernel ではなく、deploy SDK 用の root `.venv` を使います。
-
-```bash
-.venv/bin/python scripts/deploy_hosted_agent.py --output json
-```
+Notebook と contract test を確認後、同じ Notebook の **Python (Foundry Hosted Agent)**
+kernel で deploy cell を実行します。Cloud Shell へ戻って deploy しません。
 
 Script は次を行います。
 

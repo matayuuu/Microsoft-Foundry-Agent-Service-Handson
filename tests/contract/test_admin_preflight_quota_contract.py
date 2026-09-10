@@ -98,7 +98,9 @@ case "${sub1} ${sub2}" in
            "{\"resourceType\": \"searchServices\", ${loc1}}, " \
            "{\"resourceType\": \"components\", ${loc1}}, " \
            "{\"resourceType\": \"workspaces\", ${loc1}}, " \
-           "{\"resourceType\": \"containerApps\", ${loc1}}]}"
+           "{\"resourceType\": \"containerApps\", ${loc1}}, " \
+           "{\"resourceType\": \"storageAccounts\", ${loc1}}, " \
+           "{\"resourceType\": \"vaults\", ${loc1}}]}"
     else
       var="FAKE_PROVIDER_$(find_arg_value --namespace | tr '.' '_' | tr '[:lower:]' '[:upper:]')"
       echo "${!var:-Registered}"

@@ -2,7 +2,7 @@
 
 ## ゴール
 
-Microsoft Foundry Portal で、setup 済みの合成 test data を使い
+Microsoft Foundry Portal で、Lab 1 の Cloud Shell setup が登録した合成 test data を使い
 `contoso-travel-assistant` を end-to-end で評価します。Lab 本編では Python を使いません。
 
 Lab 4 までで作った Agent に同じ質問集を実行し、**回答と tool の使い方から改善点を見つけます。**
@@ -18,14 +18,11 @@ Lab 4 の MCP 自動承認設定まで保存した Agent を使います。
 
 ## 0. 共通 GPT-5.5 deployment を確認する
 
-```bash
-jq -r '.terraform_outputs.evaluation_model_deployment_name.value' \
-  .workshop/context.json
-```
-
-`gpt-5.5` が表示されることを確認します。Foundry IQ、Lab 5、Lab 6 は
+PC に展開した `.workshop/context.json` の
+`resource_outputs.evaluation_model_deployment_name.value` が `gpt-5.5` であることを
+text editor で確認します。Foundry IQ、Lab 5、Lab 6 は
 同じ必須の GPT-5.5 deployment を共有します。値が欠落している場合は Lab 1 の
-preflight と setup を修復してから続行します。
+model deployment と Lab 1 validation を修復してから続行します。
 
 ## 1. Evaluation を作成する
 
@@ -51,7 +48,7 @@ preflight と setup を修復してから続行します。
 
 ![合成 dataset の選択](../docs/images/lab05-data-selection.png)
 
-この dataset は setup が `data/eval/live_subset.jsonl` から登録した架空データです。
+この dataset は Lab 1 の Python adapter が `data/eval/live_subset.jsonl` から登録した架空データです。
 Skill のアップロードに使われた `skill_...` という項目が表示されても、それは選びません。
 **Field mapping** が開いた場合は、dataset の `query` を `query` に割り当てます。
 新しいデータは生成せず、登録済みの 7 件を使います。
@@ -96,7 +93,7 @@ Tool の選択と引数は Conversation / Trace で確認します。実行後�
 | **TaskAdherence** | instructions と依頼に従ったか |
 | **TaskCompletion** | 必要な内容を回答したか |
 
-3. setup が登録した custom evaluator **Contoso Travel Rubric** を追加します。
+3. Lab 1 で登録した custom evaluator **Contoso Travel Rubric** を追加します。
    これで本編の評価器は合計 **3 つ**です。
 
 ## 6. 評価器が読むデータを確認する
@@ -176,7 +173,7 @@ Tool Search の row は、次の 2 層を分けて記録します。
 - Tool Search の meta-call と downstream call を別々に確認できる
 - Fail の row で evaluator の reason を確認できる
 
-次の Lab では同じ dataset と、setup 済みの **Contoso Travel Rubric** を使います。
+次の Lab では同じ dataset と、登録済みの **Contoso Travel Rubric** を使います。
 
 詳細は
 [Run evaluations from the Microsoft Foundry portal](https://learn.microsoft.com/azure/foundry/how-to/evaluate-generative-ai-app)

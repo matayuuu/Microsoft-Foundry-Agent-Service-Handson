@@ -7,6 +7,9 @@ locals {
   workshop_resource_group_id = "/subscriptions/${var.subscription_id}/resourceGroups/${var.resource_group_name}"
   ai_services_id             = "${local.workshop_resource_group_id}/providers/Microsoft.CognitiveServices/accounts/${local.ai_services_account_name}"
   project_id                 = "${local.ai_services_id}/projects/${var.project_name}"
+  storage_account_id         = "${local.workshop_resource_group_id}/providers/Microsoft.Storage/storageAccounts/${local.storage_account_name}"
+  key_vault_id               = "${local.workshop_resource_group_id}/providers/Microsoft.KeyVault/vaults/${local.key_vault_name}"
+  azureml_workspace_id       = "${local.workshop_resource_group_id}/providers/Microsoft.MachineLearningServices/workspaces/${local.azureml_workspace_name}"
 
   state_recovery_targets = concat([
     {
@@ -43,6 +46,27 @@ locals {
       api_version       = "2026-05-01"
       owner_id          = local.ai_services_id
       owner_api_version = "2026-05-01"
+    },
+    {
+      address           = "azurerm_storage_account.azureml"
+      id                = local.storage_account_id
+      api_version       = "2023-05-01"
+      owner_id          = local.storage_account_id
+      owner_api_version = "2023-05-01"
+    },
+    {
+      address           = "azurerm_key_vault.azureml"
+      id                = local.key_vault_id
+      api_version       = "2023-07-01"
+      owner_id          = local.key_vault_id
+      owner_api_version = "2023-07-01"
+    },
+    {
+      address           = "azurerm_machine_learning_workspace.workshop"
+      id                = local.azureml_workspace_id
+      api_version       = "2024-10-01"
+      owner_id          = local.azureml_workspace_id
+      owner_api_version = "2024-10-01"
     },
     ], var.search_pricing_model == "dedicated" ? [
     {
@@ -93,6 +117,13 @@ locals {
       address           = "azapi_resource.search_connection"
       id                = "${local.project_id}/connections/contoso-travel-search"
       api_version       = "2026-05-01"
+      owner_id          = local.project_id
+      owner_api_version = "2026-05-01"
+    },
+    {
+      address           = "azapi_resource.knowledge_mcp_connection"
+      id                = "${local.project_id}/connections/contoso-travel-knowledge-lab-mcp"
+      api_version       = "2026-05-15-preview"
       owner_id          = local.project_id
       owner_api_version = "2026-05-01"
     },

@@ -152,6 +152,11 @@ def extracted_setup_head(tmp_path: Path) -> Path:
     lines = SETUP_SH.read_text(encoding="utf-8").splitlines(keepends=True)
     cut_index = next(i for i, line in enumerate(lines) if STEP_1_MARKER in line)
     head_text = "".join(lines[:cut_index])
+    head_text = head_text.replace(
+        'source "${SCRIPT_DIR}/cloud-shell-common.sh"\n'
+        'cloud_shell_guard "${REPO_ROOT}" --subscription "${SUBSCRIPTION_ID}"\n',
+        "# Cloud Shell guard is covered separately; this harness tests image resolution only.\n",
+    )
     assert "resolve_ghcr_digest" in head_text, (
         "extracted head must still include resolve_ghcr_digest(); "
         "STEP_1_MARKER may be stale relative to scripts/setup.sh"

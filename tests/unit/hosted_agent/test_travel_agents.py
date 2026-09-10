@@ -36,6 +36,25 @@ def test_search_auth_adds_current_bearer_token() -> None:
     assert authenticated.headers["Authorization"] == "Bearer synthetic-token"
 
 
+def test_create_credential_uses_cli_only_when_explicitly_selected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from azure.identity import AzureCliCredential, DefaultAzureCredential
+
+    monkeypatch.delenv(travel_agents.CREDENTIAL_MODE_ENV, raising=False)
+    assert isinstance(travel_agents.create_credential(), DefaultAzureCredential)
+
+    monkeypatch.setenv(travel_agents.CREDENTIAL_MODE_ENV, "azure-cli")
+    assert isinstance(travel_agents.create_credential(), AzureCliCredential)
+
+
+def test_create_credential_rejects_unknown_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(travel_agents.CREDENTIAL_MODE_ENV, "managed-identity")
+
+    with pytest.raises(ValueError, match=travel_agents.CREDENTIAL_MODE_ENV):
+        travel_agents.create_credential()
+
+
 def test_foundry_iq_tool_builds_expected_knowledge_base_endpoint() -> None:
     async def run() -> None:
         tool = travel_agents.FoundryIQTool(

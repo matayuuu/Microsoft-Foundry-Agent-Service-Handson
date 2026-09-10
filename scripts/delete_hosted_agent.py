@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 """scripts/delete_hosted_agent.py
 
-Deletes the Hosted Agent (and all of its versions) created by
-``scripts/deploy_hosted_agent.py``, so ``scripts/destroy.sh`` can safely run
-``terraform destroy`` afterwards (Terraform does not manage this Foundry
-data-plane object -- see docs/architecture.md).
+Deletes the Hosted Agent and all versions created by
+``scripts/deploy_hosted_agent.py`` before the participant deletes the
+dedicated resource group in Azure Portal.
 
-CLI contract (do not change without updating scripts/destroy.sh, which is
-out of this script's ownership): ``destroy.sh`` always invokes this script as
+Lab 9 invokes this script as
 
     python3 delete_hosted_agent.py --subscription "<id>" --resource-group "<rg>"
 
-and treats any non-zero exit as a hard failure (``set -euo pipefail``). Both
-flags are accepted here as required, but the actual delete target (the
+Both flags are required, but the actual delete target (the
 Foundry project endpoint and the agent name) is resolved from
 ``.workshop/context.json``, exactly like ``deploy_hosted_agent.py`` -- never
 duplicated or re-derived from the subscription/resource-group alone. The two
@@ -21,8 +18,8 @@ flags are still cross-checked against the context file's own
 against a stale or wrong ``.workshop/`` directory.
 
 Idempotency: if the agent does not exist, this exits 0 and reports
-``action: "not_found"`` -- a second/duplicate ``destroy.sh`` run (or a
-workshop environment that never got as far as Lab 8) must not fail. Any other
+``action: "not_found"``. A repeated cleanup or a workshop that never reached
+Lab 8 must not fail. Any other
 error (auth, network, permission) is a real failure and is surfaced with a
 non-zero exit and a message on stderr, never silently swallowed. If the project
 endpoint is unreachable after its account was deleted, account absence must
@@ -65,7 +62,7 @@ from lib.workshop_context import (
     build_credential,
     load_context,
     project_endpoint,
-    terraform_output,
+    workshop_output,
 )
 
 ACCOUNT_API_VERSION = "2026-05-01"
@@ -80,7 +77,7 @@ def account_is_absent(
     request: Callable[..., httpx.Response] = httpx.get,
 ) -> bool:
     """Confirm account absence independently of its data-plane DNS endpoint."""
-    name = terraform_output(context, "ai_services_account_name")
+    name = workshop_output(context, "ai_services_account_name")
     url = (
         "https://management.azure.com/subscriptions/"
         f"{quote(subscription_id, safe='')}/resourceGroups/{quote(resource_group_name, safe='')}"
@@ -156,7 +153,7 @@ def validate_context_matches(
     if mismatches:
         raise WorkshopContextError(
             "refusing to delete: " + "; ".join(mismatches) + ". Pass matching values, or "
-            "re-run ./scripts/setup.sh if this .workshop/ directory is stale."
+            "re-run scripts/setup.sh if this .workshop/ directory is stale."
         )
 
 
@@ -249,11 +246,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
     if not args.context.exists():
-        # destroy.sh treats a missing context file as "nothing was ever set
-        # up" for its own defaults, but this script requires it to resolve
-        # the project endpoint safely -- if it's missing there is nothing
-        # this script can safely delete, so idempotently report success
-        # rather than failing destroy.sh outright.
+        # Without context there is no safe project endpoint to target.
         result = {
             "agent_name": args.agent_name,
             "action": "not_found",

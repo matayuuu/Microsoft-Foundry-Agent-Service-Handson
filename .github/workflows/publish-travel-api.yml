@@ -4,9 +4,8 @@ name: Publish Travel Ops API
 # (src/travel-api) to a public GHCR package. Triggered by pushing a tag
 # matching `travel-api-v*` (e.g. travel-api-v1.0.0) or by manual dispatch.
 #
-# Never publishes a mutable `latest` tag. Terraform (infra/ workstream) must
-# pin to the immutable digest printed in this workflow's job summary and
-# exposed as the `digest` job output, not to a floating tag.
+# Never publishes a mutable `latest` tag. Terraform pins the immutable digest
+# printed in this workflow's job summary and exposed as the `digest` job output.
 
 on:
   push:

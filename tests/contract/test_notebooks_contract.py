@@ -9,6 +9,17 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 NOTEBOOKS = {
+    "00-azureml-setup.ipynb": {
+        "kernel": "python310-sdkv2",
+        "required_text": [
+            "setup_azureml.py",
+            "Python (Foundry Workshop)",
+            "Python (Foundry Hosted Agent)",
+            "resource_outputs",
+            "az login --use-device-code",
+            "Labs 7 / 8",
+        ],
+    },
     "04-create-toolbox.ipynb": {
         "kernel": "foundry-workshop",
         "required_text": [
@@ -81,11 +92,13 @@ def test_participant_notebook_contains_required_workshop_steps(filename: str) ->
         assert required in text
 
 
-def test_codespace_installs_both_notebook_kernels() -> None:
-    post_create = (REPO_ROOT / ".devcontainer" / "post-create.sh").read_text(encoding="utf-8")
+def test_azureml_setup_installs_both_notebook_kernels_and_graphviz() -> None:
+    setup = (REPO_ROOT / "scripts" / "setup_azureml.py").read_text(encoding="utf-8")
 
-    assert "--name foundry-workshop" in post_create
-    assert "--name foundry-hosted-agent" in post_create
+    assert 'name="foundry-workshop"' in setup
+    assert 'name="foundry-hosted-agent"' in setup
+    assert '"graphviz"' in setup
+    assert '"sudo"' not in setup
 
 
 def test_hosted_notebook_builds_and_tests_before_deployment_guidance() -> None:
@@ -118,6 +131,24 @@ def test_hosted_notebook_builds_and_tests_before_deployment_guidance() -> None:
     assert "build_environment_harness_agent" not in code
 
 
-def test_codespace_installs_local_workflow_graph_renderer() -> None:
-    post_create = (REPO_ROOT / ".devcontainer" / "post-create.sh").read_text(encoding="utf-8")
-    assert "apt-get install --yes --no-install-recommends jq graphviz" in post_create
+def test_azureml_setup_notebook_verifies_cloud_shell_handoff_before_install() -> None:
+    notebook = json.loads(
+        (REPO_ROOT / "notebooks" / "00-azureml-setup.ipynb").read_text(encoding="utf-8")
+    )
+    ids = [cell["id"] for cell in notebook["cells"]]
+    expected = [
+        "find-bundle-root",
+        "verify-context",
+        "install-kernels",
+        "select-kernels",
+    ]
+    assert [ids.index(cell_id) for cell_id in expected] == sorted(
+        ids.index(cell_id) for cell_id in expected
+    )
+    text = json.dumps(notebook)
+    assert "terraform_outputs" not in text
+    assert "client_secret" not in text
+    verify_code = "".join(notebook["cells"][ids.index("verify-context")]["source"])
+    assert 'context.get("setup_status") != "complete"' in verify_code
+    assert 'context.get("resource_outputs")' in verify_code
+    assert "az login --use-device-code" in text

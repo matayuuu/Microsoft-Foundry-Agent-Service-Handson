@@ -67,7 +67,7 @@ def export_assets(
     output_dir: Path,
     skills_dir: Path = SKILLS_DIR,
 ) -> list[Path]:
-    """Write upload assets without copying context, credentials, or Terraform state."""
+    """Write upload assets without copying workshop context or credentials."""
     files: dict[str, bytes] = {
         "travel-ops.openapi.json": json.dumps(spec, ensure_ascii=False, indent=2).encode("utf-8"),
         "portal-values.json": json.dumps(

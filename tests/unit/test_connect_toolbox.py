@@ -8,7 +8,7 @@ from azure.core.exceptions import ResourceNotFoundError
 from scripts import connect_toolbox
 
 CONTEXT = {
-    "terraform_outputs": {
+    "resource_outputs": {
         "foundry_project_endpoint": {"value": "https://project.example.invalid"},
         "foundry_project_id": {
             "value": "/subscriptions/test/resourceGroups/test/providers/project"

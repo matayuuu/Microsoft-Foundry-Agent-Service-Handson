@@ -1,11 +1,8 @@
-"""Shared helpers for participant SDK scripts (``create_toolbox.py``, ``run_evaluation.py``).
+"""Shared helpers for participant SDK scripts.
 
-Both scripts need the same three things: read the non-secret
-``.workshop/context.json`` that ``scripts/setup.sh`` writes, look up a specific
-Terraform output from it with a useful error message, and build an
-``az login``-only credential. Keeping that logic in one narrowly-scoped module
-avoids duplicating it across both scripts while keeping each script itself a
-single, directly runnable file (matching the rest of ``scripts/``).
+Participant scripts read the non-secret, portal-neutral
+``.workshop/context.json``, resolve a resource output with an actionable error,
+and use the signed-in Azure CLI identity.
 
 No network calls happen in this module. It only reads a local JSON file and
 constructs (but does not use) a credential object.
@@ -46,14 +43,14 @@ def load_context(path: Path) -> dict[str, Any]:
     """Load and minimally validate ``.workshop/context.json``.
 
     Raises ``WorkshopContextError`` (never a bare ``Exception``) if the file is
-    missing, is not valid JSON, or is missing the ``terraform_outputs`` object
-    that ``scripts/setup.sh`` always writes.
+    missing, is not valid JSON, or is missing the canonical
+    ``resource_outputs`` object.
     """
     if not path.exists():
         raise WorkshopContextError(
             f"context file not found: {path}\n"
-            "Run ./scripts/setup.sh (see labs/01-setup.md) before running this "
-            "script; it writes .workshop/context.json after 'terraform apply'."
+            "Run scripts/setup.sh from the activated Cloud Shell before this script; "
+            "it writes .workshop/context.json after provisioning and validation."
         )
     try:
         raw = path.read_text(encoding="utf-8")
@@ -63,35 +60,37 @@ def load_context(path: Path) -> dict[str, Any]:
         context = json.loads(raw)
     except json.JSONDecodeError as exc:
         raise WorkshopContextError(f"context file {path} is not valid JSON: {exc}") from exc
-    if not isinstance(context, dict) or "terraform_outputs" not in context:
+    if not isinstance(context, dict):
+        raise WorkshopContextError(f"context file {path} must contain a JSON object")
+    if not isinstance(context.get("resource_outputs"), dict):
         raise WorkshopContextError(
-            f"context file {path} is missing the 'terraform_outputs' object written "
-            "by scripts/setup.sh. Re-run ./scripts/setup.sh to regenerate it."
+            f"context file {path} is missing the 'resource_outputs' object. "
+            "Re-run scripts/setup.sh to regenerate it."
         )
     return context
 
 
-def terraform_output(context: dict[str, Any], key: str) -> str:
-    """Return the string value of Terraform output ``key`` from a loaded context.
+def workshop_output(context: dict[str, Any], key: str) -> str:
+    """Return a string resource output ``key`` from a loaded workshop context.
 
     Raises ``WorkshopContextError`` (listing the available keys) if the output
     is absent, which is more actionable for a participant than a ``KeyError``.
     """
-    outputs = context.get("terraform_outputs", {})
+    outputs = context.get("resource_outputs", {})
     entry = outputs.get(key)
-    if entry is None or "value" not in entry:
+    if not isinstance(entry, dict) or "value" not in entry:
         available = ", ".join(sorted(outputs)) or "(none)"
         raise WorkshopContextError(
-            f"terraform output '{key}' not found in .workshop/context.json. "
-            f"Available outputs: {available}. Re-run ./scripts/setup.sh if this "
-            "environment predates an infra change."
+            f"workshop resource output '{key}' not found in .workshop/context.json. "
+            f"Available resource outputs: {available}. Re-run "
+            "scripts/setup.sh to refresh the workshop context."
         )
     value = entry["value"]
     if value is None or value == "":
         raise WorkshopContextError(
-            f"terraform output '{key}' is unavailable in .workshop/context.json. "
-            "This required output is empty; inspect the preflight report and re-run "
-            "./scripts/setup.sh after the model and quota requirements are satisfied."
+            f"workshop resource output '{key}' is unavailable in .workshop/context.json. "
+            "This required output is empty; inspect the setup report and re-run "
+            "scripts/setup.sh."
         )
     return str(value)
 
@@ -99,12 +98,12 @@ def terraform_output(context: dict[str, Any], key: str) -> str:
 def project_endpoint(context: dict[str, Any]) -> str:
     """Microsoft Foundry project endpoint, e.g.
     ``https://<account>.services.ai.azure.com/api/projects/<project>``."""
-    return terraform_output(context, "foundry_project_endpoint")
+    return workshop_output(context, "foundry_project_endpoint")
 
 
 def travel_api_base_url(context: dict[str, Any]) -> str:
     """Public HTTPS base URL of the deployed Travel Ops API container app."""
-    return f"https://{terraform_output(context, 'travel_api_fqdn')}"
+    return f"https://{workshop_output(context, 'travel_api_fqdn')}"
 
 
 def build_credential(kind: str = "azure-cli") -> TokenCredential:
@@ -113,10 +112,8 @@ def build_credential(kind: str = "azure-cli") -> TokenCredential:
 
     ``kind="azure-cli"`` (default) uses ``AzureCliCredential`` directly, which
     only ever reads the current ``az login`` session token.
-    ``kind="default"`` uses ``DefaultAzureCredential``, whose chain still ends
-    in ``AzureCliCredential`` in a plain ``az login`` shell/Codespace, but also
-    tolerates environments where an earlier credential in the chain (e.g.
-    managed identity, VS Code sign-in) is what a participant actually used.
+    ``kind="default"`` uses ``DefaultAzureCredential`` for deployed or
+    administrator-controlled environments that intentionally use managed identity.
     """
     if kind == "azure-cli":
         return AzureCliCredential()

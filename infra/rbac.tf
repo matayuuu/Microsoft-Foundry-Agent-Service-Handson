@@ -48,6 +48,36 @@ resource "azurerm_role_assignment" "participant_privileged_monitoring_data_reade
   principal_id       = local.participant_object_id
 }
 
+resource "azurerm_role_assignment" "participant_azureml_data_scientist" {
+  scope              = azurerm_machine_learning_workspace.workshop.id
+  role_definition_id = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.azureml_data_scientist}"
+  principal_id       = local.participant_object_id
+}
+
+resource "azurerm_role_assignment" "participant_azureml_storage_blob_data_contributor" {
+  scope              = azurerm_storage_account.azureml.id
+  role_definition_id = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.storage_blob_data_contributor}"
+  principal_id       = local.participant_object_id
+}
+
+# ---------------------------------------------------------------------------
+# Azure Machine Learning workspace identity grants
+#
+# Workspace creation automatically adds Storage Blob Data Contributor for its
+# system identity on the configured default storage account. Declaring that
+# same grant here races the platform-created assignment and fails fresh
+# deployments with RoleAssignmentExists, so Terraform manages only the
+# additional Key Vault grant.
+# ---------------------------------------------------------------------------
+
+resource "azurerm_role_assignment" "azureml_mi_key_vault_secrets_user" {
+  scope                            = azurerm_key_vault.azureml.id
+  role_definition_id               = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.role_ids.key_vault_secrets_user}"
+  principal_id                     = azurerm_machine_learning_workspace.workshop.identity[0].principal_id
+  principal_type                   = "ServicePrincipal"
+  skip_service_principal_aad_check = true
+}
+
 # ---------------------------------------------------------------------------
 # Foundry project system-assigned managed identity grants
 #

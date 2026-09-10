@@ -30,7 +30,7 @@ from lib.workshop_context import (
     build_credential,
     load_context,
     project_endpoint,
-    terraform_output,
+    workshop_output,
 )
 
 
@@ -51,7 +51,7 @@ def connect_existing_toolbox(
     ]
     ensure_toolbox_connection(
         credential=credential,
-        project_resource_id=terraform_output(context, "foundry_project_id"),
+        project_resource_id=workshop_output(context, "foundry_project_id"),
         connection_name=connection_name,
         toolbox_endpoint=endpoint,
     )

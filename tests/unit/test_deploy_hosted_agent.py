@@ -311,7 +311,7 @@ def _context_with_model_deployment(name: str = "gpt-4o-mini") -> dict:
     return {
         "subscription_id": "sub-1",
         "resource_group_name": "rg-1",
-        "terraform_outputs": {
+        "resource_outputs": {
             "primary_model_deployment_name": {"value": name},
             "search_service_endpoint": {"value": "https://search.example.invalid"},
             "search_service_name": {"value": "search-1"},
@@ -385,10 +385,10 @@ def test_resolve_environment_variables_never_sets_foundry_project_endpoint() -> 
     assert "FOUNDRY_PROJECT_ENDPOINT" not in result
 
 
-def test_resolve_environment_variables_raises_when_terraform_output_missing_and_no_override() -> (
+def test_resolve_environment_variables_raises_when_workshop_output_missing_and_no_override() -> (
     None
 ):
-    context = {"terraform_outputs": {}}
+    context = {"resource_outputs": {}}
 
     with pytest.raises(deploy_hosted_agent.WorkshopContextError):
         deploy_hosted_agent.resolve_environment_variables({}, context=context)
@@ -533,7 +533,7 @@ def test_poll_version_raises_on_timeout() -> None:
 
 def test_build_result_succeeded_when_active() -> None:
     context = {
-        "terraform_outputs": {
+        "resource_outputs": {
             "foundry_portal_url": {"value": "https://ai.azure.com"},
             "ai_services_account_name": {"value": "acct-1"},
             "foundry_project_name": {"value": "proj-1"},
@@ -559,7 +559,7 @@ def test_build_result_succeeded_when_active() -> None:
 
 def test_build_result_normalizes_sdk_status_enum() -> None:
     context = {
-        "terraform_outputs": {
+        "resource_outputs": {
             "foundry_portal_url": {"value": "https://ai.azure.com"},
             "ai_services_account_name": {"value": "acct-1"},
             "foundry_project_name": {"value": "proj-1"},
@@ -579,7 +579,7 @@ def test_build_result_normalizes_sdk_status_enum() -> None:
 
 def test_build_result_includes_failure_hint_when_failed_without_structured_error() -> None:
     context = {
-        "terraform_outputs": {
+        "resource_outputs": {
             "foundry_portal_url": {"value": "https://ai.azure.com"},
             "ai_services_account_name": {"value": "acct-1"},
             "foundry_project_name": {"value": "proj-1"},
@@ -604,7 +604,7 @@ def test_build_result_surfaces_version_error_when_the_service_populates_one() ->
     populated ``error`` field, ``build_result`` must surface its structured
     detail instead of the generic 'no structured details' hint."""
     context = {
-        "terraform_outputs": {
+        "resource_outputs": {
             "foundry_portal_url": {"value": "https://ai.azure.com"},
             "ai_services_account_name": {"value": "acct-1"},
             "foundry_project_name": {"value": "proj-1"},

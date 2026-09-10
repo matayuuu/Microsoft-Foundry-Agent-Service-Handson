@@ -54,7 +54,7 @@ Options:
 
 This script never creates/deletes resource groups, changes subscription
 quota or Azure Policy, or writes role assignments. Its only mutating action,
-gated behind --apply, is `az provider register` for the six resource
+gated behind --apply, is `az provider register` for the eight resource
 providers this workshop depends on.
 EOF
 }
@@ -145,6 +145,9 @@ REQUIRED_PROVIDERS=(
   "Microsoft.Insights"
   "Microsoft.OperationalInsights"
   "Microsoft.App"
+  "Microsoft.MachineLearningServices"
+  "Microsoft.Storage"
+  "Microsoft.KeyVault"
 )
 
 # Required resource types per provider, used to check regional availability
@@ -156,6 +159,9 @@ declare -A REQUIRED_RESOURCE_TYPES=(
   ["Microsoft.Insights"]="components"
   ["Microsoft.OperationalInsights"]="workspaces"
   ["Microsoft.App"]="containerApps"
+  ["Microsoft.MachineLearningServices"]="workspaces"
+  ["Microsoft.Storage"]="storageAccounts"
+  ["Microsoft.KeyVault"]="vaults"
 )
 
 # Models this workshop deploys, and the exact SKU (deployment type) + TPM
@@ -486,7 +492,7 @@ else
   deny_count="$(jq 'length' <<<"${deny_json}")"
   if [[ "${deny_count}" -gt 0 ]]; then
     deny_names="$(jq -r '[.[].displayName] | join(", ")' <<<"${deny_json}")"
-    add_check "policy-scan" "warn" "Found ${deny_count} enforced policy assignment(s) visible from this subscription that may restrict Foundry/Search/Storage/Container Apps resource creation (best-effort scan, not exhaustive -- inspect each policy's actual effect and scope): ${deny_names}."
+    add_check "policy-scan" "warn" "Found ${deny_count} enforced policy assignment(s) visible from this subscription that may restrict Foundry, Search, Azure Machine Learning, Storage, Key Vault, or Container Apps. Check public network access, Storage shared-key requirements for Azure Machine Learning, Key Vault RBAC, managed identities, allowed types, and regions (best-effort scan, not exhaustive -- inspect each policy's actual effect and scope): ${deny_names}."
   else
     add_check "policy-scan" "pass" "No enforced policy assignments found in this best-effort scan (not exhaustive: management-group-level policies with narrower conditions may still apply)."
   fi

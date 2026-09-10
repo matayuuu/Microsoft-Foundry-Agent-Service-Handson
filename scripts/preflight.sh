@@ -120,6 +120,9 @@ REQUIRED_PROVIDERS=(
   "Microsoft.Insights"
   "Microsoft.OperationalInsights"
   "Microsoft.App"
+  "Microsoft.MachineLearningServices"
+  "Microsoft.Storage"
+  "Microsoft.KeyVault"
 )
 REQUIRED_MODELS=("gpt-5.6-luna" "gpt-5.5" "text-embedding-3-small")
 # The exact SKU (deployment type) and TPM capacity (in thousands) this
@@ -433,7 +436,7 @@ else
   deny_count="$(jq 'length' <<<"${deny_json}")"
   if [[ "${deny_count}" -gt 0 ]]; then
     deny_names="$(jq -r '[.[].displayName] | join(", ")' <<<"${deny_json}")"
-    add_check "policy-scan" "warn" "Found ${deny_count} enforced policy assignment(s) visible at/above this resource group (best-effort scan, not exhaustive): ${deny_names}."
+    add_check "policy-scan" "warn" "Found ${deny_count} enforced policy assignment(s) visible at/above this resource group. Review them for restrictions on public network access, Storage shared-key settings required by Azure Machine Learning, Key Vault RBAC, managed identities, and allowed Azure resource types/regions (best-effort scan, not exhaustive): ${deny_names}."
   else
     add_check "policy-scan" "pass" "No enforced policy assignments found in this best-effort scan (not exhaustive)."
   fi

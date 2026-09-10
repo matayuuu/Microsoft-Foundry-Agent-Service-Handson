@@ -50,19 +50,19 @@ script:
   manifest's ``source_url_base_placeholder`` token with a real, configurable
   base via ``--source-base``. ``--source-base`` defaults to a local
   ``file://`` URI pointing at the resolved RAG directory when not provided
-  (useful for direct/local invocation), but ``scripts/setup.sh`` always
-  passes a real public source base (this repository's ``main`` branch URL by
-  default) so citations are never a local ``file://`` path.
+  (useful for direct/local invocation), but
+  ``scripts/setup.sh`` always passes the public repository URL resolved for
+  the current workshop revision.
 
 If ``data/manifest.json`` does not exist yet, callers should treat that as
-a soft warning (see ``scripts/setup.sh``), not a hard failure -- this
+a setup error. This
 script itself still fails loudly if invoked directly against a missing
 manifest, since at that point the caller explicitly asked to bootstrap
 data.
 
 Everything here is keyless: Azure Search access uses
-``azure.identity.DefaultAzureCredential`` (the participant's own ``az login``
-session, or the caller's ambient identity); embeddings use the resource's
+``azure.identity.AzureCliCredential`` (the participant's own ``az login``
+session); embeddings use the resource's
 Azure OpenAI v1 endpoint with an Entra ID bearer-token provider. The Foundry
 project endpoint does not route embedding requests. No API keys are read or
 generated anywhere in this script.
@@ -821,12 +821,14 @@ def build_tokenizer() -> Tokenizer:
 
 
 def build_credential() -> Any:
-    """Returns a azure.identity.DefaultAzureCredential -- the workshop's
-    single, keyless authentication mechanism for every Azure data-plane
-    call this script makes."""
-    from azure.identity import DefaultAzureCredential
+    """Return the signed-in participant's Azure CLI credential explicitly.
 
-    return DefaultAzureCredential()
+    Azure ML compute commonly has a managed identity; selecting the CLI
+    credential prevents that identity from shadowing the participant login.
+    """
+    from azure.identity import AzureCliCredential
+
+    return AzureCliCredential()
 
 
 def build_openai_client(openai_endpoint: str, credential: Any) -> Any:
@@ -870,9 +872,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Replaces the manifest's source_url_base_placeholder token "
         "(e.g. {{WORKSHOP_SOURCE_BASE}}) in each document's source_url before it is used "
         "for citations and the indexed source_url field. Defaults to a local file:// URI over "
-        "--rag-dir when not set (useful for direct/local invocation), but scripts/setup.sh "
-        "always passes a real public source base so citations/source_url are never a "
-        "local file:// path.",
+        "--rag-dir when not set (useful for direct/local invocation); the Portal setup "
+        "always supplies a public repository URL.",
     )
     parser.add_argument(
         "--search-endpoint", required=True, help="https://<search-service>.search.windows.net"

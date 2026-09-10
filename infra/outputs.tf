@@ -79,8 +79,36 @@ output "application_insights_id" {
   value = azurerm_application_insights.workshop.id
 }
 
+output "azureml_workspace_name" {
+  value = azurerm_machine_learning_workspace.workshop.name
+}
+
+output "azureml_workspace_id" {
+  value = azurerm_machine_learning_workspace.workshop.id
+}
+
+output "storage_account_name" {
+  value = azurerm_storage_account.azureml.name
+}
+
+output "storage_account_id" {
+  value = azurerm_storage_account.azureml.id
+}
+
+output "key_vault_name" {
+  value = azurerm_key_vault.azureml.name
+}
+
+output "key_vault_id" {
+  value = azurerm_key_vault.azureml.id
+}
+
 output "search_connection_name" {
   value = azapi_resource.search_connection.name
+}
+
+output "knowledge_mcp_connection_name" {
+  value = azapi_resource.knowledge_mcp_connection.name
 }
 
 output "application_insights_connection_name" {

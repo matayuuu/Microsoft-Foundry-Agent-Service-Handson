@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""scripts/validate_environment.py
-
-Confirms the deployed workshop environment matches what
-``infra/`` + ``scripts/bootstrap_data.py`` were supposed to produce, after
-``terraform apply`` and data bootstrap have run. Intended to be the last
-step of ``scripts/setup.sh``.
-
-Design: pure dataclasses (``CheckSpec``/``CheckResult``) plus a pure report
-formatter are fully unit testable without Azure access. The adapters that
-actually call Azure (management-plane ``az`` CLI invocations and data-plane
-SDK calls) are isolated in clearly named functions so tests can substitute
-fakes for them.
-"""
+"""Validate the provisioned workshop from canonical non-secret context."""
 
 from __future__ import annotations
 
@@ -28,13 +16,9 @@ from pathlib import Path
 from typing import Any
 
 from azure.core.exceptions import AzureError
+from azure.identity import AzureCliCredential
 
-Status = str  # "pass" | "fail" | "warn"
-
-
-# ---------------------------------------------------------------------------
-# Pure data model + report formatting
-# ---------------------------------------------------------------------------
+Status = str
 
 
 @dataclass(frozen=True)
@@ -50,9 +34,6 @@ class CheckResult:
 
 @dataclass(frozen=True)
 class CheckSpec:
-    """A single validation to run: ``run`` takes no arguments (callers
-    close over whatever context they need) and returns a CheckResult."""
-
     name: str
     run: Callable[[], CheckResult]
 
@@ -63,9 +44,9 @@ class ValidationReport:
 
     @property
     def overall_status(self) -> Status:
-        if any(c.status == "fail" for c in self.checks):
+        if any(check.status == "fail" for check in self.checks):
             return "fail"
-        if any(c.status == "warn" for c in self.checks):
+        if any(check.status == "warn" for check in self.checks):
             return "warn"
         return "pass"
 
@@ -73,7 +54,8 @@ class ValidationReport:
         return {
             "overall_status": self.overall_status,
             "checks": [
-                {"name": c.name, "status": c.status, "detail": c.detail} for c in self.checks
+                {"name": check.name, "status": check.status, "detail": check.detail}
+                for check in self.checks
             ],
         }
 
@@ -86,29 +68,18 @@ class ValidationReport:
             "| Check | Status | Detail |",
             "| --- | --- | --- |",
         ]
-        for c in self.checks:
-            escaped_detail = c.detail.replace("|", "\\|")
-            lines.append(f"| {c.name} | {c.status} | {escaped_detail} |")
+        for check in self.checks:
+            escaped_detail = check.detail.replace("|", "\\|")
+            lines.append(f"| {check.name} | {check.status} | {escaped_detail} |")
         return "\n".join(lines) + "\n"
 
 
 def run_checks(specs: Sequence[CheckSpec]) -> ValidationReport:
-    """Runs each CheckSpec in order, always continuing on failure so a
-    single broken check does not hide the results of the others.
-
-    Only catches the exception types a check adapter can legitimately raise
-    (az CLI/subprocess failures, malformed JSON, missing files, invalid
-    inputs, and Azure SDK errors) -- never a bare ``Exception``, so a genuine
-    programming bug in a check surfaces as a real crash instead of being
-    silently folded into a "failed check" row.
-    """
     results: list[CheckResult] = []
     for spec in specs:
         try:
             results.append(spec.run())
         except (RuntimeError, OSError, ValueError, KeyError, AzureError) as exc:
-            # still be reported, not raised, so the rest of the report is
-            # produced; the exception message is preserved verbatim.
             results.append(
                 CheckResult(
                     name=spec.name,
@@ -119,196 +90,7 @@ def run_checks(specs: Sequence[CheckSpec]) -> ValidationReport:
     return ValidationReport(checks=results)
 
 
-# ---------------------------------------------------------------------------
-# Pure validators over already-fetched data (no I/O; fully unit testable)
-# ---------------------------------------------------------------------------
-
-
-def validate_terraform_outputs_present(
-    outputs: dict[str, Any], required_keys: Sequence[str]
-) -> CheckResult:
-    missing = [
-        key for key in required_keys if key not in outputs or "value" not in outputs.get(key, {})
-    ]
-    if missing:
-        return CheckResult(
-            name="terraform-outputs-present",
-            status="fail",
-            detail=f"missing terraform outputs: {', '.join(missing)}",
-        )
-    return CheckResult(
-        name="terraform-outputs-present",
-        status="pass",
-        detail=f"all {len(required_keys)} expected terraform outputs are present.",
-    )
-
-
-def validate_role_assignment_present(
-    role_assignments: list[dict[str, Any]],
-    principal_id: str,
-    role_definition_id_suffix: str,
-    label: str,
-) -> CheckResult:
-    """``role_assignments`` is the already-fetched JSON list from
-    ``az role assignment list``. Checks that at least one assignment
-    matches the given principal and role-definition GUID suffix."""
-    for assignment in role_assignments:
-        principal = assignment.get("principalId", "")
-        role_def_id = assignment.get("roleDefinitionId", "")
-        if principal == principal_id and role_def_id.endswith(role_definition_id_suffix):
-            return CheckResult(name=label, status="pass", detail="Role assignment found.")
-    return CheckResult(
-        name=label,
-        status="fail",
-        detail=f"No role assignment for principal '{principal_id}' with role definition ending "
-        f"'{role_definition_id_suffix}' was found.",
-    )
-
-
-def validate_search_index(
-    index_fields: list[str],
-    expected_fields: Sequence[str],
-    label: str,
-) -> CheckResult:
-    missing = [f for f in expected_fields if f not in index_fields]
-    if missing:
-        return CheckResult(
-            name=label,
-            status="fail",
-            detail=f"index is missing expected field(s): {', '.join(missing)}",
-        )
-    return CheckResult(
-        name=label, status="pass", detail="All expected fields are present in the index schema."
-    )
-
-
-def validate_search_document_count(document_count: int, minimum: int, label: str) -> CheckResult:
-    if document_count < minimum:
-        return CheckResult(
-            name=label,
-            status="fail",
-            detail=f"index contains {document_count} document(s); expected at least {minimum}.",
-        )
-    return CheckResult(
-        name=label, status="pass", detail=f"index contains {document_count} document(s)."
-    )
-
-
-def validate_resource_exists(resource_json: Any, label: str) -> CheckResult:
-    """``resource_json`` is the already-fetched JSON object from
-    ``az resource show --ids <resource_id>`` (``None`` if the CLI returned no
-    output, e.g. the resource does not exist)."""
-    if not isinstance(resource_json, dict) or "id" not in resource_json:
-        return CheckResult(
-            name=label,
-            status="fail",
-            detail="resource was not found (az resource show returned no matching resource).",
-        )
-    provisioning_state = resource_json.get("properties", {}).get("provisioningState")
-    detail = f"resource exists: {resource_json['id']}"
-    if provisioning_state:
-        detail += f" (provisioningState={provisioning_state})"
-    return CheckResult(name=label, status="pass", detail=detail)
-
-
-def validate_travel_api_health(status_code: int, label: str) -> CheckResult:
-    """``status_code`` is the already-fetched HTTP status code from a GET
-    against the Travel Ops API's ``/health`` endpoint."""
-    if status_code != 200:
-        return CheckResult(
-            name=label,
-            status="fail",
-            detail=f"Travel Ops API /health returned HTTP {status_code} (expected 200).",
-        )
-    return CheckResult(
-        name=label, status="pass", detail="Travel Ops API /health returned HTTP 200."
-    )
-
-
-# ---------------------------------------------------------------------------
-# Adapters: az CLI + Azure SDK I/O
-# ---------------------------------------------------------------------------
-
-
-def az_cli_json(args: Sequence[str]) -> Any:
-    """Runs an `az ... -o json` command and returns the parsed JSON, or
-    raises BootstrapError-style RuntimeError with the captured stderr on
-    failure. Never swallows a failure silently."""
-    executable = shutil.which("az") or "az"
-    completed = subprocess.run(
-        [executable, *args, "-o", "json"],
-        capture_output=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
-    if completed.returncode != 0:
-        raise RuntimeError(f"'az {' '.join(args)}' failed: {completed.stderr.strip()}")
-    if not completed.stdout.strip():
-        return None
-    return json.loads(completed.stdout)
-
-
-def fetch_role_assignments(resource_id: str) -> list[dict[str, Any]]:
-    result = az_cli_json(
-        ["role", "assignment", "list", "--scope", resource_id, "--include-inherited"]
-    )
-    return result if isinstance(result, list) else []
-
-
-def fetch_search_index_fields(search_endpoint: str, index_name: str, credential: Any) -> list[str]:
-    from azure.search.documents.indexes import SearchIndexClient
-
-    client = SearchIndexClient(endpoint=search_endpoint, credential=credential)
-    index = client.get_index(index_name)
-    return [f.name for f in index.fields]
-
-
-def fetch_search_document_count(search_endpoint: str, index_name: str, credential: Any) -> int:
-    from azure.search.documents import SearchClient
-
-    client = SearchClient(endpoint=search_endpoint, index_name=index_name, credential=credential)
-    return client.get_document_count()
-
-
-def build_credential() -> Any:
-    from azure.identity import DefaultAzureCredential
-
-    return DefaultAzureCredential()
-
-
-def fetch_resource_by_id(resource_id: str) -> Any:
-    """Resource-type-agnostic ARM existence lookup via
-    ``az resource show --ids <resource_id>``, reusing the same
-    ``az_cli_json`` adapter used by ``fetch_role_assignments``. Works for the
-    AI Services account, Search service, and Container App alike, so no
-    per-resource-type ``az`` subcommands are needed."""
-    return az_cli_json(["resource", "show", "--ids", resource_id])
-
-
-def fetch_travel_api_health(fqdn: str, timeout: float = 10.0) -> int:
-    """GETs ``https://<fqdn>/health`` and returns the HTTP status code.
-
-    A non-2xx response is a meaningful "check failed with this status"
-    signal, so ``urllib.error.HTTPError`` is caught here to extract
-    ``.code``. Every other failure mode (DNS failure, connection refused,
-    timeout, TLS error) is a genuine infrastructure/network fault, so
-    ``urllib.error.URLError`` (an ``OSError`` subclass) and other ``OSError``
-    subclasses are left to propagate into ``run_checks``'s own exception
-    handling rather than being swallowed here."""
-    request = urllib.request.Request(f"https://{fqdn}/health", method="GET")
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return int(response.getcode())
-    except urllib.error.HTTPError as exc:
-        return int(exc.code)
-
-
-# ---------------------------------------------------------------------------
-# Orchestration
-# ---------------------------------------------------------------------------
-
-REQUIRED_TERRAFORM_OUTPUTS = (
+REQUIRED_RESOURCE_OUTPUTS = (
     "resource_group_name",
     "location",
     "ai_services_account_name",
@@ -319,15 +101,20 @@ REQUIRED_TERRAFORM_OUTPUTS = (
     "foundry_project_endpoint",
     "primary_model_deployment_name",
     "evaluation_model_deployment_name",
-    "optimizer_model_deployment_name",
     "embedding_model_deployment_name",
     "search_service_name",
     "search_service_endpoint",
-    "search_pricing_model",
+    "knowledge_mcp_connection_name",
     "travel_api_fqdn",
     "travel_api_container_app_name",
+    "azureml_workspace_name",
+    "azureml_workspace_id",
+    "storage_account_name",
+    "storage_account_id",
+    "key_vault_name",
+    "key_vault_id",
 )
-
+DEFAULT_INDEX_NAMES = ("contoso-travel-policy", "contoso-travel-approval")
 EXPECTED_INDEX_FIELDS = (
     "id",
     "manifest_id",
@@ -344,201 +131,294 @@ EXPECTED_INDEX_FIELDS = (
     "token_count",
     "content_vector",
 )
-
-# Role-definition GUID suffixes must match infra/locals.tf local.role_ids.
 FOUNDRY_USER_ROLE_ID = "53ca6127-db72-4b80-b1b0-d745d6d5456d"
 
 
-def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--subscription", required=True)
-    parser.add_argument("--resource-group", required=True)
-    parser.add_argument(
-        "--terraform-outputs",
-        required=True,
-        type=Path,
-        help="Path to a file containing `terraform output -json` output (a process substitution "
-        "or plain file both work).",
-    )
-    parser.add_argument(
-        "--index-name",
-        dest="index_names",
-        action="append",
-        default=None,
-        help="Azure AI Search index to validate. Repeat for multiple indexes. "
-        "Defaults to contoso-travel-policy.",
-    )
-    parser.add_argument(
-        "--min-documents",
-        type=int,
-        default=1,
-        help="Minimum number of documents each requested search index must contain to pass.",
-    )
-    parser.add_argument(
-        "--skip-search-checks",
-        action="store_true",
-        help="Skip Azure AI Search index/document checks (useful before bootstrap_data.py has "
-        "run).",
-    )
-    parser.add_argument("--format", choices=["json", "markdown"], default="markdown")
-    parser.add_argument("--output", type=Path, default=None)
-    return parser.parse_args(argv)
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    args = parse_args(argv)
-
-    try:
-        outputs_raw = args.terraform_outputs.read_text(encoding="utf-8")
-        outputs = json.loads(outputs_raw)
-    except (OSError, json.JSONDecodeError) as exc:
-        print(
-            f"validate_environment.py: could not read terraform outputs from "
-            f"{args.terraform_outputs}: {exc}",
-            file=sys.stderr,
+def validate_context_metadata(context: dict[str, Any]) -> CheckResult:
+    required = ("subscription_id", "resource_group_name", "location", "resource_outputs")
+    missing = [key for key in required if not context.get(key)]
+    if missing:
+        return CheckResult(
+            "context-metadata",
+            "fail",
+            f"context is missing required field(s): {', '.join(missing)}",
         )
-        return 2
+    if context.get("setup_status") not in {"infrastructure-ready", "complete"}:
+        return CheckResult("context-metadata", "fail", "context setup_status is not ready.")
+    return CheckResult("context-metadata", "pass", "Canonical provisioning context is ready.")
 
-    specs: list[CheckSpec] = [
-        CheckSpec(
-            name="terraform-outputs-present",
-            run=lambda: validate_terraform_outputs_present(outputs, REQUIRED_TERRAFORM_OUTPUTS),
-        )
+
+def validate_resource_outputs_present(
+    outputs: dict[str, Any], required_keys: Sequence[str]
+) -> CheckResult:
+    missing = [
+        key
+        for key in required_keys
+        if not isinstance(outputs.get(key), dict) or outputs[key].get("value") in (None, "")
     ]
-
-    ai_services_account_name = outputs.get("ai_services_account_name", {}).get("value")
-    search_service_endpoint = outputs.get("search_service_endpoint", {}).get("value")
-    search_service_name = outputs.get("search_service_name", {}).get("value")
-    travel_api_container_app_name = outputs.get("travel_api_container_app_name", {}).get("value")
-    travel_api_fqdn = outputs.get("travel_api_fqdn", {}).get("value")
-
-    if ai_services_account_name:
-        ai_services_resource_id = (
-            f"/subscriptions/{args.subscription}/resourceGroups/{args.resource_group}"
-            f"/providers/Microsoft.CognitiveServices/accounts/{ai_services_account_name}"
+    if missing:
+        return CheckResult(
+            "resource-outputs-present",
+            "fail",
+            f"missing resource outputs: {', '.join(missing)}",
         )
-        specs.append(
-            CheckSpec(
-                name="rbac-foundry-user-present",
-                run=lambda: validate_role_assignment_present(
-                    fetch_role_assignments(ai_services_resource_id),
-                    principal_id=_signed_in_principal_id(),
-                    role_definition_id_suffix=FOUNDRY_USER_ROLE_ID,
-                    label="rbac-foundry-user-present",
-                ),
-            )
-        )
-        specs.append(
-            CheckSpec(
-                name="arm-ai-services-account-exists",
-                run=lambda: validate_resource_exists(
-                    fetch_resource_by_id(ai_services_resource_id),
-                    "arm-ai-services-account-exists",
-                ),
-            )
-        )
-
-    if search_service_name:
-        search_service_resource_id = (
-            f"/subscriptions/{args.subscription}/resourceGroups/{args.resource_group}"
-            f"/providers/Microsoft.Search/searchServices/{search_service_name}"
-        )
-        specs.append(
-            CheckSpec(
-                name="arm-search-service-exists",
-                run=lambda: validate_resource_exists(
-                    fetch_resource_by_id(search_service_resource_id),
-                    "arm-search-service-exists",
-                ),
-            )
-        )
-
-    if travel_api_container_app_name:
-        container_app_resource_id = (
-            f"/subscriptions/{args.subscription}/resourceGroups/{args.resource_group}"
-            f"/providers/Microsoft.App/containerApps/{travel_api_container_app_name}"
-        )
-        specs.append(
-            CheckSpec(
-                name="arm-travel-api-container-app-exists",
-                run=lambda: validate_resource_exists(
-                    fetch_resource_by_id(container_app_resource_id),
-                    "arm-travel-api-container-app-exists",
-                ),
-            )
-        )
-
-    if travel_api_fqdn:
-        specs.append(
-            CheckSpec(
-                name="travel-api-health",
-                run=lambda: validate_travel_api_health(
-                    fetch_travel_api_health(travel_api_fqdn),
-                    "travel-api-health",
-                ),
-            )
-        )
-
-    if not args.skip_search_checks and search_service_endpoint:
-        credential = build_credential()
-        index_names = args.index_names or ["contoso-travel-policy"]
-        for index_name in index_names:
-            schema_label = f"search-index-schema:{index_name}"
-            count_label = f"search-index-document-count:{index_name}"
-
-            def _index_fields_check(
-                selected_index_name: str = index_name,
-                label: str = schema_label,
-            ) -> CheckResult:
-                fields = fetch_search_index_fields(
-                    search_service_endpoint, selected_index_name, credential
-                )
-                return validate_search_index(fields, EXPECTED_INDEX_FIELDS, label)
-
-            def _document_count_check(
-                selected_index_name: str = index_name,
-                label: str = count_label,
-            ) -> CheckResult:
-                count = fetch_search_document_count(
-                    search_service_endpoint, selected_index_name, credential
-                )
-                return validate_search_document_count(count, args.min_documents, label)
-
-            specs.append(CheckSpec(name=schema_label, run=_index_fields_check))
-            specs.append(CheckSpec(name=count_label, run=_document_count_check))
-
-    report = run_checks(specs)
-
-    rendered = (
-        json.dumps(report.to_dict(), indent=2) if args.format == "json" else report.to_markdown()
+    return CheckResult(
+        "resource-outputs-present",
+        "pass",
+        f"all {len(required_keys)} expected resource outputs are present.",
     )
 
-    if args.output:
-        args.output.write_text(rendered, encoding="utf-8")
-        print(f"validate_environment.py: report written to {args.output}", file=sys.stderr)
-    else:
-        print(rendered)
 
-    return 0 if report.overall_status != "fail" else 2
+def validate_role_assignment_present(
+    assignments: list[dict[str, Any]],
+    principal_id: str,
+    role_definition_id_suffix: str,
+    label: str,
+) -> CheckResult:
+    if any(
+        assignment.get("principalId") == principal_id
+        and str(assignment.get("roleDefinitionId", "")).endswith(role_definition_id_suffix)
+        for assignment in assignments
+    ):
+        return CheckResult(label, "pass", "Role assignment found.")
+    return CheckResult(label, "fail", "Required role assignment was not found.")
+
+
+def validate_search_index(
+    index_fields: list[str], expected_fields: Sequence[str], label: str
+) -> CheckResult:
+    missing = [field for field in expected_fields if field not in index_fields]
+    if missing:
+        return CheckResult(label, "fail", f"missing index fields: {', '.join(missing)}")
+    return CheckResult(label, "pass", "Expected index schema is present.")
+
+
+def validate_search_document_count(count: int, minimum: int, label: str) -> CheckResult:
+    if count < minimum:
+        return CheckResult(label, "fail", f"index contains {count} documents; expected {minimum}.")
+    return CheckResult(label, "pass", f"index contains {count} document(s).")
+
+
+def validate_resource_exists(resource_json: Any, label: str) -> CheckResult:
+    if not isinstance(resource_json, dict) or not resource_json.get("id"):
+        return CheckResult(label, "fail", "resource was not found.")
+    state = resource_json.get("properties", {}).get("provisioningState")
+    if state and str(state).casefold() not in {"succeeded", "ready"}:
+        return CheckResult(label, "fail", f"resource provisioning state is {state}.")
+    return CheckResult(label, "pass", f"resource exists: {resource_json['id']}")
+
+
+def validate_travel_api_health(status_code: int, label: str) -> CheckResult:
+    if status_code != 200:
+        return CheckResult(label, "fail", f"Travel Ops API returned HTTP {status_code}.")
+    return CheckResult(label, "pass", "Travel Ops API /health returned HTTP 200.")
+
+
+def az_cli_json(args: Sequence[str]) -> Any:
+    executable = shutil.which("az") or "az"
+    completed = subprocess.run(
+        [executable, *args, "-o", "json"],
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if completed.returncode:
+        raise RuntimeError(f"'az {' '.join(args)}' failed: {completed.stderr.strip()}")
+    return json.loads(completed.stdout) if completed.stdout.strip() else None
+
+
+def fetch_role_assignments(resource_id: str) -> list[dict[str, Any]]:
+    result = az_cli_json(
+        ["role", "assignment", "list", "--scope", resource_id, "--include-inherited"]
+    )
+    return result if isinstance(result, list) else []
+
+
+def fetch_resource_by_id(resource_id: str) -> Any:
+    return az_cli_json(["resource", "show", "--ids", resource_id])
+
+
+def fetch_search_index_fields(search_endpoint: str, index_name: str, credential: Any) -> list[str]:
+    from azure.search.documents.indexes import SearchIndexClient
+
+    index = SearchIndexClient(search_endpoint, credential).get_index(index_name)
+    return [field.name for field in index.fields]
+
+
+def fetch_search_document_count(search_endpoint: str, index_name: str, credential: Any) -> int:
+    from azure.search.documents import SearchClient
+
+    return SearchClient(search_endpoint, index_name, credential).get_document_count()
+
+
+def fetch_travel_api_health(fqdn: str, timeout: float = 10.0) -> int:
+    request = urllib.request.Request(f"https://{fqdn}/health", method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return int(response.getcode())
+    except urllib.error.HTTPError as exc:
+        return int(exc.code)
+
+
+def build_credential() -> AzureCliCredential:
+    return AzureCliCredential()
 
 
 _signed_in_principal_id_cache: str | None = None
 
 
 def _signed_in_principal_id() -> str:
-    """Lazily resolves and caches the signed-in identity's Entra object ID
-    via the az CLI (falls back to raising if it cannot be resolved -- callers
-    must not silently treat an unresolved identity as a passing check)."""
     global _signed_in_principal_id_cache
-    if _signed_in_principal_id_cache is not None:
-        return _signed_in_principal_id_cache
-    result = az_cli_json(["ad", "signed-in-user", "show"])
-    if not isinstance(result, dict) or "id" not in result:
-        raise RuntimeError(
-            "could not resolve the signed-in identity's object id via 'az ad signed-in-user show'"
-        )
-    _signed_in_principal_id_cache = str(result["id"])
+    if _signed_in_principal_id_cache is None:
+        result = az_cli_json(["ad", "signed-in-user", "show"])
+        if not isinstance(result, dict) or not result.get("id"):
+            raise RuntimeError("could not resolve signed-in Microsoft Entra object id")
+        _signed_in_principal_id_cache = str(result["id"])
     return _signed_in_principal_id_cache
+
+
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--context", type=Path, required=True)
+    parser.add_argument("--index-name", dest="index_names", action="append")
+    parser.add_argument("--min-documents", type=int, default=1)
+    parser.add_argument("--skip-search-checks", action="store_true")
+    parser.add_argument("--format", choices=("json", "markdown"), default="markdown")
+    parser.add_argument("--output", type=Path)
+    return parser.parse_args(argv)
+
+
+def _output_value(outputs: dict[str, Any], name: str) -> str:
+    entry = outputs.get(name)
+    return str(entry.get("value", "")) if isinstance(entry, dict) else ""
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parse_args(argv)
+    try:
+        context = json.loads(args.context.read_text(encoding="utf-8"))
+        if not isinstance(context, dict):
+            raise ValueError("context root must be an object")
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"validate_environment.py: could not read {args.context}: {exc}", file=sys.stderr)
+        return 2
+
+    outputs = context.get("resource_outputs")
+    outputs = outputs if isinstance(outputs, dict) else {}
+    subscription = str(context.get("subscription_id", ""))
+    resource_group = str(context.get("resource_group_name", ""))
+    rg_id = f"/subscriptions/{subscription}/resourceGroups/{resource_group}"
+
+    specs = [
+        CheckSpec("context-metadata", lambda: validate_context_metadata(context)),
+        CheckSpec(
+            "resource-outputs-present",
+            lambda: validate_resource_outputs_present(outputs, REQUIRED_RESOURCE_OUTPUTS),
+        ),
+    ]
+
+    account_name = _output_value(outputs, "ai_services_account_name")
+    search_name = _output_value(outputs, "search_service_name")
+    container_name = _output_value(outputs, "travel_api_container_app_name")
+    travel_fqdn = _output_value(outputs, "travel_api_fqdn")
+    azureml_id = _output_value(outputs, "azureml_workspace_id")
+
+    resources = {
+        "arm-foundry-account-exists": (
+            f"{rg_id}/providers/Microsoft.CognitiveServices/accounts/{account_name}"
+            if account_name
+            else ""
+        ),
+        "arm-search-service-exists": (
+            f"{rg_id}/providers/Microsoft.Search/searchServices/{search_name}"
+            if search_name
+            else ""
+        ),
+        "arm-travel-api-container-app-exists": (
+            f"{rg_id}/providers/Microsoft.App/containerApps/{container_name}"
+            if container_name
+            else ""
+        ),
+        "arm-azureml-workspace-exists": azureml_id,
+    }
+    for label, resource_id in resources.items():
+        if resource_id:
+            specs.append(
+                CheckSpec(
+                    label,
+                    lambda selected_id=resource_id, selected_label=label: validate_resource_exists(
+                        fetch_resource_by_id(selected_id), selected_label
+                    ),
+                )
+            )
+
+    if account_name:
+        account_id = resources["arm-foundry-account-exists"]
+        specs.append(
+            CheckSpec(
+                "rbac-foundry-user-present",
+                lambda: validate_role_assignment_present(
+                    fetch_role_assignments(account_id),
+                    _signed_in_principal_id(),
+                    FOUNDRY_USER_ROLE_ID,
+                    "rbac-foundry-user-present",
+                ),
+            )
+        )
+    if travel_fqdn:
+        specs.append(
+            CheckSpec(
+                "travel-api-health",
+                lambda: validate_travel_api_health(
+                    fetch_travel_api_health(travel_fqdn), "travel-api-health"
+                ),
+            )
+        )
+
+    credential = None
+    search_endpoint = _output_value(outputs, "search_service_endpoint")
+    if not args.skip_search_checks and search_endpoint:
+        credential = build_credential()
+        for index_name in args.index_names or list(DEFAULT_INDEX_NAMES):
+            schema_label = f"search-index-schema:{index_name}"
+            count_label = f"search-index-document-count:{index_name}"
+            specs.extend(
+                [
+                    CheckSpec(
+                        schema_label,
+                        lambda name=index_name, label=schema_label: validate_search_index(
+                            fetch_search_index_fields(search_endpoint, name, credential),
+                            EXPECTED_INDEX_FIELDS,
+                            label,
+                        ),
+                    ),
+                    CheckSpec(
+                        count_label,
+                        lambda name=index_name, label=count_label: validate_search_document_count(
+                            fetch_search_document_count(search_endpoint, name, credential),
+                            args.min_documents,
+                            label,
+                        ),
+                    ),
+                ]
+            )
+
+    try:
+        report = run_checks(specs)
+    finally:
+        if credential is not None:
+            credential.close()
+
+    rendered = (
+        json.dumps(report.to_dict(), indent=2) if args.format == "json" else report.to_markdown()
+    )
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rendered, encoding="utf-8")
+    else:
+        print(rendered)
+    return 0 if report.overall_status != "fail" else 2
 
 
 if __name__ == "__main__":

@@ -149,13 +149,13 @@ Skill の読み込みと API 呼び出しを別々に確認してください。
 - 2 つの identity を混同しないでください。agent 自身のコードが呼び出すのは agent identity、
   Foundry がインフラ操作に使うのは project managed identity です。
 
-## 7. Cleanup（本編の `destroy.sh` の対象外の部分に注意）
+## 7. Cleanup（本編の専用 resource group 外に注意）
 
 - 本編と同じ `contoso-travel-hosted-planner` という agent 名を再利用しなかった場合、本ラボで
   作成した agent とその version は `./scripts/delete_hosted_agent.py` の既定の `--agent-name`
   では削除されません。別名で作成した agent は、その名前を明示して個別に削除してください。
 - ACR にコンテナイメージを push した場合、そのイメージ自体は ACR のリポジトリに残ります。
-  本編の Terraform は ACR を管理しないため（[architecture.md](../../docs/architecture.md)
+  本編の Terraform 構成は ACR を管理しないため（[architecture.md](../../docs/architecture.md)
   の「Do not add ... an Agent capability host to the core Basic Agent Setup」のとおり、
   本編は ACR を作成しません）、bring-your-own の ACR を使った場合はイメージの削除も自分で
   行う必要があります。

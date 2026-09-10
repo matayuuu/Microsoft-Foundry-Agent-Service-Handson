@@ -191,7 +191,7 @@ def test_validate_context_matches_tolerates_missing_context_fields() -> None:
 
 
 # ---------------------------------------------------------------------------
-# parse_args (destroy.sh's exact invocation contract)
+# parse_args (Lab 9 cleanup invocation contract)
 # ---------------------------------------------------------------------------
 
 
@@ -249,7 +249,7 @@ def test_main_missing_context_file_is_idempotent_success(
 def test_account_absence_requires_an_authoritative_arm_response(
     status: int, payload: dict, expected: bool
 ) -> None:
-    context = {"terraform_outputs": {"ai_services_account_name": {"value": "aif-fixture"}}}
+    context = {"resource_outputs": {"ai_services_account_name": {"value": "aif-fixture"}}}
     credential = Mock()
     credential.get_token.return_value = SimpleNamespace(token="fixture-token")
     request = Mock(
@@ -276,7 +276,7 @@ def test_account_absence_requires_an_authoritative_arm_response(
 
 @pytest.mark.parametrize("status", [401, 403, 404, 500])
 def test_arm_errors_do_not_imply_account_absence(status: int) -> None:
-    context = {"terraform_outputs": {"ai_services_account_name": {"value": "aif-fixture"}}}
+    context = {"resource_outputs": {"ai_services_account_name": {"value": "aif-fixture"}}}
     credential = Mock()
     credential.get_token.return_value = SimpleNamespace(token="fixture-token")
     request = Mock(
@@ -315,7 +315,7 @@ def test_main_never_treats_dns_or_auth_failure_alone_as_success(
             {
                 "subscription_id": "sub-id",
                 "resource_group_name": "rg-fixture",
-                "terraform_outputs": {
+                "resource_outputs": {
                     "foundry_project_endpoint": {"value": "https://aif-fixture.example/project"}
                 },
             }

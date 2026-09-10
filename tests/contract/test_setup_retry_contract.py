@@ -127,6 +127,11 @@ def _extracted_setup_head() -> str:
     lines = SETUP_SH.read_text(encoding="utf-8").splitlines(keepends=True)
     cut_index = next(i for i, line in enumerate(lines) if STEP_1_MARKER in line)
     head_text = "".join(lines[:cut_index])
+    head_text = head_text.replace(
+        'source "${SCRIPT_DIR}/cloud-shell-common.sh"\n'
+        'cloud_shell_guard "${REPO_ROOT}" --subscription "${SUBSCRIPTION_ID}"\n',
+        "# Cloud Shell guard is covered separately; this harness tests retry only.\n",
+    )
     return head_text.replace(
         "for tool in az terraform jq curl git; do",
         "for tool in true; do",

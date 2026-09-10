@@ -44,9 +44,9 @@ for tool in az curl jq; do
   fi
 done
 
-SEARCH_ENDPOINT="$(jq -r '(.terraform_outputs // .).search_service_endpoint.value // empty' "${TERRAFORM_OUTPUTS}")"
-OPENAI_ENDPOINT="$(jq -r '(.terraform_outputs // .).openai_endpoint.value // empty' "${TERRAFORM_OUTPUTS}")"
-MODEL_DEPLOYMENT="$(jq -r '(.terraform_outputs // .).evaluation_model_deployment_name.value // empty' "${TERRAFORM_OUTPUTS}")"
+SEARCH_ENDPOINT="$(jq -r '(.resource_outputs // .terraform_outputs // .).search_service_endpoint.value // empty' "${TERRAFORM_OUTPUTS}")"
+OPENAI_ENDPOINT="$(jq -r '(.resource_outputs // .terraform_outputs // .).openai_endpoint.value // empty' "${TERRAFORM_OUTPUTS}")"
+MODEL_DEPLOYMENT="$(jq -r '(.resource_outputs // .terraform_outputs // .).evaluation_model_deployment_name.value // empty' "${TERRAFORM_OUTPUTS}")"
 if [[ -z "${SEARCH_ENDPOINT}" || -z "${OPENAI_ENDPOINT}" || -z "${MODEL_DEPLOYMENT}" ]]; then
   echo "${SCRIPT_NAME}: terraform outputs are missing Search, OpenAI, or GPT-5.5 model values" >&2
   exit 1
@@ -63,13 +63,15 @@ fi
 
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TEMP_DIR}"' EXIT
+AUTH_HEADER_FILE="${TEMP_DIR}/authorization.header"
+printf 'Authorization: Bearer %s\n' "${ACCESS_TOKEN}" >"${AUTH_HEADER_FILE}"
+chmod 600 "${AUTH_HEADER_FILE}"
 
 put_json() {
   local label="$1" url="$2" payload="$3" response_file="$4" status detail
-  status="$(printf 'Authorization: Bearer %s\n' "${ACCESS_TOKEN}" |
-    curl -sS --connect-timeout 15 --max-time 90 -o "${response_file}" -w '%{http_code}' \
+  status="$(curl -sS --connect-timeout 15 --max-time 90 -o "${response_file}" -w '%{http_code}' \
     -X PUT "${url}" \
-    -H @- \
+    -H "@${AUTH_HEADER_FILE}" \
     -H "Content-Type: application/json" \
     -H "Prefer: return=representation" \
     --data "${payload}")"
@@ -140,7 +142,7 @@ put_json \
   "${KNOWLEDGE_BASE_PAYLOAD}" \
   "${TEMP_DIR}/knowledge-base.json"
 
-RETRIEVE_PAYLOAD="$(jq -nc '{
+RETRIEVE_PAYLOAD="$(jq -nac '{
   messages: [{
     role: "user",
     content: [{
@@ -155,11 +157,10 @@ RETRIEVE_PAYLOAD="$(jq -nc '{
   includeActivity: true,
   outputMode: "extractiveData"
 }')"
-RETRIEVE_STATUS="$(printf 'Authorization: Bearer %s\n' "${ACCESS_TOKEN}" |
-  curl -sS --connect-timeout 15 --max-time 90 -o "${TEMP_DIR}/retrieve.json" -w '%{http_code}' \
+RETRIEVE_STATUS="$(curl -sS --connect-timeout 15 --max-time 90 -o "${TEMP_DIR}/retrieve.json" -w '%{http_code}' \
   -X POST \
   "${SEARCH_ENDPOINT}/knowledgebases('${KNOWLEDGE_BASE_NAME}')/retrieve?api-version=${API_VERSION}" \
-  -H @- \
+  -H "@${AUTH_HEADER_FILE}" \
   -H "Content-Type: application/json" \
   --data "${RETRIEVE_PAYLOAD}")"
 if [[ "${RETRIEVE_STATUS}" != "200" ]]; then

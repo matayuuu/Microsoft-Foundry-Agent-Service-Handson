@@ -7,8 +7,8 @@ non-negotiable constraints from AGENTS.md and the workshop design:
 * AzureRM/AzAPI provider versions and Foundry ARM API version are pinned as
   documented.
 * Provider auto-registration is disabled.
-* No resource group, Cosmos DB, Key Vault, or Container Registry resource is
-  ever created (existing-RG-only, Basic Agent Setup only).
+* No resource group, Cosmos DB, compute, or Container Registry resource is
+  created; Azure ML receives only stable backing resources.
 * Local/shared-key auth is disabled wherever the resource supports it.
 * The RBAC role-definition GUIDs match what scripts/validate_environment.py
   and docs/admin expect.
@@ -56,6 +56,7 @@ def test_infra_directory_has_expected_files() -> None:
         "data.tf",
         "search.tf",
         "monitoring.tf",
+        "azure_ml.tf",
         "container_apps.tf",
         "foundry_account.tf",
         "foundry_project.tf",
@@ -67,7 +68,6 @@ def test_infra_directory_has_expected_files() -> None:
     actual = {p.name for p in INFRA_DIR.glob("*.tf")}
 
     assert expected <= actual
-    assert "storage.tf" not in actual
 
 
 def test_provider_versions_are_pinned_as_documented() -> None:
@@ -122,10 +122,9 @@ def test_basic_agent_setup_excludes_disallowed_resource_types() -> None:
     disallowed_markers = [
         "azurerm_cosmosdb",
         "microsoft.documentdb",
-        "azurerm_key_vault",
-        "microsoft.keyvault",
         "azurerm_container_registry",
         "microsoft.containerregistry",
+        "azurerm_machine_learning_compute_instance",
         "capabilityhosts",
     ]
     for marker in disallowed_markers:
@@ -177,16 +176,50 @@ def test_search_service_supports_keyless_dedicated_and_serverless_models() -> No
     assert "replicaCount" not in serverless.group(1)
 
 
-def test_core_infrastructure_has_no_storage_dependency() -> None:
-    text = _all_tf_text_excluding_comments().lower()
+def test_azureml_workspace_uses_stable_public_backing_resources_without_compute() -> None:
+    text = _read("azure_ml.tf")
 
-    for marker in (
-        "azurerm_storage_account",
-        "microsoft.storage/storageaccounts",
-        "azurestorageaccount",
-        "storage_blob_data_contributor",
+    assert 'resource "azurerm_storage_account" "azureml"' in text
+    assert re.search(r'account_kind\s*=\s*"StorageV2"', text)
+    assert re.search(r'account_replication_type\s*=\s*"LRS"', text)
+    assert re.search(r"shared_access_key_enabled\s*=\s*true", text)
+    assert 'resource "azurerm_key_vault" "azureml"' in text
+    assert re.search(r"rbac_authorization_enabled\s*=\s*true", text)
+    assert 'resource "azurerm_machine_learning_workspace" "workshop"' in text
+    assert "azurerm_application_insights.workshop.id" in text
+    assert re.search(r"public_network_access_enabled\s*=\s*true", text)
+    assert re.search(r'type\s*=\s*"SystemAssigned"', text)
+    assert "container_registry_id" not in text
+    assert "compute_instance" not in text
+    assert text.count("tags") >= 3
+
+
+def test_azureml_names_are_deterministic_and_outputs_are_complete() -> None:
+    locals_text = _read("locals.tf")
+    outputs = _read("outputs.tf")
+
+    for name in ("azureml_workspace_name", "storage_account_name", "key_vault_name"):
+        assert re.search(rf"{name}\s*=", locals_text)
+    for name in (
+        "azureml_workspace_name",
+        "azureml_workspace_id",
+        "storage_account_name",
+        "storage_account_id",
+        "key_vault_name",
+        "key_vault_id",
     ):
-        assert marker not in text
+        assert f'output "{name}"' in outputs
+
+
+def test_azureml_resources_have_state_recovery_targets() -> None:
+    text = _read("state_recovery.tf")
+
+    for address in (
+        "azurerm_storage_account.azureml",
+        "azurerm_key_vault.azureml",
+        "azurerm_machine_learning_workspace.workshop",
+    ):
+        assert f'address           = "{address}"' in text
 
 
 def test_container_app_uses_variable_image_reference_not_a_literal() -> None:
@@ -373,6 +406,9 @@ EXPECTED_ROLE_IDS = {
     "privileged_monitoring_data_reader": "dbc9c667-e97f-4491-aee6-90b9cf960190",
     "monitoring_metrics_publisher": "3913510d-42f4-4e42-8a64-420c390055eb",
     "cognitive_services_openai_user": "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd",
+    "azureml_data_scientist": "f6c7c914-8db3-469d-8ca1-694a8f32e121",
+    "storage_blob_data_contributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+    "key_vault_secrets_user": "4633458b-17de-408a-b874-0445c86b69e6",
 }
 
 
@@ -403,6 +439,14 @@ def test_rbac_grants_participant_and_managed_identities() -> None:
     # Managed identity grants
     assert "azapi_resource.project.output.identity.principalId" in text
     assert "local.search_service_principal_id" in text
+    assert "azurerm_machine_learning_workspace.workshop.identity[0].principal_id" in text
+    assert "participant_azureml_data_scientist" in text
+    assert "participant_azureml_storage_blob_data_contributor" in text
+    assert "azureml_mi_key_vault_secrets_user" in text
+    assert (
+        'resource "azurerm_role_assignment" "azureml_mi_storage_blob_data_contributor"' not in text
+    )
+    assert "RoleAssignmentExists" in text
     assert text.count("skip_service_principal_aad_check") >= 4
 
 
@@ -411,10 +455,24 @@ def test_application_insights_is_connected_keylessly() -> None:
     connections = _read("foundry_connections.tf")
 
     assert re.search(r"local_authentication_enabled\s*=\s*false", monitoring)
-    assert 'category      = "AppInsights"' in connections
+    assert re.search(r'category\s*=\s*"AppInsights"', connections)
     assert "connections@2026-05-15-preview" in connections
-    assert 'authType      = "ProjectManagedIdentity"' in connections
+    assert re.search(r'authType\s*=\s*"ProjectManagedIdentity"', connections)
     assert "schema_validation_enabled = false" in connections
+
+
+def test_foundry_iq_mcp_has_dedicated_project_identity_connection() -> None:
+    text = _read("foundry_connections.tf")
+    outputs = _read("outputs.tf")
+    recovery = _read("state_recovery.tf")
+
+    assert 'name                      = "contoso-travel-knowledge-lab-mcp"' in text
+    assert 'category                    = "RemoteTool"' in text
+    assert 'authType                    = "ProjectManagedIdentity"' in text
+    assert 'audience                    = "https://search.azure.com"' in text
+    assert "/knowledgebases/contoso-travel-knowledge-lab/mcp" in text
+    assert 'output "knowledge_mcp_connection_name"' in outputs
+    assert "azapi_resource.knowledge_mcp_connection" in recovery
 
 
 def test_outputs_never_expose_secrets() -> None:

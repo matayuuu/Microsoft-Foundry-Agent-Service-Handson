@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560" role="img" aria-labelledby="title desc">
+  <title id="title">Azure Cloud Shell persistent storage setup</title>
+  <desc id="desc">The first-run Cloud Shell flow selects Bash, mounts storage, lets Azure create a storage account, and waits for a persistent prompt.</desc>
+  <rect width="1000" height="560" rx="20" fill="#f7f9fc"/>
+  <rect x="36" y="30" width="928" height="500" rx="16" fill="#fff" stroke="#d1d9e6" stroke-width="2"/>
+  <rect x="36" y="30" width="928" height="58" rx="16" fill="#0078d4"/>
+  <text x="68" y="67" fill="#fff" font-family="Segoe UI, sans-serif" font-size="24" font-weight="600">Azure Cloud Shell — first run</text>
+  <text x="70" y="126" fill="#1e1e1e" font-family="Segoe UI, sans-serif" font-size="20" font-weight="600">Persist files between sessions</text>
+  <g font-family="Segoe UI, sans-serif" font-size="16" fill="#1e1e1e">
+    <circle cx="91" cy="174" r="18" fill="#0078d4"/><text x="85" y="180" fill="#fff" font-weight="700">1</text>
+    <rect x="126" y="150" width="760" height="48" rx="8" fill="#eef6ff" stroke="#8ec8f5"/>
+    <text x="148" y="180">Select <tspan font-weight="700">Bash</tspan></text>
+    <circle cx="91" cy="238" r="18" fill="#0078d4"/><text x="85" y="244" fill="#fff" font-weight="700">2</text>
+    <rect x="126" y="214" width="760" height="48" rx="8" fill="#eef6ff" stroke="#8ec8f5"/>
+    <circle cx="153" cy="238" r="9" fill="#fff" stroke="#0078d4" stroke-width="2"/><circle cx="153" cy="238" r="5" fill="#0078d4"/>
+    <text x="177" y="244" font-weight="700">Mount storage account</text>
+    <circle cx="91" cy="302" r="18" fill="#0078d4"/><text x="85" y="308" fill="#fff" font-weight="700">3</text>
+    <rect x="126" y="278" width="760" height="48" rx="8" fill="#f8fafc" stroke="#c8d1dc"/>
+    <text x="148" y="308">Choose the workshop subscription, then select <tspan font-weight="700">Apply</tspan></text>
+    <circle cx="91" cy="366" r="18" fill="#0078d4"/><text x="85" y="372" fill="#fff" font-weight="700">4</text>
+    <rect x="126" y="342" width="760" height="48" rx="8" fill="#eef6ff" stroke="#8ec8f5"/>
+    <circle cx="153" cy="366" r="9" fill="#fff" stroke="#0078d4" stroke-width="2"/><circle cx="153" cy="366" r="5" fill="#0078d4"/>
+    <text x="177" y="372" font-weight="700">We will create a storage account for you</text>
+    <circle cx="91" cy="430" r="18" fill="#107c10"/><text x="85" y="436" fill="#fff" font-weight="700">5</text>
+    <rect x="126" y="406" width="760" height="48" rx="8" fill="#dff6dd" stroke="#79b879"/>
+    <text x="148" y="436">Wait for the Bash prompt and verify the persistent HOME mount</text>
+  </g>
+  <rect x="687" y="474" width="199" height="38" rx="6" fill="#0078d4"/>
+  <text x="786" y="499" text-anchor="middle" fill="#fff" font-family="Segoe UI, sans-serif" font-size="16" font-weight="600">Next</text>
+  <text x="70" y="500" fill="#605e5c" font-family="Segoe UI, sans-serif" font-size="14">Storage creation finishes before the Lab 1 timer starts.</text>
+</svg>

@@ -234,6 +234,12 @@ def test_ensure_lab_tool_set_adds_required_builtins_and_tool_search() -> None:
         "web_search",
         "toolbox_search",
     ]
+    assert [tool.name for tool in merged] == [
+        "travel_ops_api",
+        "code_interpreter",
+        "web_search",
+        "tool_search",
+    ]
 
 
 def test_ensure_lab_tool_set_preserves_portal_managed_builtin_settings() -> None:

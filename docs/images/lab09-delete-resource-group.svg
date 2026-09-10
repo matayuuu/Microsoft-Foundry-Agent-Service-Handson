@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560" role="img" aria-labelledby="title desc">
+  <title id="title">Verify the workload resource group is empty and delete it</title>
+  <desc id="desc">After Terraform destroy, the Azure resource group inventory is empty before Delete resource group is selected.</desc>
+  <rect width="1000" height="560" rx="20" fill="#f4f7fb"/>
+  <rect x="36" y="30" width="928" height="500" rx="14" fill="#fff" stroke="#ccd6e2" stroke-width="2"/>
+  <rect x="36" y="30" width="928" height="58" rx="14" fill="#0078d4"/>
+  <text x="68" y="67" fill="#fff" font-family="Segoe UI, sans-serif" font-size="23" font-weight="600">Azure Portal · workload resource group</text>
+  <text x="72" y="138" fill="#1e1e1e" font-family="Segoe UI, sans-serif" font-size="24" font-weight="600">Workshop resource group</text>
+  <rect x="72" y="166" width="856" height="210" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="100" y="208" fill="#475569" font-family="Segoe UI, sans-serif" font-size="15">Resources</text>
+  <line x1="100" y1="226" x2="900" y2="226" stroke="#cbd5e1"/>
+  <circle cx="500" cy="286" r="34" fill="#dff6dd"/>
+  <path d="M484 286l11 11 23-27" fill="none" stroke="#107c10" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="500" y="346" text-anchor="middle" fill="#107c10" font-family="Segoe UI, sans-serif" font-size="18" font-weight="600">No resources found</text>
+  <rect x="72" y="410" width="238" height="48" rx="6" fill="#fff" stroke="#d13438" stroke-width="2"/>
+  <text x="191" y="440" text-anchor="middle" fill="#d13438" font-family="Segoe UI, sans-serif" font-size="16" font-weight="600">Delete resource group</text>
+  <path d="M340 434h122" stroke="#107c10" stroke-width="4" stroke-linecap="round"/>
+  <path d="M449 421l15 13-15 13" fill="none" stroke="#107c10" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="486" y="428" fill="#1e1e1e" font-family="Segoe UI, sans-serif" font-size="15">Delete only after Hosted Agent, Compute,</text>
+  <text x="486" y="451" fill="#1e1e1e" font-family="Segoe UI, sans-serif" font-size="15">and Terraform resources are gone.</text>
+  <text x="72" y="496" fill="#605e5c" font-family="Segoe UI, sans-serif" font-size="14">Cloud Shell Storage has a separate lifecycle and is not part of this resource group.</text>
+</svg>

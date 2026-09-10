@@ -16,6 +16,9 @@ locals {
   app_insights_name        = lower("appi-${local.prefix}-${local.name_suffix}")
   container_app_env_name   = lower("cae-${local.prefix}-${local.name_suffix}")
   container_app_name       = lower("ca-travel-api-${local.name_suffix}")
+  azureml_workspace_name   = lower("mlw-${local.prefix}-${local.name_suffix}")
+  storage_account_name     = lower("st${local.prefix}${local.name_suffix}")
+  key_vault_name           = lower("kv-${local.prefix}-${local.name_suffix}")
 
   # Built-in Azure role definition GUIDs. Prefer GUIDs over role-definition
   # data-source name lookups: Foundry's roles were recently renamed (Azure AI
@@ -34,6 +37,9 @@ locals {
     privileged_monitoring_data_reader = "dbc9c667-e97f-4491-aee6-90b9cf960190"
     monitoring_metrics_publisher      = "3913510d-42f4-4e42-8a64-420c390055eb"
     cognitive_services_openai_user    = "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd"
+    azureml_data_scientist            = "f6c7c914-8db3-469d-8ca1-694a8f32e121"
+    storage_blob_data_contributor     = "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+    key_vault_secrets_user            = "4633458b-17de-408a-b874-0445c86b69e6"
   }
 
   participant_object_id = var.participant_object_id != "" ? var.participant_object_id : data.azurerm_client_config.current.object_id

@@ -37,35 +37,22 @@ Tool Search を有効にすると、最初から全 tool 定義をモデルへ�
 
 ## 1. 貼り付け・アップロード用ファイルを用意する
 
-選んだ実行環境の repository root の Terminal で次を実行します。
-
-```bash
-.venv/bin/python scripts/prepare_toolbox_assets.py
-```
-
-実際の Travel Ops API と `.workshop/context.json` から、自分の環境用の素材を生成します。
-この時点では Toolbox、Skill、Agent は作成・更新しません。
+PC に展開した workshop folder の `portal-assets/` を開きます。これらは Lab 1 の
+Cloud Shell setup が実際の Travel Ops API と canonical context から生成し、download ZIP
+へ格納したものです。この時点では Toolbox、Skill、Agent は作成・更新しません。
 
 | ファイル | 用途 |
 |---|---|
-| `.workshop/toolbox/travel-ops.openapi.json` | Portal の schema editor へ内容を貼り付ける |
-| `.workshop/toolbox/travel-estimation.zip` | 見積もり Skill のアップロード。ZIP 直下に `SKILL.md` |
-| `.workshop/toolbox/preapproval-simulation.zip` | 承認シミュレーション Skill のアップロード |
-| `.workshop/toolbox/portal-values.json` | 自分の環境の Toolbox MCP endpoint などを確認する |
+| `portal-assets/travel-ops.openapi.json` | Portal の schema editor へ内容を貼り付ける |
+| PC 上の `portal-assets/travel-estimation.zip` | 見積もり Skill のアップロード。ZIP 直下に `SKILL.md` |
+| PC 上の `portal-assets/preapproval-simulation.zip` | 承認シミュレーション Skill のアップロード |
+| `portal-assets/portal-values.json` | 自分の環境の Portal 値を確認する |
 
-Browser のファイル選択ダイアログは**手元の PC**を参照し、リモート実行環境内を直接参照できません。
-生成された **2 つの ZIP だけ**を環境ガイドの手順で PC にダウンロードしてからアップロードします。
-[Codespaces の Download](../docs/participant/environments/codespaces.md#files) /
-[Cloud Shell の Manage files > Download](../docs/participant/environments/cloud-shell.md#files)
-を参照してください。Cloud Shell では `.workshop` が隠しフォルダーでも、
-入力欄の HOME prefix に続く**相対パス**を指定し、**Download file** 通知の
-ファイル名リンクから取得できます。JupyterLab に隠しファイルを表示する必要はありません。
+Browser の file picker は**手元の PC**を参照します。Lab 1 で bundle を展開した PC 上の
+`portal-assets/` から 2 つの ZIP を選びます。別の remote asset を download しません。
 
-OpenAPI の内容は次のコマンドで表示し、JSON 全体だけを schema editor に貼り付けます。
-
-```bash
-cat .workshop/toolbox/travel-ops.openapi.json
-```
+OpenAPI は PC の text editor で表示し、JSON 全体だけを Portal の schema field
+へ貼り付けます。この field は file upload ではありません。
 
 Skill の本文を読むときは次の元ファイルを開きます。
 
@@ -107,7 +94,7 @@ Contoso Travel Ops API、数値比較用 Code Interpreter、明示された現�
 | **Name** | `travel_ops_api` |
 | **Description** | `Contoso の日当照会、費用見積もり、事前承認シミュレーションを実行する Travel Ops API。` |
 | **Authentication method** | `Anonymous` |
-| **OpenAPI 3.0+ schema** | `.workshop/toolbox/travel-ops.openapi.json` の内容全体 |
+| **OpenAPI 3.0+ schema** | `portal-assets/travel-ops.openapi.json` の内容全体 |
 
 ![OpenAPI の入力画面](../docs/images/lab04-openapi-form.png)
 
@@ -147,11 +134,12 @@ Web Search は「現在の公開情報を調べて」と明示された場合だ
 2. **Select a skill** の **Configured** で **Add skill** を選択します。
 
 3. メニューから **Upload skill** を選択します。
-4. **Browse** を押し、手元の PC にダウンロードした `travel-estimation.zip` を選びます。
+4. **Browse** を押し、PC の `portal-assets/travel-estimation.zip` を選びます。
 5. 表示されたファイル名と **Name = travel-estimation** を確認し、**Create** を押します。
    Name と Description は、ZIP 内の `SKILL.md` から読み取られます。
 6. Toolbox の画面に戻り、Included に Skill が増えたことを確認します。
-7. 同じ **Add skill > Upload skill** の手順で `preapproval-simulation.zip` を選択します。
+7. 同じ **Add skill > Upload skill** の手順で
+   `portal-assets/preapproval-simulation.zip` を選択します。
    Name が **preapproval-simulation** であることを確認して **Create** を押します。
 
 アップロードした Skill は自動で Included に入ります。
@@ -185,7 +173,7 @@ Toolbox は MCP という共通の接続方式で Agent から呼び出します
 **Lab 3 の Knowledge は削除しません。**
 
 1. 公開済み Toolbox の **Call this toolbox > Endpoint** を **Copy endpoint** でコピーします。
-   同じ値は `.workshop/toolbox/portal-values.json` の `toolbox_mcp_endpoint` でも確認できます。
+   同じ値は `portal-assets/portal-values.json` の `toolbox_mcp_endpoint` でも確認できます。
 2. **Build > Agents > contoso-travel-assistant** を開きます。
 3. **Tools** 側の **Add > Add tools** を開きます。Knowledge 側の Add ではありません。
 4. **Custom > Model Context Protocol (MCP)** を選択し、**Create** を押します。
@@ -227,21 +215,9 @@ Agent の既存 instructions（Lab 3 の規程検索指示）を残したまま�
   合成の事前承認シミュレーションを行い、実際の承認・予約ではないと明示する。
 ```
 
-<details>
-<summary>keyless 接続の選択肢が表示されない場合だけ使う補助コマンド</summary>
-
-上の接続設定を UI で選べない場合に限り、公開済み Toolbox に接続する次のコマンドを使えます。
-
-```bash
-.venv/bin/python scripts/connect_toolbox.py
-```
-
-このコマンドは公開済み Toolbox への接続だけを行います。
-`az login` の認証で `contoso-travel-toolbox-mcp` connection を用意し、
-既存の Knowledge を残して Agent に追加します。Toolbox version、Skill、Agent instructions
-の変更は行いません。
-
-</details>
+keyless 選択肢が表示されない場合は connection を作成せず、Lab 1 の project connection、
+managed identity、RBAC が validation 済みか確認して講師へ共有します。API key や bearer
+token へ切り替えません。
 
 ## 7. ハンズオン用 MCP の tool を自動承認する
 
@@ -371,10 +347,11 @@ Lab 8 は token 消費を抑えた通常 Agent workflow のため、Skills を�
 - 見積もり依頼で無関係な tool と `createPreapproval` が呼ばれないことを確認した
 - Skill は登録・公開済みであり、`load_skill` / `resources/read` なしには利用済みと主張しない
 
-## 任意: SDK で同じ構成を扱う
+## 任意: Lab 7 後に Azure ML Notebook で同じ構成を扱う
 
 [`notebooks/04-create-toolbox.ipynb`](../notebooks/04-create-toolbox.ipynb) は SDK 学習用の補助です。
-Notebook は本編では使いません。
+Lab 7 の Azure ML setup 完了後に **Python (Foundry Workshop)** kernel を選びます。
+Notebook は本編では使いません。Labs 2〜6 のために Azure ML Compute を早く作成しません。
 OpenAPI の更新時に既存 Skills・他の tools・guardrail・Tool Search を保持し、不足する
 Lab 4 の built-in tool と Tool Search だけを SDK が対応する正式な model で追加しますが、
 Skill 自体のアップロードは上の Portal 手順で行います。

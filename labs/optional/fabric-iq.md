@@ -2,8 +2,8 @@
 
 ## この文書の位置づけ
 
-このラボは**本編 3 時間 50 分に含まれません**。[architecture.md](../../docs/architecture.md)
-の方針どおり、本ハンズオンの Terraform（`infra/`）は Microsoft Fabric の容量・ワークスペース・
+このラボは**本編の所要時間に含まれません**。[architecture.md](../../docs/architecture.md)
+の方針どおり、本ハンズオンの core Terraform resources は Microsoft Fabric の容量・ワークスペース・
 ontology・data agent を一切作成しません。ここで説明する手順は、**別途 Fabric 容量とワーク
 スペースを持つ組織**が、本編の Contoso 出張・経費シナリオを Fabric IQ 経由で Foundry agent に
 つなぐ場合の**設計と接続手順**です。実際に手を動かす場合は、この文書の前提条件をすべて満たす
@@ -105,8 +105,8 @@ Fabric IQ への接続には、item の種類ごとに次の認証方式があ�
 [Foundry Toolkit for Visual Studio Code](https://code.visualstudio.com/docs/intelligentapps/overview#_install-and-setup)
 をインストールしておくと、Toolbox 経由で Fabric IQ ツールを追加する UI フローが使えます
 （後述）。
-これは任意の Toolkit 経路です。Cloud Shell の JupyterLab は VS Code 拡張機能の実行環境ではありません。
-本編の Cloud Shell 準備に Toolkit のインストールを追加せず、必要な場合は管理者と
+これは任意の Toolkit 経路です。Azure ML Studio は VS Code 拡張機能の実行環境ではありません。
+本編の Azure ML 準備に Toolkit のインストールを追加せず、必要な場合は管理者と
 承認済みの VS Code 環境を用意してください。
 
 ## 3. Contoso シナリオでの適用イメージ（架空・本リポジトリでは構築しません）
@@ -184,7 +184,7 @@ with (
 
 `FABRIC_IQ_PROJECT_CONNECTION_ID` は Fabric 管理者と Foundry Project Manager が事前に作成した
 connection の完全なリソース ID です。本編の `.workshop/context.json` にはこの値は含まれません
-（本編の Terraform は Fabric connection を作らないためです）。このコードは**参考実装**であり、
+（本編の Terraform setup は Fabric connection を作らないためです）。このコードは**参考実装**であり、
 `scripts/` 配下には追加しません — 実行する場合は自分のスクラッチファイルとして保存してください。
 
 ## 5. 検証する
@@ -197,14 +197,14 @@ connection の完全なリソース ID です。本編の `.workshop/context.jso
    enforcement が実際に効いていることの確認であり、Foundry 側でアクセス制御を作り込んで
    いるわけではないことを理解する目的です。
 
-## 6. Cleanup（本編の `destroy.sh` の対象外）
+## 6. Cleanup（本編の専用 resource group cleanup 対象外）
 
 - Fabric IQ 用に作成した Foundry connection と、それを使った agent version は、Foundry
   project 内のオブジェクトなので、本編と同様 Foundry portal または SDK
   （`project_client.agents.delete_version(...)`）から削除できます。
 - Fabric ワークスペース側の ontology・data agent・容量そのものは、Fabric 管理者が Fabric
-  portal から個別に削除・凍結してください。本リポジトリの `./scripts/destroy.sh` は
-  Fabric 側のリソースを一切認識しません。
+  portal から個別に削除・凍結してください。Lab 9 は Fabric 側のリソースを
+  管理しません。
 
 ## 7. データ境界とコストの再確認
 

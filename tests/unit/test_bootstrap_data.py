@@ -37,6 +37,12 @@ def _load_module() -> ModuleType:
 bootstrap_data = _load_module()
 
 
+def test_build_credential_uses_signed_in_azure_cli_identity() -> None:
+    from azure.identity import AzureCliCredential
+
+    assert isinstance(bootstrap_data.build_credential(), AzureCliCredential)
+
+
 # A minimal permissive JSON Schema mirroring data/schemas/manifest.schema.json's
 # document shape, used so these unit tests never depend on the real file.
 TEST_SCHEMA = {

@@ -2,7 +2,7 @@
 
 ## この文書の位置づけ
 
-このラボは**本編 3 時間 50 分に含まれません**。Work IQ は Foundry agent から
+このラボは**本編の所要時間に含まれません**。Work IQ は Foundry agent から
 Microsoft 365 Copilot の Work IQ を呼び出す機能で、**呼び出したユーザー本人の
 Microsoft 365 権限とデータ**にアクセスします。本リポジトリは実在の Microsoft 365 テナント
 データを一切保持・参照しないため、このラボは**設計・接続手順の説明**にとどめ、実際に試す
@@ -155,7 +155,7 @@ with (
 は Global Administrator のテナント初期設定完了後に、Foundry Project Manager が作成した
 connection の完全なリソース ID です。
 
-## 6. Cleanup（本編の `destroy.sh` の対象外）
+## 6. Cleanup（本編の専用 resource group cleanup 対象外）
 
 - Work IQ 用に作成した agent version・Foundry connection は Foundry project 内のオブジェクトの
   ため、Foundry portal または SDK（`project_client.agents.delete_version(...)`）から削除

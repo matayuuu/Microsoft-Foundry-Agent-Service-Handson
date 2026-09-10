@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560" role="img" aria-labelledby="title desc">
+  <title id="title">Create the Azure ML Compute instance</title>
+  <desc id="desc">Azure ML Compute instance settings use Standard DS3 v2 and enable idle shutdown.</desc>
+  <rect width="1000" height="560" rx="20" fill="#f4f7fb"/>
+  <rect x="40" y="30" width="920" height="500" rx="14" fill="#fff" stroke="#d1d9e6" stroke-width="2"/>
+  <rect x="40" y="30" width="920" height="62" rx="14" fill="#fff" stroke="#d1d9e6"/>
+  <text x="72" y="68" fill="#1e1e1e" font-family="Segoe UI, sans-serif" font-size="24" font-weight="600">Azure Machine Learning · New compute instance</text>
+  <g font-family="Segoe UI, sans-serif" font-size="16" fill="#1e1e1e">
+    <text x="92" y="142" font-weight="600">Virtual machine type</text>
+    <rect x="92" y="158" width="360" height="46" rx="5" fill="#fff" stroke="#64748b"/>
+    <text x="110" y="187">CPU</text>
+    <text x="92" y="244" font-weight="600">Virtual machine size</text>
+    <rect x="92" y="260" width="560" height="54" rx="5" fill="#eef6ff" stroke="#0078d4" stroke-width="2"/>
+    <text x="112" y="292" font-weight="700">Standard_DS3_v2</text>
+    <text x="480" y="292" fill="#605e5c">4 cores · 14 GB RAM</text>
+    <text x="92" y="360" font-weight="600">Idle shutdown</text>
+    <rect x="92" y="378" width="560" height="66" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+    <rect x="112" y="397" width="54" height="28" rx="14" fill="#107c10"/>
+    <circle cx="151" cy="411" r="11" fill="#fff"/>
+    <text x="184" y="417">Enable idle shutdown</text>
+    <text x="484" y="417" fill="#605e5c">30 minutes</text>
+  </g>
+  <rect x="760" y="458" width="144" height="42" rx="6" fill="#0078d4"/>
+  <text x="832" y="485" text-anchor="middle" fill="#fff" font-family="Segoe UI, sans-serif" font-size="16" font-weight="600">Create</text>
+  <text x="92" y="490" fill="#605e5c" font-family="Segoe UI, sans-serif" font-size="14">Create only when starting Lab 7; Terraform does not create Compute.</text>
+</svg>
