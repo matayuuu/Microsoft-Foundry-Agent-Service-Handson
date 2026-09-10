@@ -15,7 +15,7 @@ Cosmos DB、capability host、ACR、プライベートネットワークを扱�
 
 ## 実行時の構成
 
-![Contoso Travel Assistant の Azure 構成。Prompt Agent と Hosted workflow が Foundry IQ と Toolbox を共有し、Azure AI Search、Travel Ops API、監視サービスに接続する](images/workshop-architecture.drawio.svg)
+![Contoso Travel Assistant の Azure 構成。Prompt Agent は Foundry IQ と Toolbox、Hosted workflow は Foundry IQ を使い、Azure AI Search、Travel Ops API、監視サービスに接続する](images/workshop-architecture.drawio.svg)
 
 [draw.io で編集する](diagrams/workshop-architecture.drawio) ·
 [SVG を開く](images/workshop-architecture.drawio.svg)
@@ -55,7 +55,6 @@ flowchart LR
     codeagent --> toolbox
     environment -->|Python SDK によるソースデプロイ| hosted[Hosted Agent]
     hosted --> iq
-    hosted --> toolbox
     prompt --> monitor
     hosted --> monitor
 ```
@@ -191,9 +190,10 @@ Skills は MCP リソースであり、通常の API ツールや認可制御で
 利用するクライアントには、互換性のある Skill プロバイダーが必要です。
 API 呼び出しの成功やポータルへの登録だけでは、Skill が読み込まれたことを証明できません。
 Lab 7 は Foundry IQ と Toolbox Skills を Agent Framework から再利用し、plain Agent から
-Harness Agent へ発展させます。Lab 8 は同じ `travel_agents.py` の factory を
-sequential workflow の participant として再利用します。Lab 8 は checked-in source と
-Lab 3 / 4 の remote resources に依存し、Lab 7 の Notebook session state には依存しません。
+Harness Agent へ発展させます。Lab 8 は Luna の token 消費を抑えるため Harness を
+引き継がず、`intake_agent`、Foundry IQ を持つ `policy_agent`、`reviewer_agent` という
+通常 Agent の sequential workflow を使います。Lab 8 は checked-in source と Lab 3 の
+Foundry IQ に依存し、Lab 7 の Notebook session state には依存しません。
 
 ## ネットワークの方針
 

@@ -3,8 +3,8 @@
 ## ゴール
 
 架空の Contoso 社を題材に、**規程を調べ、費用を計算できる出張・経費アシスタント**を作ります。
-さらに、同じ Foundry IQ・Toolbox・Skills をコードから再利用し、Harness Agent を
-workflow の担当として組み込む流れを体験します。
+さらに、Foundry IQ・Toolbox・Skills を Harness Agent から使う方法と、
+通常 Agent を順番につなぐ Hosted workflow を体験します。
 
 使う規程・旅程・質問集はすべて教材の合成データです。実際の予約や承認は行いません。
 
@@ -18,12 +18,12 @@ workflow の担当として組み込む流れを体験します。
 
 ## 学習の流れ
 
-![準備から Prompt Agent の拡張・評価、Harness Agent と Hosted workflow、trace 比較と cleanup まで](../docs/images/workshop-learning-flow.svg)
+![準備から Prompt Agent の拡張・評価、Harness Agent の単独実行、通常 Agent の Hosted workflow、trace 比較と cleanup まで](../docs/images/workshop-learning-flow.svg)
 
 **Lab 2〜6 は同じ Prompt Agent を育てる演習**です。**Lab 7 はその Foundry IQ、
 Toolbox、Skills をコードから plain Agent に接続し、Harness Agent に発展させます。**
-**Lab 8 は同じ checked-in Harness factory を sequential workflow の participant として
-再利用し、workflow 全体を Hosted Agent として deploy します。**
+**Lab 8 は Luna の token 消費を抑えるため Harness を引き継がず、intake・policy・reviewer
+の通常 Agent を sequential workflow として Hosted Agent に deploy します。**
 
 | Lab | 体験すること | 到達点 |
 |---|---|---|
@@ -34,7 +34,7 @@ Toolbox、Skills をコードから plain Agent に接続し、Harness Agent に
 | [Lab 5](05-evaluation.md) | 同じ質問集で Agent を評価する | 点数と判定理由から改善点を見つける |
 | [Lab 6](06-optimization.md) | 指示文の改善候補を比較する | 採用するか、元の設定を維持するか判断する |
 | [Lab 7](07-agent-framework-harness.md) | plain Agent と Harness Agent をコードで比較する | Foundry IQ・Toolbox・Skills と plan / todo / memory の役割を追える |
-| [Lab 8](08-hosted-multi-agent.md) | Harness Agent を workflow に組み込んで deploy する | intake → Harness → reviewer の引き継ぎを追える |
+| [Lab 8](08-hosted-multi-agent.md) | 通常 Agent の workflow を deploy する | intake → policy → reviewer の引き継ぎを追える |
 | [Lab 9](09-observability-cleanup.md) | Trace を比較し、環境を片付ける | Prompt / Hosted の実行の流れを比較し、演習用 resources を削除できる |
 
 Azure 構成の詳細は [アーキテクチャ](../docs/architecture.md)を参照してください。

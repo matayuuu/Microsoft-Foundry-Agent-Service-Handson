@@ -130,8 +130,9 @@ MCP の `resources/list` / `resources/read` で公開されます。
 
 Hosted Agent で利用するには、対応する Skill provider が必要です。
 Skill 名・description を提示し、必要なときだけ本文を読み込む progressive disclosure を
-実装します。本編 Lab 7 / 8 の shared Harness factory はこの provider を含みますが、
-Skill の読み込みと API 呼び出しは別々に確認します。
+実装します。本編 Lab 7 の Harness factory はこの provider を含みますが、Lab 8 の
+通常 Agent workflow は token 消費を抑えるため Skills を使用しません。
+Skill の読み込みと API 呼び出しは Lab 7 で別々に確認します。
 拡張時は [公式の Agent Framework Toolbox Skills sample](https://github.com/microsoft-foundry/foundry-samples/tree/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-mcp-skills)
 と [Skills の仕様](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/skills)を参照し、
 Skill の読み込みと API 呼び出しを別々に確認してください。

@@ -242,7 +242,7 @@ def build_harness_travel_agent(
     file_memory_store: Any | None = None,
     default_options: dict[str, Any] | None = None,
 ) -> Agent[Any]:
-    """Build the shared Harness Agent used interactively and in the workflow."""
+    """Build the Lab 7 Harness Agent."""
     skills_provider = toolbox.as_skills_provider(
         disable_load_skill_approval=True,
         disable_read_skill_resource_approval=True,
@@ -274,28 +274,4 @@ def build_harness_travel_agent(
         loop_next_message=todos_remaining_message,
         loop_max_iterations=6,
         default_options=default_options,
-    )
-
-
-def build_environment_harness_agent(
-    *,
-    default_mode: str,
-    hosted: bool,
-    file_memory_store: Any | None = None,
-) -> Agent[Any]:
-    """Build the full travel Harness Agent from deployed environment values."""
-    credential = create_credential()
-    chat_client = create_chat_client(credential)
-    foundry_iq_tool = create_foundry_iq_tool(credential)
-    toolbox = create_toolbox(credential)
-    return build_harness_travel_agent(
-        chat_client=chat_client,
-        foundry_iq_tool=foundry_iq_tool,
-        toolbox=toolbox,
-        default_mode=default_mode,
-        # Stateless service calls still need one local history for the Harness tool loop.
-        # Disabling loads makes Agent inject a second provider with the same source ID.
-        history_provider=InMemoryHistoryProvider(),
-        file_memory_store=file_memory_store,
-        default_options={"store": False} if hosted else None,
     )

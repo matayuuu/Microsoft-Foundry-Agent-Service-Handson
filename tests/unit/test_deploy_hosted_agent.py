@@ -343,7 +343,6 @@ def test_resolve_environment_variables_auto_injects_model_deployment_name(
         "FOUNDRY_MODEL": deployment,
         "AZURE_AI_SEARCH_SERVICE_ENDPOINT": "https://search.example.invalid",
         "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME": "contoso-travel-knowledge-lab",
-        "TOOLBOX_NAME": "contoso-travel-toolbox",
     }
 
 
@@ -357,7 +356,6 @@ def test_resolve_environment_variables_keeps_other_explicit_env_vars() -> None:
         "FOUNDRY_MODEL": "gpt-4o-mini",
         "AZURE_AI_SEARCH_SERVICE_ENDPOINT": "https://search.example.invalid",
         "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME": "contoso-travel-knowledge-lab",
-        "TOOLBOX_NAME": "contoso-travel-toolbox",
     }
 
 
@@ -374,7 +372,6 @@ def test_resolve_environment_variables_explicit_override_wins() -> None:
         "FOUNDRY_MODEL": "explicit-override",
         "AZURE_AI_SEARCH_SERVICE_ENDPOINT": "https://override.example.invalid",
         "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME": "contoso-travel-knowledge-lab",
-        "TOOLBOX_NAME": "contoso-travel-toolbox",
     }
 
 

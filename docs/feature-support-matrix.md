@@ -27,7 +27,7 @@ UI が利用できない根拠として解釈しないでください。
 | Prompt Agent Optimizer | UI は対応 | 該当なし | サービスが管理 | プレビュー。対応モデルの `gpt-5.5` を評価・最適化に使用 |
 | Hosted Agent Optimizer | 非対応 | 対応 | azd/SDK 連携 | 任意 |
 | Agent Framework の Agent / Harness Agent 開発 | 非対応 | 対応 | コード | 必須。Lab 7 で Foundry IQ・Toolbox Tools / Skills を再利用 |
-| Agent Framework Hosted workflow の開発 | 非対応 | 対応 | コード | 必須。Lab 8 で shared Harness factory を participant として再利用 |
+| Agent Framework Hosted workflow の開発 | 非対応 | 対応 | コード | 必須。Lab 8 で intake / policy / reviewer の通常 Agent を sequential workflow にする |
 | Hosted Agent のソースデプロイ | 非対応 | 対応 | 対応 | 必須手順では、認証を `az login` のみに統一するため SDK を使用 |
 | Hosted Agent Playground | 対応 | 対応 | 対応 | 必須。バージョンがアクティブになった後にポータルで実施 |
 | Prompt Agent / Hosted Agent のトレース | 対応 | 対応 | OpenTelemetry | 必須。Application Insights は接続済み |
@@ -78,8 +78,9 @@ Cloud Shell 固有の制約は2026-09-09取得の公式資料に基づきます�
   互換性のある MCP Resources の利用機能が必要です。Portal の Prompt Agent と Python SDK の
   `PromptAgentDefinition` には Toolbox Skill の runtime reference がありません。SDK から同じ
   Prompt Agent を呼び出しても `resources/read` は行われません。Skill 本文を Agent instructions
-  に複製する方式も Toolbox 経由の利用ではありません。Lab 7 の Harness Agent と Lab 8 の
-  Hosted workflow は、同じ checked-in factory の Skill provider を使用します。
+  に複製する方式も Toolbox 経由の利用ではありません。Lab 7 の Harness Agent で
+  checked-in factory の Skill provider を確認します。Lab 8 の通常 Agent workflow は
+  token 消費を抑えるため Toolbox Skills を使用しません。
 - Lab 4 には、確認済みの Web ポータルの操作手順をスクリーンショット付きで記載しています。
   ローカルの準備では、稼働中の API の OpenAPI 定義と Skill ZIP をエクスポートするだけで、
   リモートのオブジェクトは作成しません。

@@ -223,7 +223,7 @@ def test_learning_flow_source_and_rendered_labels_agree() -> None:
             assert element["strokeColor"] == "#000000"
             assert svg_labels[element["id"]] == " ".join(element["text"].split())
     assert "会話する" not in svg_labels["lab2-prompt-text"]
-    assert "同じ remote resources" in svg_labels["lab7-independent-note-text"]
+    assert "Foundry IQ" in svg_labels["lab7-independent-note-text"]
 
 
 def test_portal_labs_use_setup_prepared_evaluation_assets() -> None:

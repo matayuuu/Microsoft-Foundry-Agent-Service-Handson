@@ -20,17 +20,17 @@ the installed 2.5.x SDK -- retrieved 2026-08-21):
 3. Validates that the required entry point/dependency/domain files are
    present in the zip and that ``--cpu``/``--memory`` form one of the three
    documented Hosted Agent tiers, before making any network call.
-4. Auto-injects the model, Azure AI Search endpoint, knowledge-base name, and
-   Toolbox name into the container environment. ``FOUNDRY_PROJECT_ENDPOINT``
-   is never set here because the Hosted Agent platform injects it.
+4. Auto-injects the model, Azure AI Search endpoint, and knowledge-base name
+   into the container environment. ``FOUNDRY_PROJECT_ENDPOINT`` is never set
+   here because the Hosted Agent platform injects it.
 5. Calls ``create_version_from_code`` with a ``HostedAgentDefinition`` using
    ``CodeConfiguration(runtime="python_3_13", entry_point=["python",
    "main.py"], dependency_resolution=REMOTE_BUILD)`` and
    ``protocol_versions=[responses@1.0.0]`` (port 8088, per
    ``src/hosted-agent/main.py``). Every call creates a new, immutable agent
    version -- this script never mutates an existing version.
-6. Grants the Hosted Agent runtime identity resource-scoped access to query
-   Foundry IQ, read Toolbox Skills, and export Agent Framework traces. All
+6. Grants the Hosted Agent runtime identity resource-scoped access to call the
+   Foundry model, query Foundry IQ, and export Agent Framework traces. All
    assignments stay inside the supplied resource group.
 7. Polls ``get_version`` with a bounded timeout (never an unbounded loop)
    until the version reaches ``active`` or ``failed``, then prints both a
@@ -132,7 +132,7 @@ REQUIRED_SOURCE_FILES: tuple[str, ...] = (
 )
 
 DEFAULT_VERSION_DESCRIPTION = (
-    "Contoso travel trip-planning workflow (Microsoft Agent Framework, Responses protocol)."
+    "Contoso travel policy workflow (Microsoft Agent Framework, Responses protocol)."
 )
 DEFAULT_POLL_INTERVAL_SECONDS = 5.0
 DEFAULT_TIMEOUT_SECONDS = 600.0
@@ -248,8 +248,6 @@ SEARCH_SERVICE_ENDPOINT_VAR = "AZURE_AI_SEARCH_SERVICE_ENDPOINT"
 SEARCH_SERVICE_ENDPOINT_OUTPUT = "search_service_endpoint"
 KNOWLEDGE_BASE_NAME_VAR = "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME"
 DEFAULT_KNOWLEDGE_BASE_NAME = "contoso-travel-knowledge-lab"
-TOOLBOX_NAME_VAR = "TOOLBOX_NAME"
-DEFAULT_TOOLBOX_NAME = "contoso-travel-toolbox"
 
 
 def resolve_environment_variables(
@@ -258,8 +256,8 @@ def resolve_environment_variables(
     """Merge ``--env`` overrides with the workshop's runtime dependencies.
 
     The model and Search endpoint come from Terraform outputs. The knowledge
-    base and Toolbox use the fixed names participants create in Labs 3 and 4.
-    An explicit ``--env KEY=VALUE`` always wins for that key.
+    base uses the fixed name participants create in Lab 3. An explicit
+    ``--env KEY=VALUE`` always wins for that key.
 
     ``FOUNDRY_PROJECT_ENDPOINT`` is intentionally never set here: the Hosted
     Agent platform injects it into the container automatically once
@@ -275,7 +273,6 @@ def resolve_environment_variables(
             context, SEARCH_SERVICE_ENDPOINT_OUTPUT
         )
     resolved.setdefault(KNOWLEDGE_BASE_NAME_VAR, DEFAULT_KNOWLEDGE_BASE_NAME)
-    resolved.setdefault(TOOLBOX_NAME_VAR, DEFAULT_TOOLBOX_NAME)
     return resolved
 
 
@@ -473,7 +470,7 @@ def configure_runtime_identity_access(
     context: dict[str, Any],
     principal_id: str,
 ) -> None:
-    """Grant the three least-scope roles needed by the Hosted workflow."""
+    """Grant the three least-scope roles needed by the policy workflow."""
     grant_resource_role(
         credential=credential,
         resource_id=search_service_resource_id(context),

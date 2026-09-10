@@ -5,32 +5,24 @@ from __future__ import annotations
 from typing import Any
 
 from agent_framework import Agent
-from travel_agents import HARNESS_AGENT_INSTRUCTIONS, HARNESS_AGENT_NAME
 from workflow import (
     INTAKE_AGENT_INSTRUCTIONS,
+    POLICY_AGENT_INSTRUCTIONS,
     REVIEWER_AGENT_INSTRUCTIONS,
     SIMULATION_NOTICE,
 )
 
-INTAKE_RESPONSE = "受付整理: 東京から大阪、2026-09-10〜2026-09-11、1名、economy、予算100,000円。"
-HARNESS_RESPONSE = (
-    "Foundry IQ の規程を確認し、Travel Ops API で45,000円と算出しました。"
-    "Code Interpreter による予算消化率は45%です。"
+INTAKE_RESPONSE = "受付整理: 東京から大阪、2026-09-10〜2026-09-11、1名、economy。"
+POLICY_RESPONSE = (
+    "規程確認: 国内 Tier 1 の食事日当は1日3,000円、宿泊上限は1泊15,000円です。"
+    "精算は出張終了後30日以内です。"
+    "出典: policy-per-diem-001、policy-hotels-001、policy-general-001。"
 )
 REVIEWER_RESPONSE = (
-    "規程確認: Foundry IQ の引用を確認しました。\n"
-    "概算: Travel Ops API の見積もりは45,000円、予算消化率は45%です。\n"
-    f"次のアクション: 見積もり内容を確認してください。\n{SIMULATION_NOTICE}"
+    "依頼の整理: 東京から大阪への社内レビュー出張です。\n"
+    "規程確認: 日当、宿泊上限、精算期限と各文書IDを確認しました。\n"
+    f"次のアクション: 申請前に規程原文を確認してください。\n{SIMULATION_NOTICE}"
 )
-
-
-def build_scripted_harness_agent(client: ScriptedChatClient) -> Agent:
-    """Build a plain test double at the Harness Agent's SupportsAgentRun boundary."""
-    return Agent(
-        client=client,
-        name=HARNESS_AGENT_NAME,
-        instructions=HARNESS_AGENT_INSTRUCTIONS,
-    )
 
 
 class ScriptedChatClient:
@@ -38,12 +30,20 @@ class ScriptedChatClient:
 
     def __init__(self) -> None:
         self.created_agents: list[str] = []
+        self.created_agent_tools: dict[str, list[Any]] = {}
         self.calls: list[dict[str, Any]] = []
-        self.include_harness_tool_events = False
+        self.include_policy_tool_events = False
 
-    def as_agent(self, *, name: str, instructions: str) -> Agent:
+    def as_agent(
+        self,
+        *,
+        name: str,
+        instructions: str,
+        tools: list[Any] | None = None,
+    ) -> Agent:
         self.created_agents.append(name)
-        return Agent(client=self, name=name, instructions=instructions)
+        self.created_agent_tools[name] = list(tools or [])
+        return Agent(client=self, name=name, instructions=instructions, tools=tools)
 
     def get_response(
         self,
@@ -68,21 +68,17 @@ class ScriptedChatClient:
             from agent_framework import ChatResponseUpdate, Content, ResponseStream
 
             async def _stream() -> Any:
-                if self.include_harness_tool_events and HARNESS_AGENT_INSTRUCTIONS in instructions:
-                    for name in (
-                        "load_skill",
-                        "knowledge_base_retrieve",
-                        "tool_search",
-                        "call_tool",
-                    ):
-                        yield ChatResponseUpdate(
-                            contents=[
-                                Content.from_function_call(
-                                    call_id=f"synthetic-{name}", name=name, arguments="{}"
-                                )
-                            ],
-                            role="assistant",
-                        )
+                if self.include_policy_tool_events and instructions == POLICY_AGENT_INSTRUCTIONS:
+                    yield ChatResponseUpdate(
+                        contents=[
+                            Content(
+                                type="text",
+                                text="",
+                                name="knowledge_base_retrieve",
+                            )
+                        ],
+                        role="assistant",
+                    )
                 midpoint = len(text) // 2
                 for chunk in (text[:midpoint], text[midpoint:]):
                     yield ChatResponseUpdate(
@@ -103,8 +99,8 @@ class ScriptedChatClient:
     def _response_for(instructions: str) -> str:
         if instructions == INTAKE_AGENT_INSTRUCTIONS:
             return INTAKE_RESPONSE
-        if HARNESS_AGENT_INSTRUCTIONS in instructions:
-            return HARNESS_RESPONSE
+        if instructions == POLICY_AGENT_INSTRUCTIONS:
+            return POLICY_RESPONSE
         if instructions == REVIEWER_AGENT_INSTRUCTIONS:
             return REVIEWER_RESPONSE
         raise AssertionError(f"Unexpected agent instructions: {instructions}")

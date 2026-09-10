@@ -22,7 +22,7 @@ in dark mode**.
 Labs 0–1 prepare the environment. Labs 2–6 work mainly in the Portal; Labs 7–8 use Python
 Notebooks. Lab 9 compares traces and cleans up.
 
-![Learning flow: Labs 0–1 prepare the environment, Labs 2–6 extend one Prompt Agent, Lab 7 reuses its Foundry IQ, Toolbox, and Skills in a plain Agent and then a Harness Agent, Lab 8 deploys that Harness factory in a sequential workflow, and Lab 9 compares traces and cleans up](docs/images/workshop-learning-flow.svg)
+![Learning flow: Labs 0–1 prepare the environment, Labs 2–6 extend one Prompt Agent, Lab 7 compares a plain Agent with a Harness Agent using Foundry IQ, Toolbox, and Skills, Lab 8 deploys a three-agent sequential workflow, and Lab 9 compares traces and cleans up](docs/images/workshop-learning-flow.svg)
 
 [Full-size diagram (SVG)](docs/images/workshop-learning-flow.svg) · [Editable source (Excalidraw)](docs/diagrams/workshop-learning-flow.excalidraw)
 
@@ -30,8 +30,9 @@ Notebooks. Lab 9 compares traces and cleans up.
 <summary>Implementation notes for Labs 7–8</summary>
 
 Lab 7 reuses Foundry IQ, Toolbox, and Skills, progressing from a plain Agent to a Harness
-Agent. Lab 8 places the same checked-in factory between intake and review participants and
-deploys the sequential workflow. Lab 8 does not depend on Lab 7 session state.
+Agent. To reduce Luna token use, Lab 8 does not carry that Harness forward. It deploys
+normal intake, policy, and reviewer agents as a sequential workflow. Lab 8 does not
+depend on Lab 7 session state.
 
 </details>
 
@@ -46,7 +47,7 @@ or reimbursements.
 | **Knowledge / Foundry IQ** | Knowledge is the reference material behind an answer. Foundry IQ retrieves information across sources. Search travel policies, then inspect citations |
 | **Tool / Skill / Toolbox / Tool Search** | Tools provide API, calculation, and web-search capabilities; Skills explain how to use them; a Toolbox packages both. Tool Search discovers the needed capability dynamically before Travel Ops or another tool runs |
 | **Evaluation / Optimizer** | Evaluation checks answers against a shared question set and criteria. Optimizer tests alternative instructions. Read scores and reasons before deciding whether to adopt a candidate |
-| **Agent Framework / Harness Agent / Hosted Agent** | Lab 7 reuses Foundry IQ and Toolbox Tools/Skills in code and adds planning, todos, and memory with a Harness Agent. Lab 8 deploys the same factory as the specialist in a sequential Hosted workflow |
+| **Agent Framework / Harness Agent / Hosted Agent** | Lab 7 reuses Foundry IQ and Toolbox Tools/Skills in code and adds planning, todos, and memory with a Harness Agent. Lab 8 assigns intake, policy lookup, and review to three normal agents and deploys their sequential workflow |
 
 For example, Lab 3 checks that an answer about Osaka lodging cites the synthetic policy's
 JPY 15,000-per-night limit. Lab 4 checks the cost breakdown and total returned by the API.
@@ -121,7 +122,7 @@ following its next-lab link.
 | [Lab 5](labs/05-evaluation.md) | Portal agent evaluation | 15 min |
 | [Lab 6](labs/06-optimization.md) | Agent Optimizer | 20 min |
 | [Lab 7](labs/07-agent-framework-harness.md) | Agent Framework Agent and Harness Agent | 45 min |
-| [Lab 8](labs/08-hosted-multi-agent.md) | Hosted workflow with the Harness Agent | 40 min |
+| [Lab 8](labs/08-hosted-multi-agent.md) | Hosted sequential workflow with normal agents | 30 min |
 | [Lab 9](labs/09-observability-cleanup.md) | Trace comparison and cleanup | 10 min |
 
 ## Azure architecture
@@ -130,7 +131,7 @@ This diagram shows the services, agents, and call paths in the architecture comp
 through Lab 8, rather than the learning sequence.
 You do not need to memorize every service before starting.
 
-![Microsoft Foundry, shared Foundry IQ and Toolbox resources, Travel Ops API, and monitoring inside an existing resource group](docs/images/workshop-architecture.drawio.svg)
+![Microsoft Foundry architecture where the Prompt Agent uses Foundry IQ and Toolbox, while the Hosted workflow uses Foundry IQ, alongside Travel Ops API and monitoring](docs/images/workshop-architecture.drawio.svg)
 
 [Edit the architecture in draw.io](docs/diagrams/workshop-architecture.drawio) ·
 [Open the SVG](docs/images/workshop-architecture.drawio.svg)

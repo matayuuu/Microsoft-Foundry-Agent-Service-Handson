@@ -38,7 +38,7 @@ Trace が見えない場合は数分待って browser を再読み込みしま�
 
 2. 詳細画面を右上の拡大ボタンで広げ、**Trajectories** の **Find in trace** に
    `invoke_agent` と入力します。
-3. `intake_agent`、`travel_harness_agent`、`reviewer_agent` が順番に並び、
+3. `intake_agent`、`policy_agent`、`reviewer_agent` が順番に並び、
    成功していることを確認します。
 
 ![Lab 9 で invoke_agent に絞り込み、3つの担当と処理時間を確認する](../docs/images/lab08-hosted-agent-trace.png)
@@ -47,24 +47,26 @@ Trace が見えない場合は数分待って browser を再読み込みしま�
 出張を検討する担当は、名前が付いた上の **3 agent** です。
 
 4. `reviewer_agent` を選択し、**Input + Output** の **Output** を読みます。
-   Lab 8 の最終回答と、Foundry IQ の根拠、tool 結果、シミュレーションの注意文を見比べます。
+   Lab 8 の最終回答と、Foundry IQ の根拠、実操作を行っていないことを示す注意文を
+   見比べます。
 
-5. `travel_harness_agent` の配下で `load_skill`、`knowledge_base_retrieve`、
-   `tool_search`、`call_tool` と選択された Travel Ops / Code Interpreter の call を確認します。
-   標準依頼では不要な `createPreapproval` と Web Search が実行されていないことも確認します。
+5. `policy_agent` の配下で `knowledge_base_retrieve` を確認します。
+   `intake_agent` と `reviewer_agent` には tool call がなく、Hosted workflow 全体でも
+   `load_skill`、`tool_search`、`call_tool`、Travel Ops API が実行されていないことを
+   確認します。
 
 6. **Find in trace** を `workflow.run` に変更し、workflow 全体も成功していることを確認します。
    検索欄を空に戻せば全 span に戻ります。必要に応じて **Graph view** でも構造を確認できます。
 
 Prompt Agent の trace では 1 つの Agent が knowledge / tool を選ぶ流れ、Hosted workflow
-では intake → Harness → reviewer の participant 間の引き継ぎが追加される点を比較してください。
+では intake → policy → reviewer の通常 Agent 間で回答を引き継ぐ点を比較してください。
 
 ## 完了チェック
 
-- `intake_agent`、`travel_harness_agent`、`reviewer_agent` の処理が順番に表示される
+- `intake_agent`、`policy_agent`、`reviewer_agent` の処理が順番に表示される
 - 最後の output が reviewer の回答になっている
-- Harness 内で Skill、Foundry IQ、Tool Search、選択された実 tool の処理を区別できる
-- 不要な事前承認シミュレーションと Web Search が実行されていない
+- `policy_agent` だけが Foundry IQ を実行している
+- Harness、Skill、Tool Search、Travel Ops API が実行されていない
 - `workflow.run` と 3 つの `invoke_agent` が **Success** になっている
 
 Cold start の最初に state store の `GET` が 1 回だけ `404` になり、直後の `POST` が

@@ -354,9 +354,10 @@ Skills は MCP の `resources/list` / `resources/read` で公開され、MCP Res
 対応するクライアントまたは Skill provider が必要です。対応クライアントでは `load_skill`
 または resource read の記録を確認します。
 対応実装の例は公式の [Agent Framework Toolbox Skills sample](https://github.com/microsoft-foundry/foundry-samples/tree/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-mcp-skills)
-を参照してください。2 つの Skills は Lab 7 / 8 の共有 Harness factory が提供する
+を参照してください。2 つの Skills は Lab 7 の Harness factory が提供する
 Skill provider で読み込むため、登録・公開状態を維持します。Lab 7 では `load_skill` と
 `resources/read` の実行記録を確認し、Toolbox への登録だけでなく実際の利用を証明します。
+Lab 8 は token 消費を抑えた通常 Agent workflow のため、Skills を使用しません。
 公式の [Skills の Python 手順](https://learn.microsoft.com/ja-jp/azure/foundry/agents/how-to/tools/skills?pivots=python)
 では、`ToolboxSkillReference` による公開と、MCP Resources 対応クライアントによる利用を
 区別しています。

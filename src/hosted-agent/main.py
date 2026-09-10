@@ -1,4 +1,4 @@
-"""Serve the Harness-backed travel workflow through the Responses protocol."""
+"""Serve the normal-agent travel-policy workflow through the Responses protocol."""
 
 from __future__ import annotations
 

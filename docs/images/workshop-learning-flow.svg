@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1152" viewBox="0 0 1440 1152" role="img" aria-labelledby="diagram-title diagram-description">
   <title id="diagram-title">学習の流れ — ひとつの Agent から、workflow へ</title>
-  <desc id="diagram-description">Lab 0・1 で準備し、Lab 2〜6 で同じ Prompt Agent を拡張する。Lab 7 では同じ Foundry IQ・Toolbox・Skills を plain Agent と Harness Agent から再利用する。Lab 8 では同じ checked-in Harness factory を intake と reviewer の間に置き、sequential workflow 全体を Hosted Agent としてデプロイする。Lab 7 の session state には依存しない。Lab 9 で Prompt と Hosted の trace を比較し、既存 resource group を残して演習リソースを片付ける。実際の予約・承認・精算は行わない。</desc>
+  <desc id="diagram-description">Lab 0・1 で準備し、Lab 2〜6 で同じ Prompt Agent を拡張する。Lab 7 では Foundry IQ・Toolbox・Skills を plain Agent と Harness Agent から再利用する。Lab 8 では token 消費を抑えるため intake、policy、reviewer の通常 Agent を sequential workflow として Hosted Agent にデプロイする。Lab 7 の session state には依存しない。Lab 9 で Prompt と Hosted の trace を比較し、既存 resource group を残して演習リソースを片付ける。実際の予約・承認・精算は行わない。</desc>
   <defs>
     <radialGradient id="ambient" cx="100%" cy="0%" r="90%">
       <stop offset="0" stop-color="#18334e"/>
@@ -76,7 +76,7 @@
   <text id="hosted-stage" class="mono cyan" x="752" y="374" font-size="20" letter-spacing="1">03 / REUSE &amp; DEPLOY</text>
   <text id="hosted-learning-surface" class="mono muted" x="1376" y="374" font-size="19" text-anchor="end">PYTHON</text>
   <text id="hosted-learning-title" x="752" y="422" font-size="30" font-weight="600">同じ資産をコードで再利用</text>
-  <text id="lab7-independent-note-text" class="muted" x="752" y="458" font-size="22">Lab 7–8 / 同じ remote resources を再利用</text>
+  <text id="lab7-independent-note-text" class="muted" x="752" y="458" font-size="22">Lab 7–8 / Foundry IQ をコードで再利用</text>
 
   <rect id="lab7-comparison" class="surface" x="752" y="486" width="624" height="160" rx="8"/>
   <text id="lab7-number" class="mono cyan" x="776" y="522" font-size="22">Lab 7</text>
@@ -88,8 +88,8 @@
   <rect id="lab8-deployment" class="surface" x="752" y="686" width="624" height="160" rx="8"/>
   <text id="lab8-number" class="mono cyan" x="776" y="722" font-size="22">Lab 8</text>
   <text id="lab7-hosted-text" x="888" y="722" font-size="26">Hosted Agent にデプロイ</text>
-  <text id="lab7-reviewer-text" class="muted" x="776" y="772" font-size="22">intake → Harness → reviewer</text>
-  <text id="lab8-outcome" class="muted" x="776" y="808" font-size="22">同じ factory で sequential workflow 全体を配置</text>
+  <text id="lab7-reviewer-text" class="muted" x="776" y="772" font-size="22">intake → policy → reviewer</text>
+  <text id="lab8-outcome" class="muted" x="776" y="808" font-size="22">通常 Agent 3つの sequential workflow を配置</text>
 
   <path d="M 752 870 V 922" fill="none" stroke="#55dbd0" stroke-width="2"/>
   <text id="lab8-source-note" class="muted" x="776" y="886" font-size="20">Lab 8 は checked-in source を使用。</text>

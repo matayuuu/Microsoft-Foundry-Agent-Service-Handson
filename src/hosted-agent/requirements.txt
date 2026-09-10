@@ -6,10 +6,10 @@
 # (no stable release exists yet); pin it exactly rather than with a loose
 # range so a remote build is reproducible.
 #
-# This workflow creates intake/reviewer agents and reuses one Harness Agent as
-# the middle participant. The Harness Agent connects to Foundry IQ and the
-# Lab 4 Toolbox, so the core, Foundry, hosting, orchestration, HTTP, and
-# identity packages are direct runtime dependencies.
+# The Hosted workflow creates intake/policy/reviewer normal agents and connects
+# only policy_agent to Foundry IQ. The same source folder also supports the
+# Lab 7 Harness exercise, so the core, Foundry, hosting, orchestration, HTTP,
+# and identity packages remain direct runtime dependencies.
 #
 # IMPORTANT: agent-framework-foundry==1.11.0 constrains azure-ai-projects to
 # <2.4.0,>=2.2.0, which conflicts with the >=2.5.0 the repo-root

@@ -223,15 +223,16 @@ Cloud Shell は非対話20分で終了し得ます。Notebook を保存し、切
   切断で kernel のメモリーが失われた場合は、必要な接続・plan 確認セルから再実行します。
 - **チェックポイント**: 同じ remote resources を使いながら、plain Agent と Harness Agent の
   実行ループの違いを説明できること。Notebook の session state は Lab 8 に引き継がれない。
-- **スキップ時**: 経験者は Lab 3 / 4 の remote resources が準備済みなら Lab 7 Notebook を
-  実行せず Lab 8 へ進める。Lab 8 は checked-in factory を使用する。
+- **スキップ時**: 経験者は Lab 3 の Foundry IQ が準備済みなら Lab 7 Notebook を
+  実行せず Lab 8 へ進める。Lab 8 は Harness を使用しない。
 
-### 03:40–04:20 Lab 8 — Harness Agent workflow の Hosted Agent 配布
+### 03:40–04:10 Lab 8 — 通常 Agent workflow の Hosted Agent 配布
 
-- **学習順序**: `intake_agent`、Lab 7 と同じ shared `travel_harness_agent`、
+- **学習順序**: 通常の `intake_agent`、Foundry IQ を持つ `policy_agent`、
   `reviewer_agent` を `SequentialBuilder` で接続し、workflow の引き継ぎを確認して deploy する。
-- **チェックポイント**: Harness Agent が Foundry IQ / Toolbox / Skills を再利用すること、
-  Lab 7 の Notebook state ではなく checked-in source を deploy することを説明できる。その後、
+- **チェックポイント**: policy Agent だけが Foundry IQ を使い、Harness / Toolbox / Skills を
+  workflow に含めないこと、Lab 7 の Notebook state ではなく checked-in source を
+  deploy することを説明できる。その後、
   `.venv/bin/python scripts/deploy_hosted_agent.py --output json` が
   `status: "active"` を返し、Playground で応答が確認できること。
 - **リモートビルド待ち時間の目安**: 数分程度かかることがあるため、待ち時間中に
@@ -243,7 +244,7 @@ Cloud Shell は非対話20分で終了し得ます。Notebook を保存し、切
   意味するかを説明したうえで、`failure_hint` が出た場合の確認先（Foundry portal の
   version ページ、Lab 9 の Application Insights トレース）を案内する。
 
-### 04:20–04:30 Lab 9 — Observability・governance・cleanup
+### 04:10–04:20 Lab 9 — Observability・governance・cleanup
 
 - **チェックポイント**: 全参加者が `./scripts/destroy.sh` を実行し、正常終了
   （resource group 自体は残り、タグ付きリソースが削除される）を確認する。

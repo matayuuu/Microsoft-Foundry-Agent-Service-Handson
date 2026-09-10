@@ -1,108 +1,103 @@
-# Lab 8 — Harness Agent を組み込んだ Hosted workflow（40分）
+# Lab 8 — 通常 Agent の sequential workflow を Hosted Agent にする（30分）
 
 ## ゴール
 
-Lab 7 と同じ checked-in Harness Agent factory を sequential workflow の participant
-として再利用します。intake、Harness Agent、reviewer の引き継ぎを確認した後、
-workflow 全体の source を Hosted Agent として Microsoft Foundry に deploy します。
-
-Lab 2〜6 で準備した Foundry IQ と Toolbox の Tools / Skills を、コードの Harness Agent
-から利用します。
+Microsoft Agent Framework の通常 Agent を 3 つ作り、順番に処理する workflow として
+Microsoft Foundry に deploy します。
 
 ```text
-intake_agent -> travel_harness_agent -> reviewer_agent
+intake_agent -> policy_agent -> reviewer_agent
 ```
 
-`travel_harness_agent` は execute mode で todo / memory / bounded loop を使い、
-Foundry IQ、Toolbox Skills、Tool Search、Travel Ops API、必要な計算を組み合わせます。
-`reviewer_agent` はその結果を根拠と照合し、最終回答を返します。Lab 7 のような対話的な
-plan 承認は workflow の途中では行いません。
+| Agent | 担当 | 接続する機能 |
+|---|---|---|
+| `intake_agent` | 旅程と質問を整理する | model |
+| `policy_agent` | 社内規程を検索し、文書 ID と出典を整理する | model + Foundry IQ |
+| `reviewer_agent` | 元の依頼と根拠を照合し、最終回答に整える | model |
+
+Lab 7 の Harness Agent は、Toolbox、Skills、todo、memory を組み合わせる演習として独立して
+残します。Lab 8 では Harness Agent を workflow に入れません。Luna の token 消費と
+40K TPM deployment への負荷を抑えながら、通常 Agent の役割分担、引き継ぎ、Hosted
+deployment を確認します。
 
 > [!IMPORTANT]
-> この workflow は学習用 simulation です。予約や承認は行いません。Lab 3 の Foundry IQ と
-> Lab 4 の Toolbox / Skills / Travel Ops API に接続するため、送信するのは架空のデータだけに
-> してください。Notebook でローカル実行しても推論と remote tool 呼び出しは Azure 上で行われます。
->
-> **Lab 8 は Lab 7 の Notebook を実行していなくても完了できます。** デプロイ対象は
-> checked-in の `src/hosted-agent/travel_agents.py` と `workflow.py` であり、必要なのは
-> Lab 3 / 4 で作成した remote resources です。Lab 7 の session、todo、memory、出力は
-> 引き継ぎません。
+> この workflow は学習用です。予約、申請、承認、精算は行いません。
+> Foundry IQ が参照するのは教材の合成規程だけです。secret、個人情報、顧客情報を
+> 入力しないでください。
 
 > [!WARNING]
-> Notebook のモデル呼び出し、Foundry IQ、Toolbox、Hosted Agent の稼働、
-> source remote build には料金がかかります。
-> Notebook の Run All は deploy しません。既定の 40K TPM deployment では model call
-> の間に最大 20 秒ほど待つことがあります。処理中の cell や Hosted Agent 呼び出しを
-> 再送しないでください。
+> Notebook の model / Foundry IQ 呼び出し、source remote build、Hosted Agent の稼働には
+> 料金が発生します。既定の 40K TPM deployment では急な連続呼び出しを避けるため、
+> model call の間に最大 20 秒ほど待つことがあります。処理中の cell や Hosted Agent の
+> 依頼を再送しないでください。
 
-## 1. Notebook で作成・可視化・テストする
+## 1. Notebook で通常 Agent と workflow を確認する
 
 1. 選んだ実行環境のファイルブラウザーで
-   [`notebooks/08-hosted-agent.ipynb`](../notebooks/08-hosted-agent.ipynb)
-   を開きます。
+   [`notebooks/08-hosted-agent.ipynb`](../notebooks/08-hosted-agent.ipynb) を開きます。
+2. kernel に **Python (Foundry Hosted Agent)** を選択します。
+   Python の path が `src/hosted-agent/.venv/bin/python` であることも確認してください。
+3. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばしません。
 
-2. Notebook の本文と toolbar が表示されるまで待ち、kernel に
-   **Python (Foundry Hosted Agent)** を選びます。
-   パスが `src/hosted-agent/.venv/bin/python` であることも確認してください。
-   root の **Python (Foundry Workshop)** は選びません。
-   画面固有の操作は [Codespaces](../docs/participant/environments/codespaces.md#notebook) /
-   [Cloud Shell の JupyterLab](../docs/participant/environments/cloud-shell.md#notebook) を参照してください。
-3. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばして進めません。
+画面固有の操作は [Codespaces](../docs/participant/environments/codespaces.md#notebook) /
+[Cloud Shell の JupyterLab](../docs/participant/environments/cloud-shell.md#notebook)
+を参照してください。
 
-Notebook は次の順に進みます。agent 作成と workflow 構築だけでは推論は始まりません。
+Notebook は次の順に進みます。
 
-1. `travel_agents.py` の shared Harness factory と remote resources の接続を確認
-2. `intake_agent`、`travel_harness_agent`、`reviewer_agent` を `SequentialBuilder` で接続
-3. `WorkflowViz` と Graphviz で workflow の構造と引き継ぎを確認
-4. 標準依頼を実行し、intake / Harness の途中回答と reviewer の最終回答を比較
-5. Contract test と `workflow.py` / `main.py` との対応を確認
+1. `.workshop/context.json` から model、Search、Foundry IQ の接続先を読む
+2. 3 つの通常 Agent を作る
+3. `SequentialBuilder` で実行順を固定する
+4. `WorkflowViz` と Graphviz で実際の graph を表示する
+5. 合成の規程質問を実行し、途中回答と reviewer の最終回答を比較する
+6. Azure を使わない contract test を実行する
 
-Graphviz は環境準備時にインストールします。描画できない場合は
-[Codespaces の Graphviz](../docs/participant/environments/codespaces.md#graphviz) /
-[Cloud Shell の環境準備](../docs/participant/environments/cloud-shell.md#setup) を確認し、
-kernel を再起動して必要なセルを再実行します。グラフは外部サービスへ送信しません。
+Graphviz が使える場合、次の 3 participant が順に接続された SVG が表示されます。
 
-`intermediate_output_from="all_other"` は Notebook だけの観察設定です。
-デプロイ用 workflow は途中回答を公開せず、reviewer の最終回答だけを返します。
+```text
+intake_agent -> policy_agent -> reviewer_agent
+```
 
-## 完了チェック
+Notebook だけ `intermediate_output_from="all_other"` を使い、intake と policy の途中回答を
+表示します。deploy する workflow は reviewer の最終回答だけを返します。
 
-- intake、Harness、reviewer の instructions と、次の agent に渡る情報を説明できる
-- 実物のグラフに 3 participant が意図した順序で接続されている
-- Foundry IQ の根拠、Toolbox Skills、Travel Ops API の結果が Harness Agent で再利用される
-- 最終回答に「規程確認」「概算」「次のアクション」がある
-- 最後に「実際の予約・承認ではありません」と明示される
-- 予約・承認シミュレーション不要の依頼で `createPreapproval` が呼ばれていない
-- Contract test が pass する
+### 実行結果を確認する
 
-Contract test の fake client は固定回答を返します。モデルの判断品質を保証するものでは
-ないため、実モデルの回答も Notebook の期待値と読み比べてください。
+標準の合成依頼では、東京から大阪への国内出張について、食事日当、宿泊上限、精算期限を
+根拠付きで確認します。費用見積もりや予算計算は行いません。
+
+実行記録で次を確認してください。
+
+- 実行順が `intake_agent` → `policy_agent` → `reviewer_agent`
+- `policy_agent` だけが `knowledge_base_retrieve` を実行
+- 規程の文書 ID、文書名、引用または source URL が残っている
+- 最終回答に **依頼の整理 / 規程確認 / 次のアクション** がある
+- Toolbox、Skill、`tool_search`、`call_tool`、Travel Ops API は実行されていない
+- 実際の予約・承認・精算を行っていないと明記されている
+
+Lab 7 の session、todo、memory、出力は引き継ぎません。Lab 3 の Foundry IQ が準備済みなら、
+Lab 7 を実行していなくても Lab 8 を開始できます。
 
 ## 2. Hosted Agent を deploy する
 
-source とテストを確認後、repository root の Terminal で実行します。
-Notebook の kernel ではなく、deploy SDK 用の root `.venv` を使います。
-
-> Notebook 自体や Lab 7 の session state はデプロイされません。デプロイ対象は
-> `src/hosted-agent/` の checked-in source です。通常の手順では source の変更は不要です。
+Notebook と contract test を確認後、repository root の Terminal で実行します。
+Notebook kernel ではなく、deploy SDK 用の root `.venv` を使います。
 
 ```bash
 .venv/bin/python scripts/deploy_hosted_agent.py --output json
 ```
 
-Script は次を自動で行います。
+Script は次を行います。
 
 1. `src/hosted-agent/` を package
-2. model、Search endpoint、knowledge base、Toolbox 名を環境変数へ設定
+2. model、Search endpoint、Foundry IQ 名を環境変数へ設定
 3. Python 3.13 の source remote build を開始
-4. Hosted Agent の runtime identity に **Search Index Data Reader** を付与
-5. 同じ identity に Toolbox Skills 用の **Foundry User** と、
-   trace 送信用の **Monitoring Metrics Publisher** を resource scope で付与
+4. Hosted Agent の runtime identity に Foundry IQ 用の
+   **Search Index Data Reader** と model 呼び出し用の **Foundry User** を付与
+5. trace 送信用の **Monitoring Metrics Publisher** を resource scope で付与
 6. `active` または `failed` になるまで有限時間で待機
 
-Docker、ACR、追加の sign-in は不要です。
-
-次の値が返れば deploy 完了です。
+Docker、ACR、追加の sign-in は不要です。次の値が返れば deploy 完了です。
 
 ```json
 {
@@ -115,36 +110,32 @@ Docker、ACR、追加の sign-in は不要です。
 
 1. Microsoft Foundry Portal で **Build > Agents** を開きます。
 2. `contoso-travel-hosted-planner` を選択します。
-3. **Details** を開き、**Status** が **Running**、
-   **Responses protocol** が **Active** であることを確認します。
-   再デプロイした場合は、Version の選択欄が最新のデプロイ結果と一致することも確認します。
-
-![Lab 8 の Details で Running と Responses protocol の Active を確認する](../docs/images/lab07-hosted-status.png)
-
-4. **Playground** に戻り、次を入力します。前の会話が残っていれば **New chat** を選びます。
+3. **Details** で **Status = Running**、
+   **Responses protocol = Active** を確認します。
+4. **Playground** に戻り、前の会話があれば **New chat** を選択します。
+5. 次を入力して **Send** を押します。
 
 ```text
 2026年9月10日から11日まで、東京から大阪へ1名で社内レビューに行きます。
-座席クラスは economy、予算は100,000円です。規程の根拠、費用見積もり、
-予算との差額と消化率をまとめてください。予約や承認シミュレーションは不要です。
+座席クラスは economy です。国内出張の食事日当、宿泊上限、精算期限を、
+規程の文書IDまたはリンク付きでまとめてください。費用見積もり、予約、申請、
+承認、精算は行わないでください。
 ```
 
-5. **Send** を押し、応答が最後まで返るのを待ちます。
+初回は Hosted Agent の起動に時間がかかります。Log stream が動いている間は再送しません。
+deploy 直後の最初の呼び出しだけ Search の `403` になった場合は、role assignment の反映を
+待って同じ依頼を再送してください。新しい version は作り直しません。
 
 ## 完了チェック
 
-- 応答が最後まで返る
-- 規程確認・概算・次のアクションが整理され、規程には Foundry IQ の根拠がある
-- 金額が Travel Ops API の結果に沿い、予算との差額・消化率が確認できる
-- Trace で `load_skill`、`tool_search`、`call_tool` と選択された実 tool を確認できる
-- `createPreapproval` と Web Search が呼ばれていない
-- 実際の予約・承認ではないことが明記される
+- Hosted Agent の応答が最後まで返る
+- `intake_agent` → `policy_agent` → `reviewer_agent` の順で処理される
+- `policy_agent` の Trace に `knowledge_base_retrieve` がある
+- 規程値と出典が Foundry IQ の結果に沿っている
+- Toolbox / Skills / Travel Ops API を呼んでいない
+- 実際の予約・承認・精算ではないことが明記されている
 
-初回は Hosted Agent の起動に時間がかかります。**Log stream** が動いている間は再送しません。
-deploy 直後の最初の呼び出しだけ Search または Toolbox の `403` になった場合は、
-role assignment の反映を待って同じ依頼を再送してください。新しい version を作り直しません。
-
-Prompt Agent と Hosted workflow の trace は次の Lab で比較します。
+次の Lab で Prompt Agent と Hosted workflow の Trace を比較します。
 
 ## 次の Lab
 

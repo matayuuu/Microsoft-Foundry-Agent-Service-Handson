@@ -37,7 +37,7 @@ Toolbox へ登録しただけの状態と、Agent が実際に利用した状態
 
 `create_harness_agent` は decorator、別の Azure resource、multi-agent workflow ではありません。
 複雑な作業を 1 つの Agent 内で管理しやすくした構成です。複数 Agent を明示的につなぐ方法は
-次の Lab 8 で扱います。
+次の Lab 8 で、通常 Agent だけを使って扱います。
 
 ## 1. Notebook を開く
 
@@ -156,11 +156,12 @@ session、loop が担当します。
 ## Lab 7 を飛ばして Lab 8 を行う場合
 
 Lab 8 は、この Notebook の session、todos、memory、出力を引き継ぎません。
-同じ Harness Agent factory を repository の source から作り直すため、Lab 3 の Foundry IQ と
-Lab 4 の Toolbox が準備できていれば、経験者は Lab 7 を実行せず Lab 8 へ進めます。
+Lab 8 は `intake_agent`、`policy_agent`、`reviewer_agent` という通常 Agent の
+sequential workflow です。Lab 3 の Foundry IQ が準備できていれば、経験者は
+Lab 7 を実行せず Lab 8 へ進めます。
 
 連続して受講する場合は、この Lab で単一 Agent 内の仕組みを観察してから、Lab 8 で
-multi-agent workflow の中核 participant として再利用する流れを推奨します。
+複数の通常 Agent に役割を分ける構成と比較してください。
 
 ## 参考資料
 
@@ -171,4 +172,4 @@ multi-agent workflow の中核 participant として再利用する流れを推�
 
 ## 次の Lab
 
-[Lab 8 — Harness Agent を組み込んだ Hosted workflow](08-hosted-multi-agent.md)
+[Lab 8 — 通常 Agent の sequential workflow](08-hosted-multi-agent.md)

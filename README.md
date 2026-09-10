@@ -19,7 +19,7 @@
 Lab 0・1 で準備し、Lab 2〜6 は主に Portal、Lab 7・8 は Python の Notebook で進めます。
 Lab 9 で trace を比較し、リソースを片付けます。
 
-![学習の流れ。Lab 0・1 で準備し、Lab 2〜6 で一つの Prompt Agent を拡張する。Lab 7 で同じ Foundry IQ・Toolbox・Skills を使う Agent と Harness Agent をコードで比較し、Lab 8 で Harness Agent を workflow に組み込んでデプロイし、Lab 9 で trace の比較と片付けを行う](docs/images/workshop-learning-flow.svg)
+![学習の流れ。Lab 0・1 で準備し、Lab 2〜6 で一つの Prompt Agent を拡張する。Lab 7 で Foundry IQ・Toolbox・Skills を使う Agent と Harness Agent を比較し、Lab 8 で通常 Agent 3つの sequential workflow をデプロイし、Lab 9 で trace の比較と片付けを行う](docs/images/workshop-learning-flow.svg)
 
 [拡大表示（SVG）](docs/images/workshop-learning-flow.svg) · [編集用ファイル（Excalidraw）](docs/diagrams/workshop-learning-flow.excalidraw)
 
@@ -27,8 +27,9 @@ Lab 9 で trace を比較し、リソースを片付けます。
 <summary>Lab 7・8 の実装について</summary>
 
 Lab 7 は同じ Foundry IQ・Toolbox・Skills を使い、plain Agent から Harness Agent へ
-発展させます。Lab 8 は同じ checked-in factory を sequential workflow の participant
-としてデプロイします。Lab 8 は Lab 7 の session state には依存しません。
+発展させます。Lab 8 は Luna の token 消費を抑えるため Harness を引き継がず、
+intake・policy・reviewer の通常 Agent を sequential workflow としてデプロイします。
+Lab 8 は Lab 7 の session state には依存しません。
 
 </details>
 
@@ -42,7 +43,7 @@ Lab 7 は同じ Foundry IQ・Toolbox・Skills を使い、plain Agent から Har
 | **Knowledge / Foundry IQ** | Knowledge は回答の根拠にする資料。Foundry IQ は複数の資料を調べる仕組みです。出張規程を検索し、引用元を確認します |
 | **Tool / Skill / Toolbox / Tool Search** | Tool は API・計算・Web 検索などの機能、Skill は使い方の手順書、Toolbox は両方をまとめる入れ物です。Tool Search で必要な tool を動的に発見し、Travel Ops API の費用内訳などを取得します |
 | **Evaluation / Optimizer** | Evaluation は同じ質問集と基準で回答を点検すること。Optimizer は指示文の改善案を試して比較する仕組みです。点数だけでなく判定理由を読み、採用するか判断します |
-| **Agent Framework / Harness Agent / Hosted Agent** | Lab 7 では Foundry IQ と Toolbox の Tools / Skills を plain Agent から Harness Agent へ引き継ぎ、計画・todo・memory を観察します。Lab 8 では同じ factory を intake と reviewer の間に置き、workflow 全体を Hosted Agent として動かします |
+| **Agent Framework / Harness Agent / Hosted Agent** | Lab 7 では Foundry IQ と Toolbox の Tools / Skills を plain Agent から Harness Agent へ引き継ぎ、計画・todo・memory を観察します。Lab 8 では intake・policy・reviewer の通常 Agent に役割を分け、Foundry IQ を使う sequential workflow を Hosted Agent として動かします |
 
 たとえば Lab 3 では「大阪の宿泊費の上限は？」に対して、合成規程の
 「1 泊 15,000 円」と出典を確認します。Lab 4 では日程・都市などを渡して、
@@ -118,7 +119,7 @@ Cloud Shellは初回画面で専用RG / Storage / shareを自動作成できま�
 | [Lab 5](labs/05-evaluation.md) | Portal で Agent evaluation | 15分 |
 | [Lab 6](labs/06-optimization.md) | Agent Optimizer | 20分 |
 | [Lab 7](labs/07-agent-framework-harness.md) | Agent Framework の Agent と Harness Agent | 45分 |
-| [Lab 8](labs/08-hosted-multi-agent.md) | Harness Agent を組み込んだ Hosted workflow | 40分 |
+| [Lab 8](labs/08-hosted-multi-agent.md) | 通常 Agent の Hosted sequential workflow | 30分 |
 | [Lab 9](labs/09-observability-cleanup.md) | Trace の比較と cleanup | 10分 |
 
 ## Azure 上の構成を知りたいとき
@@ -127,7 +128,7 @@ Cloud Shellは初回画面で専用RG / Storage / shareを自動作成できま�
 呼び出し関係を示した構成図です。
 初めはすべての名前を覚える必要はありません。
 
-![既存 resource group 内の Microsoft Foundry、共有する Foundry IQ と Toolbox、Travel Ops API、監視サービスの構成](docs/images/workshop-architecture.drawio.svg)
+![既存 resource group 内で Prompt Agent は Foundry IQ と Toolbox、Hosted workflow は Foundry IQ を使い、Travel Ops API と監視サービスを配置する構成](docs/images/workshop-architecture.drawio.svg)
 
 [構成図を draw.io で編集する](docs/diagrams/workshop-architecture.drawio) ·
 [SVG を開く](docs/images/workshop-architecture.drawio.svg)

@@ -1,4 +1,4 @@
-"""Execute the Lab 8 workflow notebook with network-free participants."""
+"""Execute the Lab 8 normal-agent workflow notebook without Azure calls."""
 
 from __future__ import annotations
 
@@ -17,11 +17,10 @@ import travel_agents
 import workflow
 from agent_framework import WorkflowViz
 from fakes import (
-    HARNESS_RESPONSE,
     INTAKE_RESPONSE,
+    POLICY_RESPONSE,
     REVIEWER_RESPONSE,
     ScriptedChatClient,
-    build_scripted_harness_agent,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -34,6 +33,10 @@ class _Credential:
 
     def close(self) -> None:
         self.closed = True
+
+
+def _policy_lookup(query: str) -> str:
+    return f"synthetic policy for {query}"
 
 
 async def execute_cells(
@@ -85,8 +88,7 @@ def notebook_namespace(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "path", sys.path.copy())
     credential = _Credential()
-    chat_client.include_harness_tool_events = True
-    harness_agent = build_scripted_harness_agent(chat_client)
+    chat_client.include_policy_tool_events = True
     monkeypatch.setattr(travel_agents, "create_credential", lambda: credential)
     monkeypatch.setattr(
         travel_agents,
@@ -95,25 +97,19 @@ def notebook_namespace(
     )
     monkeypatch.setattr(
         travel_agents,
-        "build_environment_harness_agent",
-        lambda **kwargs: (
-            harness_agent
-            if kwargs["default_mode"] == "execute"
-            and kwargs["hosted"] is True
-            and kwargs["file_memory_store"] is not None
-            else None
-        ),
+        "create_foundry_iq_tool",
+        lambda supplied: _policy_lookup if supplied is credential else None,
     )
     displayed: list[Any] = []
     monkeypatch.setattr(IPython.display, "display", displayed.append)
     return {
         "credential": credential,
         "displayed": displayed,
-        "harness_agent": harness_agent,
+        "policy_tool": _policy_lookup,
     }
 
 
-def test_notebook_runs_shared_harness_in_sequential_order(
+def test_notebook_runs_three_normal_agents_in_sequential_order(
     notebook_namespace: dict[str, Any],
     chat_client: ScriptedChatClient,
     monkeypatch: pytest.MonkeyPatch,
@@ -124,30 +120,33 @@ def test_notebook_runs_shared_harness_in_sequential_order(
 
     assert notebook_namespace["expected_order"] == [
         "intake_agent",
-        "travel_harness_agent",
+        "policy_agent",
         "reviewer_agent",
     ]
     assert notebook_namespace["execution_order"] == notebook_namespace["expected_order"]
     assert notebook_namespace["intermediate_answers"] == {
         "intake_agent": INTAKE_RESPONSE,
-        "travel_harness_agent": HARNESS_RESPONSE,
+        "policy_agent": POLICY_RESPONSE,
     }
+    assert notebook_namespace["policy_actions"] == {"knowledge_base_retrieve"}
     assert notebook_namespace["answer"] == REVIEWER_RESPONSE
     assert [call["messages"] for call in chat_client.calls] == [
         [workflow.SAMPLE_REQUEST],
         [workflow.SAMPLE_REQUEST, INTAKE_RESPONSE],
-        [workflow.SAMPLE_REQUEST, INTAKE_RESPONSE, HARNESS_RESPONSE],
+        [workflow.SAMPLE_REQUEST, INTAKE_RESPONSE, POLICY_RESPONSE],
     ]
     deployed = workflow.build_workflow(
         chat_client=ScriptedChatClient(),
-        harness_agent=build_scripted_harness_agent(ScriptedChatClient()),
+        foundry_iq_tool=_policy_lookup,
         observe_intermediate=True,
     )
-    assert "travel_harness_agent" in WorkflowViz(deployed).to_mermaid()
+    mermaid = WorkflowViz(deployed).to_mermaid()
+    assert "policy_agent" in mermaid
+    assert "travel_harness_agent" not in mermaid
     assert notebook_namespace["credential"].closed is True
 
 
-def test_notebook_uses_shared_harness_factory_before_building_workflow() -> None:
+def test_notebook_uses_normal_policy_agent_before_building_workflow() -> None:
     notebook = json.loads(NOTEBOOK_PATH.read_text(encoding="utf-8"))
     cell_ids = [cell["id"] for cell in notebook["cells"]]
 
@@ -167,21 +166,24 @@ def test_notebook_uses_shared_harness_factory_before_building_workflow() -> None
 
     assert positions == sorted(positions)
     text = NOTEBOOK_PATH.read_text(encoding="utf-8")
-    assert "build_environment_harness_agent" in text
-    assert 'default_mode=\\"execute\\"' in text
+    assert "policy_agent" in text
+    assert "POLICY_AGENT_INSTRUCTIONS" in text
+    assert "knowledge_base_retrieve" in text
+    assert "travel_harness_agent" not in text
+    assert "build_environment_harness_agent" not in text
     assert "intermediate_output_from" in text
     assert "deploy_hosted_agent.py" in text
 
 
-def test_notebook_rejects_a_text_only_harness_response(
+def test_notebook_rejects_policy_response_without_retrieval_evidence(
     notebook_namespace: dict[str, Any],
     chat_client: ScriptedChatClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(shutil, "which", lambda _: None)
-    chat_client.include_harness_tool_events = False
+    chat_client.include_policy_tool_events = False
 
-    with pytest.raises(AssertionError, match="Skill"):
+    with pytest.raises(AssertionError, match="Foundry IQ"):
         asyncio.run(execute_cells(notebook_namespace))
 
 

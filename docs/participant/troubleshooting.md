@@ -203,9 +203,9 @@ Portal の Prompt Agent は Toolbox の callable tool を実行できますが�
 自動で読み込みません。同じ Prompt Agent を Python の `AIProjectClient` から呼び出しても
 実行環境は同じです。新しい会話または再接続で `resources/read` や `load_skill` の記録を確認し、
 API の成功だけを Skill の成功としません。
-Lab 7 の Harness Agent と Lab 8 の Hosted workflow は、同じ checked-in factory の
-Skill provider を使います。Lab 8 は Lab 7 の Notebook session state ではなく、
-Lab 3 / 4 の remote resources を参照します。
+Lab 7 の Harness Agent は checked-in factory の Skill provider を使います。
+Lab 8 は token 消費を抑えた通常 Agent の sequential workflow であり、Toolbox Skill は
+使いません。Lab 7 の Notebook session state も引き継ぎません。
 Skill をエージェントの指示文にコピーする代替手段は、Toolbox 経由の利用とは区別してください。
 
 ## Notebook での Toolbox 操作
@@ -333,7 +333,7 @@ src/hosted-agent/.venv/bin/python -m ipykernel install \
 **Build > Agents** で `contoso-travel-hosted-planner` の状態とビルドエラーを確認します。
 ソースコードを変更せずにデプロイコマンドを何度も実行しないでください。
 
-### Hosted Agent から Foundry IQ / Toolbox が 403 になる
+### Hosted Agent から Foundry IQ が 403 になる
 
 `deploy_hosted_agent.py` は agent identity に Search Index Data Reader、Foundry User、
 Monitoring Metrics Publisher を workshop resource scope で付与します。deploy が `active` に

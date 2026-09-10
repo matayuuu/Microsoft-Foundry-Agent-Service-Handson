@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 from agent_framework.observability import ChatTelemetryLayer
-from fakes import REVIEWER_RESPONSE, ScriptedChatClient, build_scripted_harness_agent
+from fakes import REVIEWER_RESPONSE, ScriptedChatClient
 from opentelemetry import trace
 from workflow import SAMPLE_REQUEST, WORKFLOW_NAME, build_workflow
 
@@ -15,6 +15,10 @@ class InstrumentedScriptedChatClient(ChatTelemetryLayer, ScriptedChatClient):
     """Use the same SDK telemetry layer as FoundryChatClient, not handmade spans."""
 
     model = "scripted-test-model"
+
+
+def _policy_lookup(query: str) -> str:
+    return f"synthetic policy for {query}"
 
 
 @pytest.mark.parametrize("stream", [False, True])
@@ -37,7 +41,7 @@ def test_complete_workflow_trace_preserves_three_agent_hierarchy(
     client = InstrumentedScriptedChatClient()
     agent = build_workflow(
         chat_client=client,
-        harness_agent=build_scripted_harness_agent(client),
+        foundry_iq_tool=_policy_lookup,
     ).as_agent(name=WORKFLOW_NAME)
 
     async def run() -> str:
@@ -63,7 +67,7 @@ def test_complete_workflow_trace_preserves_three_agent_hierarchy(
         )
         assert [span.name for span in agent_spans] == [
             "invoke_agent intake_agent",
-            "invoke_agent travel_harness_agent",
+            "invoke_agent policy_agent",
             "invoke_agent reviewer_agent",
         ]
         chat_spans = [span for span in spans if span.name == "chat scripted-test-model"]
@@ -71,7 +75,7 @@ def test_complete_workflow_trace_preserves_three_agent_hierarchy(
         assert {span.parent.span_id for span in chat_spans} == {
             span.context.span_id for span in agent_spans
         }
-        participant_names = ["intake_agent", "travel_harness_agent", "reviewer_agent"]
+        participant_names = ["intake_agent", "policy_agent", "reviewer_agent"]
         for name, agent_span in zip(participant_names, agent_spans, strict=True):
             executor_span = next(span for span in spans if span.name == f"executor.process {name}")
             assert agent_span.parent.span_id == executor_span.context.span_id

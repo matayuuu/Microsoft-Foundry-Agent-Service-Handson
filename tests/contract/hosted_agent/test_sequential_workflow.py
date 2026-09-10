@@ -1,22 +1,20 @@
-"""Contract tests for the workshop's simple sequential workflow."""
+"""Contract tests for the workshop's normal-agent sequential workflow."""
 
 from __future__ import annotations
 
 import asyncio
 
 import pytest
-import travel_agents
-from agent_framework import AgentModeProvider, HistoryProvider, create_harness_agent
+import workflow as workflow_module
 from fakes import (
-    HARNESS_RESPONSE,
     INTAKE_RESPONSE,
+    POLICY_RESPONSE,
     REVIEWER_RESPONSE,
     ScriptedChatClient,
-    build_scripted_harness_agent,
 )
-from travel_agents import HARNESS_AGENT_INSTRUCTIONS
 from workflow import (
     INTAKE_AGENT_INSTRUCTIONS,
+    POLICY_AGENT_INSTRUCTIONS,
     REVIEWER_AGENT_INSTRUCTIONS,
     SAMPLE_REQUEST,
     SIMULATION_NOTICE,
@@ -26,18 +24,27 @@ from workflow import (
 )
 
 
-def test_build_workflow_creates_plain_agents_around_injected_harness(
+def _policy_lookup(query: str) -> str:
+    return f"synthetic policy for {query}"
+
+
+def test_build_workflow_creates_three_normal_agents_with_policy_tool_only(
     chat_client: ScriptedChatClient,
 ) -> None:
-    build_workflow(
-        chat_client=chat_client,
-        harness_agent=build_scripted_harness_agent(chat_client),
-    )
+    policy_tool = _policy_lookup
+
+    build_workflow(chat_client=chat_client, foundry_iq_tool=policy_tool)
 
     assert chat_client.created_agents == [
         "intake_agent",
+        "policy_agent",
         "reviewer_agent",
     ]
+    assert chat_client.created_agent_tools == {
+        "intake_agent": [],
+        "policy_agent": [policy_tool],
+        "reviewer_agent": [],
+    }
 
 
 def test_sequential_workflow_passes_each_agent_output_to_the_next(
@@ -47,78 +54,43 @@ def test_sequential_workflow_passes_each_agent_output_to_the_next(
         run_workflow(
             SAMPLE_REQUEST,
             chat_client=chat_client,
-            harness_agent=build_scripted_harness_agent(chat_client),
+            foundry_iq_tool=_policy_lookup,
         )
     )
 
     assert final_text == REVIEWER_RESPONSE
     assert [call["instructions"] for call in chat_client.calls] == [
         INTAKE_AGENT_INSTRUCTIONS,
-        HARNESS_AGENT_INSTRUCTIONS,
+        POLICY_AGENT_INSTRUCTIONS,
         REVIEWER_AGENT_INSTRUCTIONS,
     ]
     assert SAMPLE_REQUEST in chat_client.calls[0]["messages"]
     assert INTAKE_RESPONSE in chat_client.calls[1]["messages"]
     assert INTAKE_RESPONSE in chat_client.calls[2]["messages"]
-    assert HARNESS_RESPONSE in chat_client.calls[2]["messages"]
+    assert POLICY_RESPONSE in chat_client.calls[2]["messages"]
 
 
-def test_real_harness_agent_can_run_as_a_sequential_participant(
-    chat_client: ScriptedChatClient,
+def test_build_workflow_creates_runtime_dependencies_when_not_injected(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    harness_agent = create_harness_agent(
-        client=chat_client,
-        name="travel_harness_agent",
-        agent_instructions=HARNESS_AGENT_INSTRUCTIONS,
-        disable_file_memory=True,
-        disable_todo=True,
-        disable_web_search=True,
-        disable_tool_auto_approval=True,
-        mode_provider=AgentModeProvider(default_mode="execute"),
+    credential = object()
+    client = ScriptedChatClient()
+    policy_tool = object()
+    monkeypatch.setattr(workflow_module, "create_credential", lambda: credential)
+    monkeypatch.setattr(
+        workflow_module,
+        "create_chat_client",
+        lambda supplied: client if supplied is credential else None,
+    )
+    monkeypatch.setattr(
+        workflow_module,
+        "create_foundry_iq_tool",
+        lambda supplied: policy_tool if supplied is credential else None,
     )
 
-    final_text = asyncio.run(
-        run_workflow(
-            SAMPLE_REQUEST,
-            chat_client=chat_client,
-            harness_agent=harness_agent,
-        )
-    )
+    build_workflow()
 
-    assert final_text == REVIEWER_RESPONSE
-    assert HARNESS_AGENT_INSTRUCTIONS in chat_client.calls[1]["instructions"]
-    assert INTAKE_RESPONSE in chat_client.calls[1]["messages"]
-
-
-def test_hosted_factory_does_not_inject_a_duplicate_history_provider(
-    chat_client: ScriptedChatClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(travel_agents, "create_credential", object)
-    monkeypatch.setattr(travel_agents, "create_chat_client", lambda _: chat_client)
-    monkeypatch.setattr(travel_agents, "create_foundry_iq_tool", lambda _: None)
-    monkeypatch.setattr(travel_agents, "create_toolbox", lambda _: None)
-
-    def build_without_network_tools(**kwargs):
-        return create_harness_agent(
-            client=kwargs["chat_client"],
-            agent_instructions=HARNESS_AGENT_INSTRUCTIONS,
-            history_provider=kwargs["history_provider"],
-            default_options=kwargs["default_options"],
-            mode_provider=AgentModeProvider(default_mode=kwargs["default_mode"]),
-            disable_file_memory=True,
-            disable_todo=True,
-            disable_web_search=True,
-            disable_tool_auto_approval=True,
-        )
-
-    monkeypatch.setattr(travel_agents, "build_harness_travel_agent", build_without_network_tools)
-    harness = travel_agents.build_environment_harness_agent(default_mode="execute", hosted=True)
-    asyncio.run(harness.run(SAMPLE_REQUEST, session=harness.create_session()))
-
-    providers = [p for p in harness.context_providers if isinstance(p, HistoryProvider)]
-    assert len(providers) == 1
-    assert providers[0].load_messages
-    assert harness.default_options["store"] is False
+    assert client.created_agent_tools["policy_agent"] == [policy_tool]
 
 
 def test_workflow_as_agent_returns_only_the_final_review(
@@ -126,7 +98,7 @@ def test_workflow_as_agent_returns_only_the_final_review(
 ) -> None:
     workflow_agent = build_workflow(
         chat_client=chat_client,
-        harness_agent=build_scripted_harness_agent(chat_client),
+        foundry_iq_tool=_policy_lookup,
     ).as_agent(name=WORKFLOW_NAME)
 
     response = asyncio.run(workflow_agent.run(SAMPLE_REQUEST))
@@ -147,11 +119,13 @@ def test_reviewer_final_sentence_instruction_points_only_to_the_notice() -> None
     assert REVIEWER_AGENT_INSTRUCTIONS.count(SIMULATION_NOTICE) == 1
 
 
-def test_responsibilities_do_not_duplicate_policy_or_tool_results() -> None:
-    assert "規程判断や費用計算は次の専門 Agent に委ねます" in INTAKE_AGENT_INSTRUCTIONS
-    assert "Foundry IQ" in HARNESS_AGENT_INSTRUCTIONS
-    assert "Tool Search" in HARNESS_AGENT_INSTRUCTIONS
-    assert "根拠と tool 結果がある内容だけ" in REVIEWER_AGENT_INSTRUCTIONS
+def test_agent_responsibilities_are_narrow_and_non_overlapping() -> None:
+    assert "規程判断は次の policy_agent に委ねます" in INTAKE_AGENT_INSTRUCTIONS
+    assert "knowledge_base_retrieve" in POLICY_AGENT_INSTRUCTIONS
+    assert "費用見積もり、予算計算、予約、申請、承認、精算は実行しない" in (
+        POLICY_AGENT_INSTRUCTIONS
+    )
+    assert "Foundry IQ の根拠がある内容だけ" in REVIEWER_AGENT_INSTRUCTIONS
 
 
 def test_workflow_as_agent_streams_only_the_final_review(
@@ -159,7 +133,7 @@ def test_workflow_as_agent_streams_only_the_final_review(
 ) -> None:
     workflow_agent = build_workflow(
         chat_client=chat_client,
-        harness_agent=build_scripted_harness_agent(chat_client),
+        foundry_iq_tool=_policy_lookup,
     ).as_agent(name=WORKFLOW_NAME)
 
     async def collect() -> str:
@@ -170,12 +144,12 @@ def test_workflow_as_agent_streams_only_the_final_review(
     assert asyncio.run(collect()) == REVIEWER_RESPONSE
 
 
-def test_observation_mode_surfaces_intake_and_harness_before_reviewer(
+def test_observation_mode_surfaces_intake_and_policy_before_reviewer(
     chat_client: ScriptedChatClient,
 ) -> None:
     travel_workflow = build_workflow(
         chat_client=chat_client,
-        harness_agent=build_scripted_harness_agent(chat_client),
+        foundry_iq_tool=_policy_lookup,
         observe_intermediate=True,
     )
 
@@ -191,7 +165,7 @@ def test_observation_mode_surfaces_intake_and_harness_before_reviewer(
 
     intermediate, output = asyncio.run(collect())
 
-    assert set(intermediate) == {"intake_agent", "travel_harness_agent"}
+    assert set(intermediate) == {"intake_agent", "policy_agent"}
     assert set(output) == {"reviewer_agent"}
 
 
@@ -201,13 +175,13 @@ def test_workflow_preserves_reviewer_answer_when_notice_is_omitted(stream: bool)
         @staticmethod
         def _response_for(instructions: str) -> str:
             if instructions == REVIEWER_AGENT_INSTRUCTIONS:
-                return "規程確認\n概算\n次のアクション"
+                return "依頼の整理\n規程確認\n次のアクション"
             return ScriptedChatClient._response_for(instructions)
 
     client = OmittingNoticeClient()
     workflow_agent = build_workflow(
         chat_client=client,
-        harness_agent=build_scripted_harness_agent(client),
+        foundry_iq_tool=_policy_lookup,
     ).as_agent(name=WORKFLOW_NAME)
 
     async def collect() -> str:
@@ -217,7 +191,7 @@ def test_workflow_preserves_reviewer_answer_when_notice_is_omitted(stream: bool)
             )
         return (await workflow_agent.run(SAMPLE_REQUEST)).text
 
-    assert asyncio.run(collect()) == "規程確認\n概算\n次のアクション"
+    assert asyncio.run(collect()) == "依頼の整理\n規程確認\n次のアクション"
 
 
 def test_run_workflow_rejects_an_empty_reviewer_response() -> None:
@@ -234,11 +208,12 @@ def test_run_workflow_rejects_an_empty_reviewer_response() -> None:
             run_workflow(
                 SAMPLE_REQUEST,
                 chat_client=client,
-                harness_agent=build_scripted_harness_agent(client),
+                foundry_iq_tool=_policy_lookup,
             )
         )
 
 
-def test_final_reviewer_must_not_invent_airfare() -> None:
-    assert "金額は Travel Ops API" in REVIEWER_AGENT_INSTRUCTIONS
+def test_final_reviewer_must_not_invent_policy_or_costs() -> None:
+    assert "規程の文書 ID" in REVIEWER_AGENT_INSTRUCTIONS
+    assert "費用見積もりや予算計算を追加せず" in REVIEWER_AGENT_INSTRUCTIONS
     assert "成功したように書き換えてはいけません" in REVIEWER_AGENT_INSTRUCTIONS

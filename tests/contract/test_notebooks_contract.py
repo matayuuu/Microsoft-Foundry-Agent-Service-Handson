@@ -38,6 +38,9 @@ NOTEBOOKS = {
         "kernel": "foundry-hosted-agent",
         "required_text": [
             "chat_client.as_agent",
+            "policy_agent",
+            "POLICY_AGENT_INSTRUCTIONS",
+            "knowledge_base_retrieve",
             "SequentialBuilder",
             "WorkflowViz",
             "intermediate_output_from",
@@ -111,6 +114,8 @@ def test_hosted_notebook_builds_and_tests_before_deployment_guidance() -> None:
     )
     assert "deploy_hosted_agent.py" not in code
     assert "run_workflow(" not in code
+    assert "travel_harness_agent" not in code
+    assert "build_environment_harness_agent" not in code
 
 
 def test_codespace_installs_local_workflow_graph_renderer() -> None:

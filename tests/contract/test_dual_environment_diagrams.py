@@ -20,6 +20,8 @@ def test_drawio_render_keeps_current_editable_source_and_both_environments() -> 
     assert "Codespaces /" in labels
     assert "Azure Cloud Shell" in labels
     assert "Notebook / Python 3.13" in labels
+    assert "Policy Agent" in labels
+    assert "Harness Agent" not in labels
 
 
 def test_legacy_architecture_source_and_render_offer_the_same_environments() -> None:
