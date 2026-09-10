@@ -73,6 +73,12 @@ Cold start の最初に state store の `GET` が 1 回だけ `404` になり、
 **Success** になる場合があります。これは state store の新規作成確認であり、
 workflow の失敗ではありません。
 
+Foundry IQ の取得結果を含む中間 checkpoint が 1 MiB を超えた場合、state store の
+`PUT` が 1 回 `400` になり、log に `does not fail the workflow run` と表示されることが
+あります。その後の checkpoint、`workflow.run`、3 つの `invoke_agent`、最終回答が
+**Success** の場合だけ非致命的な checkpoint 警告として記録します。workflow や回答が
+失敗している場合は同じ扱いにしません。
+
 Trace には prompt、response、tool の引数が保存されます。実データや secret を入力しないで
 ください。詳細は
 [Set up tracing](https://learn.microsoft.com/azure/foundry/observability/how-to/trace-agent-setup)
