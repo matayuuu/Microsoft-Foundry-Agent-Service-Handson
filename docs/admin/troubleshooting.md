@@ -54,11 +54,10 @@ cleanup が未完了なら storage を残し、残存 resource ID とエラー�
 2. Azure portal の **Quotas** または Azure サポートから、対象モデル・SKU のクォータ引き上げを申請します。即時には反映されないため、開催前に余裕を持って申請してください。
 3. 同時に利用する参加者・チーム数を減らすか、開催時間を分けて、既存のクォータ内に収めます。
 
-Luna または埋め込みの容量不足が確認された状態では参加者を先へ進めないでください。
-GPT-5.5 だけが不足する場合、setup は共有の評価・最適化用デプロイを省略します。
-参加者は Labs 5 / 6 をスキップし、残りのハンズオンへ進めます。
+3モデルのいずれかの容量不足が確認された状態では参加者を先へ進めないでください。
+GPT-5.5 は Foundry IQ でも使うため省略できません。
 
-Luna は Prompt / Hosted Agent と Foundry IQ、GPT-5.5 は Lab 5 の評価と
+Luna は Prompt / Hosted Agent 本体、GPT-5.5 は Foundry IQ、Lab 5 の評価、
 Lab 6 の Agent Optimizer で共有します。
 Luna / GPT-5.5 / 埋め込みの既定の必要容量は、それぞれ **40 / 100 / 40K TPM** です。
 各デプロイの同じ SKU に対応する `usageName` を根拠に確認してください。
@@ -73,8 +72,7 @@ ARM が返した `rateLimits` は60秒あたり20リクエスト・20,000トー�
 Foundry IQ の検索も90秒のタイムアウトに達しました。
 
 現在の `evaluation_model_capacity` の既定値は **100** です。
-GPT-5.5 は Lab 5 の設定可能な LLM 評価と Lab 6 の Agent Optimizerに使い、
-Foundry IQ は Luna を使います。
+GPT-5.5 は Foundry IQ、Lab 5 の設定可能な LLM 評価、Lab 6 の Agent Optimizerに使います。
 これは既存の `GlobalStandard` のモデル・SKU 別クォータ内でデプロイの処理量を増やす設定であり、
 サブスクリプションのクォータ上限の引き上げや、定額のトークン利用枠の購入ではありません。
 モデルの実際の使用量や、ほかの Azure サービスの料金は引き続き発生します。
@@ -93,7 +91,7 @@ Foundry IQ は Luna を使います。
 ### 40K の Luna でも自動評価が集中する場合
 
 2026-09-10 の Dedicated Search / Cloud Shell E2E では、7件・候補1件の Optimizer でも、
-Foundry IQ 内の Luna 呼び出しが `429` になりました。実際の割り当ては
+評価対象 Agent の Luna 呼び出しが `429` になりました。実際の割り当ては
 40,000 TPM / 40 RPM、サブスクリプションの同じ `usageName` の上限は1,000Kでした。
 既定の40Kは起動・軽い対話用の容量であり、並列評価の成功を保証する値ではありません。
 
@@ -116,20 +114,20 @@ ARM の `rateLimits` が400,000 TPM / 400 RPMであることを確認して、�
 
 | 用途 | 設定とモデル |
 | --- | --- |
-| Prompt / Hosted Agent、Foundry IQ | `primary_model_deployment_name`（`gpt-5.6-luna`） |
-| Lab 5 の設定可能な LLM 評価用モデル | `evaluation_model_deployment_name`（`gpt-5.5`） |
+| Prompt / Hosted Agent 本体 | `primary_model_deployment_name`（`gpt-5.6-luna`） |
+| Foundry IQ、Lab 5 の設定可能な LLM 評価用モデル | `evaluation_model_deployment_name`（`gpt-5.5`） |
 | Agent Optimizer の両方のモデル選択 | `optimizer_model_deployment_name`（同じ `gpt-5.5`） |
 
 サービス管理の評価器では、評価用モデルを変更できません。
 
-ナレッジベースでは Luna、Lab 5 の judge と Optimizer では GPT-5.5 を選びます。
+ナレッジベース、Lab 5 の judge、Optimizer では GPT-5.5 を選びます。
 
 ### Optimizer に `No supported optimization model` と表示される
 
 2026-09-09 時点の公式対応一覧には `gpt-5.5` が含まれます。まず
 `.workshop/context.json` の `optimizer_model_deployment_name` が `gpt-5.5` か確認します。
-`null` の場合はクォータ不足によりoptional deploymentが省略されているため、
-Labs 5 / 6 のlive実行を省略します。
+この output は必須であり、`null` や欠落の場合は setup が不完全です。
+preflight の3モデルの結果を確認し、環境を修復してから続行します。
 
 `gpt-5.5` がデプロイ済みにもかかわらず表示される場合は、Portalとサービスの
 対応差を記録し、同じrunを再送せずLab 6のfallbackへ進みます。対応状況は

@@ -51,6 +51,10 @@ Cloud Shell resources after workload cleanup succeeds.
   scope.
 - Do not add Cosmos DB, ACR, or an Agent capability host to the core Basic Agent
   Setup.
+- Keep all three model deployments required: `gpt-5.6-luna` for Prompt/Hosted
+  Agent runtimes, shared `gpt-5.5` for Foundry IQ plus Labs 5/6, and
+  `text-embedding-3-small` for vectors. Preflight must resolve one region with
+  the required GlobalStandard headroom for all three before setup proceeds.
 - Treat Terraform state as sensitive. Never commit it or print computed credentials.
 - All sample content must remain synthetic and must not contain personal or customer
   data.

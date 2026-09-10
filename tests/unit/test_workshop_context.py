@@ -105,17 +105,17 @@ def test_terraform_output_raises_with_available_keys_listed() -> None:
         ctx.terraform_output(context, "missing_key")
 
 
-def test_terraform_output_rejects_unprovisioned_optional_output() -> None:
+def test_terraform_output_rejects_empty_required_evaluation_output() -> None:
     context = {"terraform_outputs": {"evaluation_model_deployment_name": {"value": None}}}
 
-    with pytest.raises(ctx.WorkshopContextError, match="optional deployment was not provisioned"):
+    with pytest.raises(ctx.WorkshopContextError, match="required output is empty"):
         ctx.terraform_output(context, "evaluation_model_deployment_name")
 
 
-def test_optimizer_output_rejects_unprovisioned_optional_output() -> None:
+def test_optimizer_output_rejects_empty_required_output() -> None:
     context = {"terraform_outputs": {"optimizer_model_deployment_name": {"value": None}}}
 
-    with pytest.raises(ctx.WorkshopContextError, match="optional deployment was not provisioned"):
+    with pytest.raises(ctx.WorkshopContextError, match="required output is empty"):
         ctx.terraform_output(context, "optimizer_model_deployment_name")
 
 

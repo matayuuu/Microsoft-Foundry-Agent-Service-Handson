@@ -1,13 +1,18 @@
 # Model deployments on the Foundry AIServices account.
 #
-# Two required deployments and one optional deployment (see variables.tf):
-#   1. primary    -> gpt-5.6-luna             (Agents + Foundry IQ)
-#   2. evaluation -> gpt-5.5                  (optional; Lab 5 judges + Optimizer)
+# Three required deployments (see variables.tf):
+#   1. primary    -> gpt-5.6-luna             (Prompt/Hosted Agents)
+#   2. evaluation -> gpt-5.5                  (Foundry IQ + Lab 5 judges + Optimizer)
 #   3. embedding  -> text-embedding-3-small   (Azure AI Search / Foundry IQ vectors)
 #
 # scripts/preflight.sh must confirm the chosen name/version/sku/capacity are
 # actually available via `az cognitiveservices model list --location <region>`
 # before apply -- these variables are never silently guessed at apply time.
+moved {
+  from = azapi_resource.evaluation_model_deployment[0]
+  to   = azapi_resource.evaluation_model_deployment
+}
+
 resource "azapi_resource" "primary_model_deployment" {
   type      = "Microsoft.CognitiveServices/accounts/deployments@2026-05-01"
   name      = "gpt-5.6-luna"
@@ -32,8 +37,6 @@ resource "azapi_resource" "primary_model_deployment" {
 }
 
 resource "azapi_resource" "evaluation_model_deployment" {
-  count = var.enable_evaluation_model ? 1 : 0
-
   type      = "Microsoft.CognitiveServices/accounts/deployments@2026-05-01"
   name      = "gpt-5.5"
   parent_id = azapi_resource.ai_services.id

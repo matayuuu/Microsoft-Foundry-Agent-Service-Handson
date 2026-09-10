@@ -16,18 +16,16 @@ Agent に `gpt-5.6-luna`、設定可能な LLM judge（採点役）に `gpt-5.5`
 
 Lab 4 の MCP 自動承認設定まで保存した Agent を使います。
 
-## 0. 評価・最適化用 GPT-5.5 の有無を確認する
+## 0. 共通 GPT-5.5 deployment を確認する
 
 ```bash
-jq -r '.terraform_outputs.evaluation_model_deployment_name.value // "unavailable"' \
+jq -r '.terraform_outputs.evaluation_model_deployment_name.value' \
   .workshop/context.json
 ```
 
-`gpt-5.5` が表示された場合だけ、この Lab を実行します。
-`unavailable` の場合は上限緩和が未反映でもハンズオンを継続できる設計です。
-この Lab と [Lab 6](06-optimization.md) をスキップし、
-[Lab 7](07-agent-framework-harness.md) へ進んでください。Lab 5 と Lab 6 は
-同じ optional の GPT-5.5 deployment を共有します。
+`gpt-5.5` が表示されることを確認します。Foundry IQ、Lab 5、Lab 6 は
+同じ必須の GPT-5.5 deployment を共有します。値が欠落している場合は Lab 1 の
+preflight と setup を修復してから続行します。
 
 ## 1. Evaluation を作成する
 

@@ -67,12 +67,12 @@ These are examples of what to verify, not fixed wording that the model must repr
   before uploading them.
 
 The workshop uses **three model deployments** (named model instances you can call):
-**Luna (`gpt-5.6-luna`)** is shared by Prompt/Hosted Agents and Foundry IQ;
-**GPT-5.5 (`gpt-5.5`)** is shared by the configurable evaluation judges in Lab 5
-and both the Evaluation and Optimization model roles in Lab 6;
+**Luna (`gpt-5.6-luna`)** is shared by the Prompt and Hosted Agent runtimes;
+**GPT-5.5 (`gpt-5.5`)** is shared by Foundry IQ, the configurable evaluation judges
+in Lab 5, and both the Evaluation and Optimization model roles in Lab 6;
 **`text-embedding-3-small`**, deployed as `embedding`, converts text into numbers for search.
-If GPT-5.5 quota is unavailable, its deployment and Labs 5 and 6 can be skipped while the
-remaining Luna-based labs stay available.
+All three models' `GlobalStandard` SKU and required capacity are prerequisites for the
+full workshop.
 [Lab 0](labs/00-overview.md) explains the names used in the Portal and generated configuration.
 
 ## Prerequisites

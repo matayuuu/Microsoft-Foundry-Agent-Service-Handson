@@ -41,8 +41,8 @@ UI が利用できない根拠として解釈しないでください。
 |---|---|
 | リージョン | Japan East（既定）、Australia East、Central US。3つとも Agentic retrieval、Semantic ranker、Serverless preview 対応 |
 | Azure AI Search pricing model | Dedicated Basic（既定）。3 region で容量不足時は `--ai-search-serverless` で Serverless Developer preview |
-| Prompt / Hosted Agent、Foundry IQ | 共有の `gpt-5.6-luna` デプロイ。`primary_model_deployment_name` |
-| Lab 5 の設定可能な評価、Lab 6 の Agent Optimizer | 共有のoptional `gpt-5.5` デプロイ。`evaluation_model_deployment_name` / `optimizer_model_deployment_name`。未デプロイ時は Labs 5 / 6 をスキップ |
+| Prompt / Hosted Agent 本体 | 共有の `gpt-5.6-luna` デプロイ。`primary_model_deployment_name` |
+| Foundry IQ、Lab 5 の設定可能な評価、Lab 6 の Agent Optimizer | 共有の必須 `gpt-5.5` デプロイ。`evaluation_model_deployment_name` / `optimizer_model_deployment_name` |
 | 埋め込み | `text-embedding-3-small`、デプロイ名 `embedding` |
 | Search | Azure AI Search Basic 以上 |
 | ID | 参加者がworkload用RGを作成でき、作成した空のRGでOwnerであること。FoundryのロールはそのRG内で付与 |
@@ -65,10 +65,10 @@ Cloud Shell 固有の制約は2026-09-09取得の公式資料に基づきます�
 - モデルの役割は、**2026-09-06** に新しいポータルで確認しました。必須構成ではデプロイを
   厳密に 3 つ作成します。チャットモデルのバージョンと同一 SKU のクォータ確認情報は、
   事前チェックで取得し、固定値を使用したりモデル名から推測したりしません。
-  ナレッジベースでは Luna、Optimizerの2つのモデル選択ではGPT-5.5を選択します。
+  ナレッジベースと Optimizer の2つのモデル選択では GPT-5.5 を選択します。
   これらは確認したポータルでの観察結果であり、すべての Search API のモデル対応について
   一般化した主張ではありません。
-- GPT-5.5 は Lab 5 のルーブリック / 設定可能な LLM 評価と、Lab 6 の
+- GPT-5.5 は Foundry IQ、Lab 5 のルーブリック / 設定可能な LLM 評価、Lab 6 の
   Optimizer の2つのモデル選択に使用します。Violence など、
   サービスが管理する評価器は
   それぞれ固有のモデルを引き続き使用します。

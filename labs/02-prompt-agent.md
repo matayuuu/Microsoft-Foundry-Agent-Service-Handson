@@ -66,8 +66,8 @@ jq -r '
 
 通常、Model に選ぶ deployment 名は **`gpt-5.6-luna`** です。
 すでに選ばれていれば変更不要です。下側の **Models** は新しいモデルを選ぶための
-一覧なので、この演習では使いません。`gpt-5.5` は Lab 5 の評価と Lab 6 の
-Optimizer だけで使い、Agent と Foundry IQ には Luna を使います。
+一覧なので、この演習では使いません。`gpt-5.5` は Lab 3 の Foundry IQ、
+Lab 5 の評価、Lab 6 の Optimizer で使います。Agent 本体には Luna を使います。
 Luna が見つからない場合は、対象 project と setup の完了を確認してください。
 
 ## 3. 自動追加された Web search を外す

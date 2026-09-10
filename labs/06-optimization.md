@@ -30,23 +30,15 @@ jq -r '
 ' .workshop/context.json
 ```
 
-両方が `gpt-5.5` なら続行します。`null` の場合は GPT-5.5 のクォータ不足により
-optional deployment が省略されています。
-
-### GPT-5.5 が未デプロイの場合
-
-1. 追加のモデルはデプロイしません。
-2. 選んだ実行環境のファイルブラウザーで
-   `instructor/completed-run-assets/optimizer-run.simulated.json` を開きます。
-3. baseline と candidate の score、`instructions_diff_summary_ja` を比較し、
-   「すべての候補が baseline を下回る場合は現状維持」という判断基準を確認します。
-4. この Lab の live 実行を省略し、[Lab 7](07-agent-framework-harness.md) へ進みます。
+両方が `gpt-5.5` であることを確認します。この output は必須です。欠落している場合は、
+Lab 1 の preflight と setup を修復してから続行します。
 
 GPT-5.5 は2026-09-09時点の
 [Agent Optimizer の対応モデル](https://learn.microsoft.com/azure/foundry/agents/concepts/agent-optimizer-overview#models)
 に含まれます。デプロイ済みにもかかわらず Portal に
-**No supported optimization model** と表示される場合も、同じスキップ手順を使い、
-重複したモデルを追加しません。
+**No supported optimization model** と表示される場合は重複したモデルを追加せず、
+講師に共有して対応状況を確認します。参考結果の読み方は
+`instructor/completed-run-assets/optimizer-run.simulated.json` で確認できます。
 
 ## 1. Optimization wizard を開く
 

@@ -413,11 +413,6 @@ RESOLVED_LOCATION="$(jq -r '.resolved_location' "${PREFLIGHT_REPORT}")"
 EVALUATION_MODEL_VERSION="$(jq -r '.resolved_model_versions["gpt-5.5"] // empty' "${PREFLIGHT_REPORT}")"
 PRIMARY_MODEL_VERSION="$(jq -r '.resolved_model_versions["gpt-5.6-luna"] // empty' "${PREFLIGHT_REPORT}")"
 EMBEDDING_MODEL_VERSION="$(jq -r '.resolved_model_versions["text-embedding-3-small"] // empty' "${PREFLIGHT_REPORT}")"
-ENABLE_EVALUATION_MODEL="true"
-if [[ -z "${EVALUATION_MODEL_VERSION}" || "${EVALUATION_MODEL_VERSION}" == "null" ]]; then
-  ENABLE_EVALUATION_MODEL="false"
-  EVALUATION_MODEL_VERSION=""
-fi
 
 if [[ -z "${RESOLVED_LOCATION}" || "${RESOLVED_LOCATION}" == "null" ]]; then
   echo "${SCRIPT_NAME}: preflight did not resolve a usable region; aborting." >&2
@@ -427,6 +422,10 @@ if [[ -z "${PRIMARY_MODEL_VERSION}" || "${PRIMARY_MODEL_VERSION}" == "null" ]]; 
   echo "${SCRIPT_NAME}: preflight could not discover an available shared Luna (gpt-5.6-luna) model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
   exit 2
 fi
+if [[ -z "${EVALUATION_MODEL_VERSION}" || "${EVALUATION_MODEL_VERSION}" == "null" ]]; then
+  echo "${SCRIPT_NAME}: preflight could not discover an available shared GPT-5.5 model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
+  exit 2
+fi
 if [[ -z "${EMBEDDING_MODEL_VERSION}" || "${EMBEDDING_MODEL_VERSION}" == "null" ]]; then
   echo "${SCRIPT_NAME}: preflight could not discover an available embedding model version in ${RESOLVED_LOCATION}; aborting rather than guessing one." >&2
   exit 2
@@ -434,12 +433,7 @@ fi
 
 echo "    Resolved region: ${RESOLVED_LOCATION}" >&2
 echo "    Resolved shared Luna model version: ${PRIMARY_MODEL_VERSION}" >&2
-if [[ "${ENABLE_EVALUATION_MODEL}" == "true" ]]; then
-  echo "    Resolved optional GPT-5.5 evaluation/optimization model version: ${EVALUATION_MODEL_VERSION}" >&2
-else
-  echo "    WARNING: gpt-5.5 quota is unavailable; omitting the optional evaluation/optimization deployment." >&2
-  echo "    Skip Labs 5 and 6, then continue with the remaining Luna-based labs." >&2
-fi
+echo "    Resolved shared GPT-5.5 Foundry IQ/evaluation/optimization model version: ${EVALUATION_MODEL_VERSION}" >&2
 
 PYTHON_BIN="${WORKSHOP_PYTHON:-${REPO_ROOT}/.venv/bin/python}"
 if [[ ! -x "${PYTHON_BIN}" ]]; then
@@ -459,7 +453,6 @@ RESOLVED_INPUTS_JSON="$(jq -n \
   --arg travel_api_image_ref "${TRAVEL_API_IMAGE_REF}" \
   --arg travel_api_image_resolution "${TRAVEL_API_IMAGE_RESOLUTION}" \
   --arg evaluation_model_version "${EVALUATION_MODEL_VERSION}" \
-  --argjson enable_evaluation_model "${ENABLE_EVALUATION_MODEL}" \
   --arg primary_model_version "${PRIMARY_MODEL_VERSION}" \
   --arg embedding_model_version "${EMBEDDING_MODEL_VERSION}" \
   --arg source_base "${SOURCE_BASE}" \
@@ -474,7 +467,6 @@ RESOLVED_INPUTS_JSON="$(jq -n \
       search_pricing_model: $search_pricing_model,
       travel_api_image_ref: $travel_api_image_ref,
       travel_api_image_resolution: $travel_api_image_resolution,
-      enable_evaluation_model: $enable_evaluation_model,
       evaluation_model_version: $evaluation_model_version,
       primary_model_version: $primary_model_version,
       embedding_model_version: $embedding_model_version
@@ -496,7 +488,6 @@ TF_VAR_ARGS=(
   -var "search_pricing_model=${SEARCH_PRICING_MODEL}"
   -var "travel_api_image_ref=${TRAVEL_API_IMAGE_REF}"
   -var "source_base=${SOURCE_BASE}"
-  -var "enable_evaluation_model=${ENABLE_EVALUATION_MODEL}"
   -var "evaluation_model_version=${EVALUATION_MODEL_VERSION}"
   -var "primary_model_version=${PRIMARY_MODEL_VERSION}"
   -var "embedding_model_version=${EMBEDDING_MODEL_VERSION}"

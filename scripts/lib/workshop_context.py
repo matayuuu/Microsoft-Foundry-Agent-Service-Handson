@@ -90,8 +90,8 @@ def terraform_output(context: dict[str, Any], key: str) -> str:
     if value is None or value == "":
         raise WorkshopContextError(
             f"terraform output '{key}' is unavailable in .workshop/context.json. "
-            "The optional deployment was not provisioned; follow the lab's skip guidance "
-            "or re-run ./scripts/setup.sh after quota becomes available."
+            "This required output is empty; inspect the preflight report and re-run "
+            "./scripts/setup.sh after the model and quota requirements are satisfied."
         )
     return str(value)
 

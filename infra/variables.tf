@@ -117,8 +117,8 @@ variable "search_pricing_model" {
 # Model deployments
 #
 # Three deployments are provisioned on the Foundry AIServices account:
-#   1. primary model    -> gpt-5.6-luna (Prompt/Hosted Agent, Foundry IQ)
-#   2. evaluation model -> gpt-5.5 (optional; Lab 5 judges + Agent Optimizer)
+#   1. primary model    -> gpt-5.6-luna (Prompt/Hosted Agents)
+#   2. evaluation model -> gpt-5.5 (Foundry IQ, Lab 5 judges + Agent Optimizer)
 #   3. embedding model  -> text-embedding-3-small (Foundry IQ / Azure AI Search vectors)
 #
 # Exact version/SKU/capacity are overridable and MUST be checked by
@@ -128,7 +128,7 @@ variable "search_pricing_model" {
 # ---------------------------------------------------------------------------
 
 variable "primary_model_name" {
-  description = "Model name for the deployment shared by Prompt/Hosted Agents and Foundry IQ query planning."
+  description = "Model name for the deployment shared by Prompt and Hosted Agents."
   type        = string
   default     = "gpt-5.6-luna"
 }
@@ -145,42 +145,30 @@ variable "primary_model_sku" {
 }
 
 variable "primary_model_capacity" {
-  description = "Deployment capacity (TPM in thousands) shared by Prompt/Hosted Agents and Foundry IQ query planning."
+  description = "Deployment capacity (TPM in thousands) shared by Prompt and Hosted Agents."
   type        = number
   default     = 40
 }
 
-variable "enable_evaluation_model" {
-  description = "Whether to deploy the optional shared gpt-5.5 model used by Lab 5 evaluation judges and both Agent Optimizer model roles. setup.sh disables it when preflight cannot confirm quota so Labs 5 and 6 can be skipped while the remaining labs continue."
-  type        = bool
-  default     = false
-}
-
 variable "evaluation_model_name" {
-  description = "Model name for the optional deployment shared by configurable Lab 5 judges and Agent Optimizer evaluation/candidate generation."
+  description = "Model name for the required deployment shared by Foundry IQ, configurable Lab 5 judges, and Agent Optimizer evaluation/candidate generation."
   type        = string
   default     = "gpt-5.5"
 }
 
 variable "evaluation_model_version" {
-  description = "Model version for the optional evaluation/optimization deployment. setup.sh supplies the version discovered by preflight when enable_evaluation_model is true."
+  description = "Model version for the Foundry IQ/evaluation/optimization deployment. Required: setup.sh supplies the version discovered by preflight."
   type        = string
-  default     = ""
-
-  validation {
-    condition     = !var.enable_evaluation_model || length(trimspace(var.evaluation_model_version)) > 0
-    error_message = "evaluation_model_version must be set when enable_evaluation_model is true."
-  }
 }
 
 variable "evaluation_model_sku" {
-  description = "Deployment SKU for the optional evaluation/optimization model."
+  description = "Deployment SKU for the Foundry IQ/evaluation/optimization model."
   type        = string
   default     = "GlobalStandard"
 }
 
 variable "evaluation_model_capacity" {
-  description = "Deployment capacity (TPM in thousands) shared by Lab 5 configurable LLM judges and Agent Optimizer."
+  description = "Deployment capacity (TPM in thousands) shared by Foundry IQ, Lab 5 configurable LLM judges, and Agent Optimizer."
   type        = number
   default     = 100
 }

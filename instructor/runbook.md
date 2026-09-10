@@ -16,10 +16,10 @@
   2. 想定参加者・チーム数に対して `gpt-5.6-luna`（40K TPM/team）、`gpt-5.5`（100K TPM/team）、
      `text-embedding-3-small`（40K TPM/team）の model quota/capacity が対応 region の
      少なくとも一方で足りていること。
-     Luna は Prompt/Hosted Agent と Foundry IQ、GPT-5.5 は Lab 5 の評価と
+     Luna は Prompt/Hosted Agent 本体、GPT-5.5 は Foundry IQ、Lab 5 の評価、
      Lab 6 の Optimizer で共有します。
      最大 3 deployment を用途ごとに重複計上せず、初期容量で同時実行をリハーサルします。
-     GPT-5.5 は評価と最適化で共有するため、既定を100にしています。
+     GPT-5.5 は Foundry IQ、評価、最適化で共有するため、既定を100にしています。
      これは既存 quota 内での GlobalStandard throughput の割り当てであり、
      subscription quota 上限の引き上げや、固定額のトークン料金の購入ではありません。
      実際の利用には課金され、100 でも 429 がなくなる保証はないため、実環境で再確認します。
@@ -81,9 +81,9 @@
   Cloud Shell設定解除 → 自動作成された専用RG一式の削除を通し、workload用RGと
   事前からあるresourceが残ることを確認します。
   token、cookie、Jupyter runtime、Terraform state を画面共有や配布資料に含めません。
-- AgentとFoundry IQは`primary_model_deployment_name`（Luna）を使います。
-  Lab 5の設定可能なjudgeは`evaluation_model_deployment_name`、Lab 6の両モデル選択は
-  `optimizer_model_deployment_name`（いずれも同じGPT-5.5）を使います。
+- Agent 本体は`primary_model_deployment_name`（Luna）を使います。
+  Foundry IQ と Lab 5の設定可能なjudgeは`evaluation_model_deployment_name`、
+  Lab 6の両モデル選択は`optimizer_model_deployment_name`（いずれも同じGPT-5.5）を使います。
   Model catalog と Portal picker の対応は同一視せず、当日もそれぞれ確認します。
   サービス管理の Violence などには judge を指定しません。
 - Lab 5（評価）・Lab 6（Optimizer）・Lab 7（Harness Agent）・Lab 8（Hosted Agent デプロイ）を一度通しで
@@ -128,8 +128,8 @@
   （`primary_model_deployment_name`、`evaluation_model_deployment_name`、
   `optimizer_model_deployment_name`、
   `foundry_project_endpoint` などの出力が存在する）。
-- **GPT-5.5 不足時**: evaluation / optimizer の両outputが`null`でも構築成功です。
-  Labs 5 / 6をスキップし、Lab 7へ進みます。
+- **モデル確認**: 3モデルの output はすべて必須です。GPT-5.5 が欠落している場合は
+  Foundry IQ も実行できないため、preflight の失敗を解消してから続行します。
 - **つまずきやすい点**: `az login --use-device-code` のブラウザ承認忘れ、
   resource group 名の入力ミス。[docs/participant/troubleshooting.md](../docs/participant/troubleshooting.md)
   を画面共有できるようにしておく。
@@ -198,9 +198,6 @@ Cloud Shell は非対話20分で終了し得ます。Notebook を保存し、切
   を画面共有し、「本来この形の JSON が返ってくる」と説明したうえで、
   [labs/05-evaluation.md](../labs/05-evaluation.md) の `report_url` 以降の解説（Portal
   での結果確認の見方）に進む。実行自体は各自の宿題として案内する。
-- **GPT-5.5 未デプロイの場合**: Lab 5 の手動実行は省略し、completed-run-assets で
-  結果の読み方を説明する。Lab 6も省略し、Optimizerの参考結果を説明してLab 7へ進む。
-
 ### 02:35–02:55 Lab 6 — Agent Optimizer
 
 - **preview の注意喚起**: Optimizer は preview 機能で SLA なし、最適化中は実際に

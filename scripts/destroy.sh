@@ -27,6 +27,7 @@
 #                       [--source-base <url>]
 #                       [--ai-search-serverless]
 #                       [--primary-model-version <version>]
+#                       [--evaluation-model-version <version>]
 #                       [--embedding-model-version <version>] [--auto-approve]
 #
 # When inputs are omitted, they are read from .workshop/context.json. If setup
@@ -71,6 +72,8 @@ Options:
                                 when no setup context file is available.
   --primary-model-version <version>
                                 Same primary model version used at setup time.
+  --evaluation-model-version <version>
+                                Same GPT-5.5 model version used at setup time.
   --embedding-model-version <version>
                                 Same embedding model version used at setup time.
                                 These values default to .workshop/context.json
@@ -95,6 +98,7 @@ LOCATION=""
 SOURCE_BASE=""
 SEARCH_PRICING_MODEL=""
 PRIMARY_MODEL_VERSION=""
+EVALUATION_MODEL_VERSION=""
 EMBEDDING_MODEL_VERSION=""
 AUTO_APPROVE="false"
 
@@ -107,6 +111,7 @@ while [[ $# -gt 0 ]]; do
     --source-base) SOURCE_BASE="${2:-}"; shift 2 ;;
     --ai-search-serverless) SEARCH_PRICING_MODEL="serverless"; shift 1 ;;
     --primary-model-version) PRIMARY_MODEL_VERSION="${2:-}"; shift 2 ;;
+    --evaluation-model-version) EVALUATION_MODEL_VERSION="${2:-}"; shift 2 ;;
     --embedding-model-version) EMBEDDING_MODEL_VERSION="${2:-}"; shift 2 ;;
     --auto-approve) AUTO_APPROVE="true"; shift 1 ;;
     -h|--help) usage; exit 0 ;;
@@ -144,6 +149,7 @@ read_context_defaults() {
   [[ -z "${SOURCE_BASE}" ]] && SOURCE_BASE="$(jq -r '.source_base // empty' "${source_file}")"
   [[ -z "${SEARCH_PRICING_MODEL}" ]] && SEARCH_PRICING_MODEL="$(jq -r '.terraform_inputs.search_pricing_model // empty' "${source_file}")"
   [[ -z "${PRIMARY_MODEL_VERSION}" ]] && PRIMARY_MODEL_VERSION="$(jq -r '.terraform_inputs.primary_model_version // empty' "${source_file}")"
+  [[ -z "${EVALUATION_MODEL_VERSION}" ]] && EVALUATION_MODEL_VERSION="$(jq -r '.terraform_inputs.evaluation_model_version // empty' "${source_file}")"
   [[ -z "${EMBEDDING_MODEL_VERSION}" ]] && EMBEDDING_MODEL_VERSION="$(jq -r '.terraform_inputs.embedding_model_version // empty' "${source_file}")"
   return 0
 }
@@ -180,6 +186,10 @@ if [[ -z "${SEARCH_PRICING_MODEL}" ]]; then
 fi
 if [[ -z "${PRIMARY_MODEL_VERSION}" ]]; then
   echo "${SCRIPT_NAME}: could not resolve primary_model_version. Pass --primary-model-version or restore a setup context file; it has no Terraform default and must match what was applied." >&2
+  exit 1
+fi
+if [[ -z "${EVALUATION_MODEL_VERSION}" ]]; then
+  echo "${SCRIPT_NAME}: could not resolve evaluation_model_version. Pass --evaluation-model-version or restore a setup context file; it has no Terraform default and must match what was applied." >&2
   exit 1
 fi
 
@@ -242,8 +252,8 @@ TF_VAR_ARGS=(
   -var "travel_api_image_ref=${TRAVEL_API_IMAGE_REF}"
   -var "source_base=${SOURCE_BASE}"
   -var "search_pricing_model=${SEARCH_PRICING_MODEL}"
-  -var "enable_evaluation_model=false"
   -var "primary_model_version=${PRIMARY_MODEL_VERSION}"
+  -var "evaluation_model_version=${EVALUATION_MODEL_VERSION}"
 )
 if [[ -n "${EMBEDDING_MODEL_VERSION}" ]]; then
   TF_VAR_ARGS+=(-var "embedding_model_version=${EMBEDDING_MODEL_VERSION}")

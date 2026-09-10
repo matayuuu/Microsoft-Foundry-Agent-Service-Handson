@@ -27,7 +27,7 @@ jq -r '
       search_connection: "contoso-travel-search",
       policy_search_index: "contoso-travel-policy",
       approval_search_index: "contoso-travel-approval",
-      knowledge_model: .primary_model_deployment_name.value
+      knowledge_model: .evaluation_model_deployment_name.value
     }
 ' .workshop/context.json
 ```
@@ -35,14 +35,6 @@ jq -r '
 ## 1. Foundry IQ knowledge base を作成する
 
 Agent に接続する前に、**Build > Knowledge** で knowledge base を作成します。
-
-> [!IMPORTANT]
-> `.workshop/context.json` の `search_pricing_model` が `serverless` の場合、setup が
-> `contoso-travel-policy-source`、`contoso-travel-approval-source` と
-> `contoso-travel-knowledge-lab` を REST API で準備済みです。現在の Portal では
-> Serverless の index picker が paging パラメーターを渡さず、Luna も新規作成時の
-> model picker に表示されないためです。**Create a knowledge base** は選ばず、一覧で
-> knowledge base と2 source が **Active** であることを確認して手順2へ進みます。
 
 1. 左 navigation の **Build > Knowledge** を開きます。
 2. **Connection** に `contoso-travel-search` を選択します。
@@ -55,33 +47,15 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
    | 項目 | 値 |
    |---|---|
    | Name | `contoso-travel-knowledge-lab` |
-   | Chat completions model | `primary_model_deployment_name` の値（通常 `gpt-5.6-luna`） |
+   | Chat completions model | `evaluation_model_deployment_name` の値（通常 `gpt-5.5`） |
    | Retrieval reasoning effort | **Medium** |
    | Output mode | **Extractive data** |
 
    ![Foundry IQ knowledge base の基本設定](../docs/images/lab03-knowledge-base.png)
 
-**Chat completions model** は **Deployments** の `gpt-5.6-luna` を選びます。
+**Chat completions model** は **Deployments** の `gpt-5.5` を選びます。
 **Retrieval reasoning effort** は初期値の Minimal から **Medium** に変更します。
 **Description** と **Retrieval instructions** は、この演習では空のままで構いません。
-
-> [!NOTE]
-> Dedicated Search でも、Portal の model picker にデプロイ済みの Luna が出ない場合が
-> あります（2026-09-10 の実機確認）。GPT-5.5 への変更やモデルの追加はせず、作成画面を
-> **Cancel** で閉じます。選んだ実行環境の repository root の Terminal で次を実行し、
-> 一覧を再読み込みしてください。
->
-> ```bash
-> bash scripts/prepare_serverless_foundry_iq.sh --terraform-outputs .workshop/context.json
-> ```
->
-> スクリプト名は旧 Serverless 手順との互換性のための名前ですが、Dedicated でも使えます。
-> このハンズオン専用の knowledge base と、`contoso-travel-policy-source` /
-> `contoso-travel-approval-source` を準備します。Luna、Medium、Extractive data は上の設定と
-> 同じです。既に編集した同名の knowledge base を上書きする目的では使わないでください。
-> 成功後は source と knowledge base の **Active** を確認し、手順2へ進みます。
-> [公式の対応モデルと API](https://learn.microsoft.com/azure/search/agentic-retrieval-how-to-create-knowledge-base#supported-models)
-> に従い、認証は Microsoft Entra ID のままです。
 
 5. **Knowledge sources (Foundry IQ) > Add sources > Azure AI Search Index** を選択します。
 

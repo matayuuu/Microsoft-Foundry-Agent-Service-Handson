@@ -248,13 +248,13 @@ def test_primary_model_version_has_no_default() -> None:
     assert "default" not in match.group(1)
 
 
-def test_optional_evaluation_model_requires_a_version_only_when_enabled() -> None:
+def test_evaluation_model_version_is_required() -> None:
     text = _read("variables.tf")
 
     match = re.search(r'variable\s+"evaluation_model_version"\s*\{(.*?)\n\}', text, re.DOTALL)
     assert match is not None
-    assert 'default     = ""' in match.group(1)
-    assert "!var.enable_evaluation_model" in match.group(1)
+    assert "default" not in match.group(1)
+    assert "enable_evaluation_model" not in _all_tf_text()
 
 
 @pytest.mark.parametrize(
@@ -288,8 +288,6 @@ def test_model_defaults_deployment_ids_and_output_keys_agree(
     assert deployment_block is not None
     assert re.search(rf'name\s*=\s*"{deployment}"', deployment_block.group(1))
     address = f"azapi_resource.{role}_model_deployment"
-    if role == "evaluation":
-        address += r"\[0\]"
     recovery_block = re.search(
         rf'address\s*=\s*"{address}"(.*?)\n\s*\}}',
         _read("state_recovery.tf"),
@@ -320,7 +318,18 @@ def test_three_declared_model_deployments_and_shared_optimizer_output_alias() ->
         re.DOTALL,
     )
     assert optimizer_output is not None
-    assert "evaluation_model_deployment[0].name" in optimizer_output.group(1)
+    assert "evaluation_model_deployment.name" in optimizer_output.group(1)
+    assert "try(" not in optimizer_output.group(1)
+    evaluation_resource = re.search(
+        r'resource "azapi_resource" "evaluation_model_deployment" \{(.*?)\n\}',
+        _read("foundry_deployments.tf"),
+        re.DOTALL,
+    )
+    assert evaluation_resource is not None
+    assert re.search(r"^\s*count\s*=", evaluation_resource.group(1), re.MULTILINE) is None
+    deployments_text = _read("foundry_deployments.tf")
+    assert "from = azapi_resource.evaluation_model_deployment[0]" in deployments_text
+    assert "to   = azapi_resource.evaluation_model_deployment" in deployments_text
 
 
 def test_tfvars_example_requires_discovered_chat_versions() -> None:

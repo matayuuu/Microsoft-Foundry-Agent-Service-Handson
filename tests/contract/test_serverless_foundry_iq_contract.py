@@ -20,7 +20,7 @@ def test_serverless_foundry_iq_uses_preview_api_and_keyless_auth() -> None:
     assert "--connect-timeout 15 --max-time 90" in text
 
 
-def test_serverless_foundry_iq_prepares_sources_luna_base_and_smoke_retrieve() -> None:
+def test_serverless_foundry_iq_prepares_sources_gpt55_base_and_smoke_retrieve() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
 
     for expected in (
@@ -29,7 +29,7 @@ def test_serverless_foundry_iq_prepares_sources_luna_base_and_smoke_retrieve() -
         "contoso-travel-policy",
         "contoso-travel-approval",
         "contoso-travel-knowledge-lab",
-        'modelName: "gpt-5.6-luna"',
+        'modelName: "gpt-5.5"',
         "knowledgebases",
         "/retrieve?api-version=",
         "maxOutputSize: 100000",
@@ -46,7 +46,7 @@ def test_foundry_iq_fallback_accepts_completed_workshop_context() -> None:
     for output in (
         "search_service_endpoint",
         "openai_endpoint",
-        "primary_model_deployment_name",
+        "evaluation_model_deployment_name",
     ):
         assert f"(.terraform_outputs // .).{output}.value // empty" in text
 

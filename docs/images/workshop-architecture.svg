@@ -232,7 +232,7 @@
     </g>
     <g transform="translate(750 397)">
       <rect width="110" height="26" rx="13" fill="#F0EDFC"/><text x="55" y="17" text-anchor="middle" class="chip">gpt-5.5</text>
-      <text x="55" y="43" text-anchor="middle" class="caption">Eval · Optimizer</text>
+      <text x="55" y="43" text-anchor="middle" class="caption">IQ · Eval · Optimizer</text>
     </g>
     <g transform="translate(870 397)">
       <rect width="122" height="26" rx="13" fill="#EAF9F7"/><text x="61" y="17" text-anchor="middle" class="chip">embedding</text>

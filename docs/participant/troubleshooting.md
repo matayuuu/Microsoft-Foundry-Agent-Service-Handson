@@ -97,8 +97,8 @@ Serverless は従量課金で SLA がなく、Dedicated との相互移行もで
 ### Foundry IQ のモデルを選べない
 
 Portal のモデル選択欄に表示されるデプロイを選びます。このハンズオンでは
-`.workshop/context.json` の `primary_model_deployment_name` を使います。
-通常は `gpt-5.6-luna` です。評価専用の `gpt-5.5` は選びません。
+`.workshop/context.json` の `evaluation_model_deployment_name` を使います。
+通常は `gpt-5.5` です。Agent 本体に使う `gpt-5.6-luna` は選びません。
 エージェントのモデル選択欄に表示されるデプロイが、IQ の選択欄にも表示されるとは限りません。
 
 ### Web search などが最初から追加されている
@@ -291,8 +291,8 @@ Lab 5 ではこの変更を保存したエージェントのバージョンを�
 
 **Optimize** tab に **No supported optimization model** が表示される場合は、
 `.workshop/context.json` の `optimizer_model_deployment_name` が `gpt-5.5` か確認します。
-`null` の場合はクォータ不足により省略されています。
-[Lab 6](../../labs/06-optimization.md) のスキップ手順に従ってください。
+この output は必須です。`null` または欠落している場合は setup が不完全なので、
+preflight の3モデルの結果を講師と確認し、環境を修復してから続行します。
 
 GPT-5.5 がデプロイ済みで、run を開始した後に候補が生成されない場合だけ、次を確認します。
 `.workshop/context.json` の `optimizer_model_deployment_name` の値を
@@ -302,10 +302,10 @@ GPT-5.5 がデプロイ済みで、run を開始した後に候補が生成さ�
 
 ### 評価モデルとエージェントのモデルが違う
 
-この教材では意図した設定です。回答する Prompt / Hosted Agent と Foundry IQ は
-`gpt-5.6-luna` を使います。
-`gpt-5.5` は Lab 5 の設定可能な LLM judge と、Lab 6 の **Evaluation model** /
-**Optimization model** に使います。Agent本体のモデルはLunaのまま変更しません。
+この教材では意図した設定です。回答する Prompt / Hosted Agent 本体は
+`gpt-5.6-luna` を使います。`gpt-5.5` は Foundry IQ、Lab 5 の設定可能な
+LLM judge、Lab 6 の **Evaluation model** / **Optimization model** に使います。
+Agent 本体のモデルは Luna のまま変更しません。
 
 ## Hosted Agent
 

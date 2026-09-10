@@ -46,9 +46,9 @@ done
 
 SEARCH_ENDPOINT="$(jq -r '(.terraform_outputs // .).search_service_endpoint.value // empty' "${TERRAFORM_OUTPUTS}")"
 OPENAI_ENDPOINT="$(jq -r '(.terraform_outputs // .).openai_endpoint.value // empty' "${TERRAFORM_OUTPUTS}")"
-MODEL_DEPLOYMENT="$(jq -r '(.terraform_outputs // .).primary_model_deployment_name.value // empty' "${TERRAFORM_OUTPUTS}")"
+MODEL_DEPLOYMENT="$(jq -r '(.terraform_outputs // .).evaluation_model_deployment_name.value // empty' "${TERRAFORM_OUTPUTS}")"
 if [[ -z "${SEARCH_ENDPOINT}" || -z "${OPENAI_ENDPOINT}" || -z "${MODEL_DEPLOYMENT}" ]]; then
-  echo "${SCRIPT_NAME}: terraform outputs are missing Search, OpenAI, or primary model values" >&2
+  echo "${SCRIPT_NAME}: terraform outputs are missing Search, OpenAI, or GPT-5.5 model values" >&2
   exit 1
 fi
 MODEL_RESOURCE_URI="${OPENAI_ENDPOINT%/openai/v1/}"
@@ -128,7 +128,7 @@ KNOWLEDGE_BASE_PAYLOAD="$(jq -nc \
       azureOpenAIParameters: {
         resourceUri: $resource_uri,
         deploymentId: $deployment,
-        modelName: "gpt-5.6-luna"
+        modelName: "gpt-5.5"
       }
     }],
     retrievalReasoningEffort: {kind: "medium"},

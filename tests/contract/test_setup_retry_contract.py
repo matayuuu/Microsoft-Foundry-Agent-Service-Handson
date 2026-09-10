@@ -292,7 +292,7 @@ def test_setup_persists_cleanup_inputs_before_terraform_can_create_resources() -
 @pytest.mark.parametrize(
     "missing_model", [None, "gpt-5.6-luna", "gpt-5.5", "text-embedding-3-small"]
 )
-def test_setup_uses_discovered_versions_and_omits_only_optional_gpt55(
+def test_setup_requires_all_discovered_model_versions(
     tmp_path: Path, missing_model: str | None
 ) -> None:
     versions = {
@@ -352,7 +352,7 @@ def test_setup_uses_discovered_versions_and_omits_only_optional_gpt55(
     )
     workshop_dir = scripts_dir.parent / ".workshop"
     recovery_path = workshop_dir / "terraform-inputs.json"
-    if missing_model in {"gpt-5.6-luna", "text-embedding-3-small"}:
+    if missing_model:
         assert result.returncode == 2, result.stderr
         assert "aborting rather than guessing" in result.stderr
         assert not recovery_path.exists()
@@ -364,18 +364,12 @@ def test_setup_uses_discovered_versions_and_omits_only_optional_gpt55(
         assert recovery["terraform_inputs"]["search_pricing_model"] == "dedicated"
         arguments = (workshop_dir / "model-args.txt").read_text(encoding="utf-8").splitlines()
         assert "search_pricing_model=dedicated" in arguments
-        for role in ("primary", "embedding"):
+        for role in ("primary", "evaluation", "embedding"):
             version = f"fixture-{role}-version"
             assert recovery["terraform_inputs"][f"{role}_model_version"] == version
             assert f"{role}_model_version={version}" in arguments
-        evaluation_enabled = missing_model != "gpt-5.5"
-        expected_evaluation_version = "fixture-evaluation-version" if evaluation_enabled else ""
-        assert recovery["terraform_inputs"]["enable_evaluation_model"] is evaluation_enabled
-        assert (
-            recovery["terraform_inputs"]["evaluation_model_version"] == expected_evaluation_version
-        )
-        assert f"enable_evaluation_model={str(evaluation_enabled).lower()}" in arguments
-        assert f"evaluation_model_version={expected_evaluation_version}" in arguments
+        assert "enable_evaluation_model" not in recovery["terraform_inputs"]
+        assert not any("enable_evaluation_model=" in argument for argument in arguments)
 
 
 def test_setup_exposes_ai_search_serverless_option() -> None:

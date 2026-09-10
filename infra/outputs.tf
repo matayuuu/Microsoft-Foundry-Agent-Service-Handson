@@ -42,13 +42,13 @@ output "primary_model_deployment_name" {
 }
 
 output "evaluation_model_deployment_name" {
-  description = "Optional shared gpt-5.5 deployment used by Lab 5 evaluation judges and Agent Optimizer; null when quota was unavailable during setup."
-  value       = try(azapi_resource.evaluation_model_deployment[0].name, null)
+  description = "Required shared gpt-5.5 deployment used by Foundry IQ, Lab 5 evaluation judges, and Agent Optimizer."
+  value       = azapi_resource.evaluation_model_deployment.name
 }
 
 output "optimizer_model_deployment_name" {
-  description = "Alias for the optional shared gpt-5.5 deployment used as both the Agent Optimizer evaluation and optimization model."
-  value       = try(azapi_resource.evaluation_model_deployment[0].name, null)
+  description = "Alias for the required shared gpt-5.5 deployment used as both the Agent Optimizer evaluation and optimization model."
+  value       = azapi_resource.evaluation_model_deployment.name
 }
 
 output "embedding_model_deployment_name" {

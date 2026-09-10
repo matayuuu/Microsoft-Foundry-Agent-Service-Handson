@@ -64,12 +64,11 @@ API が返す費用内訳と合計を確認します。これは**学ぶ内容�
   リモート環境で生成した素材は先にダウンロードします。
 
 モデルは合計 **3 deployment**（モデルを呼び出すための配置単位）です。
-**Luna（`gpt-5.6-luna`）** は Prompt / Hosted Agent と Foundry IQ で共有します。
-**GPT-5.5（`gpt-5.5`）** は Lab 5 の設定可能な評価 judge と、
+**Luna（`gpt-5.6-luna`）** は Prompt / Hosted Agent 本体で共有します。
+**GPT-5.5（`gpt-5.5`）** は Foundry IQ、Lab 5 の設定可能な評価 judge、
 Lab 6 の Evaluation / Optimization model で共有します。
 文書検索用の **`text-embedding-3-small`** は文章を検索用の数値に変換します。
-GPT-5.5 のクォータが間に合わない場合はそのデプロイと Lab 5 / 6 を省略し、
-Luna を使うほかの Lab は完遂できます。
+3モデルすべての `GlobalStandard` SKU と必要容量が、ハンズオン全体の必須条件です。
 選択する名前と役割は [Lab 0](labs/00-overview.md) で確認します。
 
 ## 参加条件

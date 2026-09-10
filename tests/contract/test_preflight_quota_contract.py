@@ -13,14 +13,12 @@ entries key on `name.value` matching that exact usageName string and report
 They assert the behaviors AGENTS.md and the follow-up hardening pass require:
 
 * The specific SKU (GlobalStandard for all three deployments) and per-model
-  capacity (40/100/40, matching infra/variables.tf) are what gates region
-  resolution for required models and optional GPT-5.5 availability.
+  capacity (40/100/40, matching infra/variables.tf) gate region resolution.
 * `usageName` is read from the model's own `skus[]` entry, never
   reconstructed from the model name. Synthetic aliases retain the historic
   gpt-4.1 missing-hyphen regression without claiming Luna's live quota name.
-* A region is resolved only when every required Luna/embedding usageName
-  bucket has enough headroom. Missing GPT-5.5 capacity leaves its resolved
-  version empty and produces a warning without blocking the remaining labs.
+* A region is resolved only when every required Luna/GPT-5.5/embedding
+  usageName bucket has enough headroom.
 * The report surfaces per-model SKU/usageName/capacity evidence.
 
 Requires `bash` and `jq` on PATH; skipped automatically otherwise (this
@@ -179,7 +177,7 @@ FULL_MODELS_FIXTURE = [
     ),
 ]
 
-# Same three models, but the optional evaluation model never exposes a
+# Same three models, but the required GPT-5.5 model never exposes a
 # GlobalStandard SKU in this fake region.
 MODELS_MISSING_GPT55_SKU_FIXTURE = [
     _model_entry(
@@ -462,10 +460,10 @@ def test_fails_without_resolving_when_no_region_has_sufficient_capacity(
     assert report["overall_status"] == "fail"
 
 
-def test_optional_gpt55_sku_shortfall_warns_without_blocking_region_resolution(
+def test_required_gpt55_sku_shortfall_blocks_region_resolution(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    """GPT-5.5 exposes only Standard, so setup must continue without its optional deployment."""
+    """GPT-5.5 exposes only Standard, so no region can satisfy the workshop."""
     report = _run_preflight(
         fake_az_bin,
         tmp_path,
@@ -485,17 +483,17 @@ def test_optional_gpt55_sku_shortfall_warns_without_blocking_region_resolution(
         },
     )
 
-    assert report["resolved_location"] == "eastus2"
-    assert report["overall_status"] == "warn"
+    assert report["resolved_location"] == ""
+    assert report["overall_status"] == "fail"
     assert report["resolved_model_versions"][EVALUATION_MODEL] == ""
     sku_checks = [
         c for c in report["checks"] if c["name"].startswith(f"model-sku:{EVALUATION_MODEL}/")
     ]
-    assert sku_checks, "expected an explicit GPT-5.5 model-sku warning"
-    assert all(c["status"] == "warn" for c in sku_checks)
+    assert sku_checks, "expected an explicit GPT-5.5 model-sku failure"
+    assert all(c["status"] == "fail" for c in sku_checks)
 
 
-def test_optional_gpt55_quota_shortfall_prefers_region_that_can_run_all_labs(
+def test_required_gpt55_quota_shortfall_falls_back_to_sufficient_region(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
     report = _run_preflight(
@@ -523,7 +521,7 @@ def test_optional_gpt55_quota_shortfall_prefers_region_that_can_run_all_labs(
     gpt55_check = next(
         c for c in report["checks"] if c["name"] == f"quota-usage:{EVALUATION_MODEL}/eastus2"
     )
-    assert gpt55_check["status"] == "warn"
+    assert gpt55_check["status"] == "fail"
     assert "headroom=99K" in gpt55_check["detail"]
     assert "< required 100K" in gpt55_check["detail"]
 
@@ -558,7 +556,7 @@ def test_fails_when_usage_list_call_itself_fails_rather_than_assuming_sufficient
     statuses = {c["name"]: c["status"] for c in eastus2_checks}
     assert statuses[f"quota-usage:{PRIMARY_MODEL}/eastus2"] == "fail"
     assert statuses["quota-usage:text-embedding-3-small/eastus2"] == "fail"
-    assert statuses[f"quota-usage:{EVALUATION_MODEL}/eastus2"] == "warn"
+    assert statuses[f"quota-usage:{EVALUATION_MODEL}/eastus2"] == "fail"
     assert report["overall_status"] == "pass"
 
 
@@ -591,7 +589,7 @@ def test_unused_fallback_failure_does_not_fail_successful_preferred_region(
         for check in report["checks"]
         if check["name"] == f"model-sku:{EVALUATION_MODEL}/swedencentral"
     )
-    assert fallback_check["status"] == "warn"
+    assert fallback_check["status"] == "fail"
 
 
 def test_resolves_the_sku_supporting_version_not_the_highest_overall_version(
@@ -693,7 +691,7 @@ def test_legacy_primary_model_does_not_satisfy_current_deployment_requirements(
     assert check["status"] == "fail"
 
 
-def test_missing_optional_gpt55_preserves_core_workshop_path(
+def test_missing_required_gpt55_blocks_workshop_region_resolution(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
     models = json.loads(json.dumps(FULL_MODELS_FIXTURE))
@@ -709,8 +707,8 @@ def test_missing_optional_gpt55_preserves_core_workshop_path(
         },
     )
 
-    assert report["overall_status"] == "warn"
-    assert report["resolved_location"] == "eastus2"
+    assert report["overall_status"] == "fail"
+    assert report["resolved_location"] == ""
     assert report["resolved_model_versions"][EVALUATION_MODEL] == ""
     check = next(c for c in report["checks"] if c["name"] == f"model:{EVALUATION_MODEL}/eastus2")
-    assert check["status"] == "warn"
+    assert check["status"] == "fail"

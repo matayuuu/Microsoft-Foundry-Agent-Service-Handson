@@ -30,15 +30,13 @@ locals {
       owner_id          = local.ai_services_id
       owner_api_version = "2026-05-01"
     },
-    ], var.enable_evaluation_model ? [
     {
-      address           = "azapi_resource.evaluation_model_deployment[0]"
+      address           = "azapi_resource.evaluation_model_deployment"
       id                = "${local.ai_services_id}/deployments/gpt-5.5"
       api_version       = "2026-05-01"
       owner_id          = local.ai_services_id
       owner_api_version = "2026-05-01"
     },
-    ] : [], [
     {
       address           = "azapi_resource.embedding_model_deployment"
       id                = "${local.ai_services_id}/deployments/embedding"

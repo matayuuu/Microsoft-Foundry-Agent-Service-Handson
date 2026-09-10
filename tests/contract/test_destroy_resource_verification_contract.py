@@ -172,7 +172,6 @@ def fixture_repo(tmp_path: Path) -> Path:
         "terraform_inputs": {
             "travel_api_image_ref": "ghcr.io/example/travel-ops-api@sha256:" + "0" * 64,
             "search_pricing_model": "dedicated",
-            "enable_evaluation_model": True,
             "evaluation_model_version": "fixture-evaluation-version",
             "primary_model_version": "fixture-primary-version",
             "embedding_model_version": "1",
@@ -298,6 +297,8 @@ def test_cli_overrides_recover_partial_setup_without_context_files(fixture_repo:
             "https://github.com/example/workshop/blob/main",
             "--primary-model-version",
             "fixture-primary-version",
+            "--evaluation-model-version",
+            "fixture-evaluation-version",
             "--embedding-model-version",
             "1",
             "--auto-approve",

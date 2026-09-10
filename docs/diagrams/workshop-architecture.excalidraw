@@ -213,7 +213,7 @@
       "y": 395,
       "width": 550,
       "height": 65,
-      "text": "Model deployments\nprimary · gpt-5.6-luna     evaluation · gpt-5.5     embedding\nAgents / IQ                    Eval / Optimizer          Search vectors",
+      "text": "Model deployments\nprimary · gpt-5.6-luna     evaluation · gpt-5.5     embedding\nAgents                         IQ / Eval / Optimizer     Search vectors",
       "fontSize": 14,
       "fontFamily": 2,
       "strokeColor": "#000000",
