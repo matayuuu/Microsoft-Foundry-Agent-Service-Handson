@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "8235361334062801107"
+      "templateHash": "9586958156810858396"
     },
     "description": "Deploy the Foundry workshop into the dedicated resource group already created in Azure Portal."
   },
@@ -416,8 +416,7 @@
         "accessPolicies": [],
         "publicNetworkAccess": "Enabled",
         "enableSoftDelete": true,
-        "softDeleteRetentionInDays": 7,
-        "enablePurgeProtection": false
+        "softDeleteRetentionInDays": 7
       }
     },
     {

@@ -371,7 +371,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
     publicNetworkAccess: 'Enabled'
     enableSoftDelete: true
     softDeleteRetentionInDays: 7
-    enablePurgeProtection: false
+    // Omit purge protection; the service rejects an explicit false value.
   }
 }
 

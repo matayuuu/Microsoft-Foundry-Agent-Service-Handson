@@ -601,7 +601,7 @@ def test_aml_storage_is_private_oauth_default_without_breaking_shared_key_compat
     assert vault["properties"]["accessPolicies"] == []
     assert vault["properties"]["publicNetworkAccess"] == "Enabled"
     assert vault["properties"]["softDeleteRetentionInDays"] == 7
-    assert vault["properties"]["enablePurgeProtection"] is False
+    assert "enablePurgeProtection" not in vault["properties"]
     workspace = resource(template, AML)
     assert workspace["apiVersion"] == "2025-06-01"
     assert workspace["sku"] == {"name": "Basic", "tier": "Basic"}

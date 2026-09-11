@@ -77,6 +77,9 @@ non-immutable image and source inputs before they can be consumed.
   Policy citations use the same immutable `sourceRevision` as bootstrap.
 - Azure ML workspace with Storage, Key Vault and the same Application Insights.
   No Compute instance is created; participants create Compute in Lab 7.
+  Key Vault retains soft delete with seven-day retention. The optional
+  `enablePurgeProtection` property is omitted: the service rejects an explicit
+  `false`, and enabling irreversible purge protection is not a deployment workaround.
 - No Cosmos DB, capability host, ACR, virtual network or private endpoint.
 
 Azure ML backing Storage deliberately keeps `allowSharedKeyAccess: true` for
