@@ -84,7 +84,9 @@ Lab 7 の環境準備（Compute / folder upload / `00-azureml-setup.ipynb`）は
 ## 2. Hosted Agent を deploy する
 
 Notebook と contract test を確認後、同じ Notebook の **Python (Foundry Hosted Agent)**
-kernel で deploy cell を実行します。Lab 1 の template を再実行する操作ではありません。
+kernel で管理用コマンドの準備セルと deploy cell を実行し、確認欄に **DEPLOY** と入力します。
+セルは管理用の `foundry-workshop` 環境を呼び出すため、SDK を混在させません。
+Lab 1 の template を再実行する操作ではありません。
 
 Script は次を行います。
 
@@ -96,7 +98,9 @@ Script は次を行います。
 5. trace 送信用の **Monitoring Metrics Publisher** を resource scope で付与
 6. `active` または `failed` になるまで有限時間で待機
 
-Docker、ACR、追加の sign-in は不要です。次の値が返れば deploy 完了です。
+Docker、ACR は不要です。認証が必要な場合は
+[Azure ML の認証手順](../docs/participant/environments/azure-ml.md#4-認証が必要な場合)に従います。
+次の値が返れば deploy 完了です。
 
 ```json
 {

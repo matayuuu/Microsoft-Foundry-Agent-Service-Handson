@@ -20,8 +20,8 @@ ZIP のままではなく、隠しフォルダー `.workshop` を含む全体を
 
 1. `notebooks/00-azureml-setup.ipynb` を **Python 3.10 - SDK v2** で開き、セルを上から実行します。
 2. 画面を更新し、次の 2 つが選べることを確認します。
-   - **Python (Foundry Workshop)**
-   - **Python (Foundry Hosted Agent)**
+   - **Python (Foundry Workshop)**：Python 3.12、管理用 SDK
+   - **Python (Foundry Hosted Agent)**：Python 3.13、Hosted Agent 用 SDK
 3. **Labs 7〜8 は Python (Foundry Hosted Agent)** を選びます。
 
 エラーのセルを飛ばさないでください。再起動後は、必要なセルを上から実行し直します。

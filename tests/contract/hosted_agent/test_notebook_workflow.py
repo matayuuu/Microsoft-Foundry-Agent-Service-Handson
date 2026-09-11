@@ -106,6 +106,7 @@ def notebook_namespace(
         "credential": credential,
         "displayed": displayed,
         "policy_tool": _policy_lookup,
+        "input": lambda _: "",
     }
 
 

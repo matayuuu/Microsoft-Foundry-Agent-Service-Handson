@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -46,7 +47,10 @@ def test_command_builders_pin_python_and_dependency_boundaries() -> None:
     hosted = setup_azureml.hosted_install_command("conda")
     graphviz = setup_azureml.graphviz_install_command("conda")
 
-    assert "python=3.10" in create
+    assert "python=3.12" in create
+    assert "python=3.13" in setup_azureml.conda_create_command(
+        "conda", setup_azureml.HOSTED_ENVIRONMENT
+    )
     assert "--editable" in workshop
     assert workshop[3] == "foundry-workshop"
     assert any(item.endswith("[dev]") and "travel-api" not in item for item in workshop)
@@ -124,3 +128,29 @@ def test_setup_refuses_unknown_channel_in_existing_owned_environment(tmp_path: P
     with pytest.raises(setup_azureml.AzureMLSetupError, match="channel marker"):
         setup_azureml.ensure_environments(runner, conda="conda", jupyter="jupyter")
     assert runner.commands == []
+
+
+def test_setup_refuses_old_python_in_existing_owned_environment(tmp_path: Path) -> None:
+    runner = FakeRunner(tmp_path)
+    spec = setup_azureml.WORKSHOP_ENVIRONMENT
+    path = tmp_path / "envs" / spec.name
+    path.mkdir(parents=True)
+    marker = {**setup_azureml._marker_payload(spec), "python": "3.10"}
+    (path / setup_azureml.MARKER_NAME).write_text(json.dumps(marker), encoding="utf-8")
+    runner.envs[spec.name] = path
+
+    with pytest.raises(setup_azureml.AzureMLSetupError, match="Python"):
+        setup_azureml.ensure_environments(runner, conda="conda", jupyter="jupyter")
+    assert runner.commands == []
+
+
+def test_subprocess_errors_are_visible_in_notebook_stdout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert kwargs["stderr"] == subprocess.STDOUT
+        return subprocess.CompletedProcess(command, 1)
+
+    monkeypatch.setattr(setup_azureml.subprocess, "run", run)
+    with pytest.raises(setup_azureml.AzureMLSetupError, match="exit code 1"):
+        setup_azureml.SubprocessRunner().run(["conda", "create"])

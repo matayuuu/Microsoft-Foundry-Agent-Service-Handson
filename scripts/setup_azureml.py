@@ -21,7 +21,6 @@ from typing import Any, Protocol
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MARKER_NAME = ".foundry-workshop-environment.json"
-PYTHON_VERSION = "3.10"
 CONDA_CHANNEL = "conda-forge"
 
 
@@ -34,17 +33,20 @@ class EnvironmentSpec:
     name: str
     display_name: str
     purpose: str
+    python_version: str
 
 
 WORKSHOP_ENVIRONMENT = EnvironmentSpec(
     name="foundry-workshop",
     display_name="Python (Foundry Workshop)",
     purpose="root-management-tooling",
+    python_version="3.12",
 )
 HOSTED_ENVIRONMENT = EnvironmentSpec(
     name="foundry-hosted-agent",
     display_name="Python (Foundry Hosted Agent)",
     purpose="hosted-agent-development",
+    python_version="3.13",
 )
 ENVIRONMENTS = (WORKSHOP_ENVIRONMENT, HOSTED_ENVIRONMENT)
 
@@ -57,7 +59,7 @@ class Runner(Protocol):
 
 class SubprocessRunner:
     def run(self, command: Sequence[str]) -> None:
-        completed = subprocess.run(command, cwd=REPO_ROOT, check=False)
+        completed = subprocess.run(command, cwd=REPO_ROOT, stderr=subprocess.STDOUT, check=False)
         if completed.returncode:
             raise AzureMLSetupError(
                 f"command failed with exit code {completed.returncode}: {' '.join(command)}"
@@ -93,7 +95,7 @@ def conda_create_command(conda: str, spec: EnvironmentSpec) -> list[str]:
         CONDA_CHANNEL,
         "--name",
         spec.name,
-        f"python={PYTHON_VERSION}",
+        f"python={spec.python_version}",
         "pip",
         "ipykernel",
     ]
@@ -181,7 +183,7 @@ def _marker_payload(spec: EnvironmentSpec) -> dict[str, str]:
         "owner": "microsoft-foundry-agent-service-handson",
         "name": spec.name,
         "purpose": spec.purpose,
-        "python": PYTHON_VERSION,
+        "python": spec.python_version,
         "channel": CONDA_CHANNEL,
     }
 
@@ -204,7 +206,8 @@ def _verify_or_mark_new_environment(
         ) from exc
     if actual != expected:
         raise AzureMLSetupError(
-            f"Conda environment {spec.name!r} has an incompatible ownership or channel marker; "
+            f"Conda environment {spec.name!r} has an incompatible ownership, "
+            "Python, or channel marker; "
             "refusing to mix environments. Use a clean Azure ML Compute instance."
         )
 
