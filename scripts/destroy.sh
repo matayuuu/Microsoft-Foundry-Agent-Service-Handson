@@ -36,8 +36,8 @@
 set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 INFRA_DIR="${REPO_ROOT}/infra"
 WORKSHOP_DIR="${REPO_ROOT}/.workshop"
 CONTEXT_FILE="${WORKSHOP_DIR}/context.json"

@@ -52,6 +52,15 @@ def test_setup_requires_activated_cloud_shell_before_preflight() -> None:
     assert guard < preflight
 
 
+def test_cloud_shell_entrypoints_compare_physical_repository_paths() -> None:
+    for name in ("setup.sh", "destroy.sh"):
+        text = (REPO_ROOT / "scripts" / name).read_text(encoding="utf-8")
+        assert 'REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"' in text
+
+    common = (REPO_ROOT / "scripts" / "cloud-shell-common.sh").read_text(encoding="utf-8")
+    assert 'repo="$(cd "$requested_repo" && pwd -P)"' in common
+
+
 def test_provisioning_openai_dependency_matches_azure_ai_projects() -> None:
     text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
 

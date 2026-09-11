@@ -10,13 +10,17 @@ cloud_shell_venv_directory() {
 }
 
 cloud_shell_guard() {
-  local repo="$1"
-  local venv_python
+  local requested_repo="$1"
+  local repo venv_python
   shift
   if ! cloud_shell_is_azure_cloud_shell; then
     printf '%s\n' "Cloud Shell: provisioning must run in Azure Cloud Shell Bash. No Azure changes were made." >&2
     return 1
   fi
+  repo="$(cd "$requested_repo" && pwd -P)" || {
+    printf '%s\n' "Cloud Shell: could not resolve the activated repository path. No Azure changes were made." >&2
+    return 1
+  }
   venv_python="$(cloud_shell_venv_directory "$repo")/bin/python" || return 1
   if [[ "${WORKSHOP_CLOUD_SHELL_REPO:-}" != "$repo" \
     || "${AZURE_TOKEN_CREDENTIALS:-}" != AzureCliCredential \
