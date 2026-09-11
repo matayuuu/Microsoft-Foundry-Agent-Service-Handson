@@ -1,207 +1,167 @@
-# Lab 1 — Cloud Shell provisioning と download（10〜15分）
+# Lab 1 — Custom template と教材 download
 
 ## ゴール
 
-永続化済み Azure Cloud Shell Bash で workload resource group を 1 個作り、Terraform
-provisioning、bootstrap、validation を完了します。最後に生成された ZIP を PC へ 1 回だけ
-download し、直ちに Cloud Shell を終了します。
+Azure Portal で専用 workload resource group を **1 個手動作成してから**、custom template
+を実行します。Azure 側の Deployment Scripts が初期化・検証・教材作成まで完了したことを
+確認し、private Storage の ZIP を Microsoft Entra ID で PC に 1 回 download・展開します。
+参加者の事前準備にローカル CLI は不要です。この経路の所要時間は未計測です。
 
-**10〜15分**が participant target です。**8〜10分**は準備済み/warm の best case です。
-初回 Cloud Shell の Storage 作成と mount 確認はこの Lab に含めますが、計測はその完了後に
-開始します。
+## 始める前に
 
-## 0. 初回 Cloud Shell Storage と永続 clouddrive を準備
+- [参加条件](../docs/participant/prerequisites.md) と管理者指定の subscription / RG 名を確認。
+- 管理者から、確認済みの
+  [infra/azuredeploy.json](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/dev-custom-template/infra/azuredeploy.json)
+  ファイルと
+  当日用パラメーターを受け取ります。ブラウザーに JSON が表示された場合は、HTML ではなく
+  JSON 本体を PC に保存してください。
+- テンプレートと、その bootstrap が取得する公開済み source revision の組合せは
+  管理者が確認します。未公開ファイルへのリンク、未確認モデルバージョンや image digest
+  を推測して使いません。
+- RG の手動作成権限と、作成後の RG 内で scoped role assignments を作成できる
+  **Owner 相当権限**が必要です。既存の共有・production RG は使用しません。
 
-Azure Portal で Cloud Shell を初めて開いた場合は、次の標準 UI だけを使います。
+`infra/azuredeploy.json` は教材 ZIP の収録ファイルではありません。上のリンクは GitHub の
+`dev-custom-template` 開発ブランチです。管理者は公開状態を確認して JSON を配布します。
+未公開の場合は管理者からファイルを受け取り、`main` に同じ artifact があるとは仮定しません。
 
-1. **Bash** を選択。
-2. **Mount storage account** を選択。
-3. workshop subscription を選び、**Apply**。
-4. **We will create a storage account for you** を選び、**Next**。
-5. Cloud Shell が専用 Storage resource group、Storage account、Azure Files share を
-   自動作成し、Bash prompt が表示されるまで待つ。
+## 1. Azure Portal で専用 resource group を手動作成する
 
-advanced settings で既存 storage を手入力しません。作成と mount が完了してから
-10〜15分の計測を開始します。
+1. [Azure Portal](https://portal.azure.com) で account、directory、subscription を確認。
+2. **Resource groups > Create** を開きます。
+3. **Subscription** は管理者指定のもの、**Resource group** は自分専用の名前、
+   **Region** は **Japan East** を選びます。
+4. **Review + create > Create** を選びます。
+5. 作成完了後、**Resource groups** から対象を開き、subscription、名前、location を再確認。
 
-既に Cloud Shell Storage がある場合は新しく作り直さず、既存の Azure Files-backed
-`~/clouddrive` を再利用します。現在の Cloud Shell では `$HOME` のうち `clouddrive` の外側は
-session-local です。次の provisioning を始める前に `clouddrive` が正常に mount されている
-ことを確認します。
+この workshop で手動作成する workload RG は **この 1 個だけ**です。
+**この作成が完了してから**次へ進みます。テンプレート自身は RG を作りません。
 
-> [!CAUTION]
-> **Azure Files mount に失敗した、`clouddrive` が read-write CIFS mount ではない、または
-> ephemeral session と表示された場合は停止してください。** provisioning を開始せず、
-> 講師/管理者へ連絡します。repository、`.workshop`、Terraform state を `clouddrive` の
-> 外側へ置かないでください。
+## 2. 作成後に custom template を開き、JSON を読み込む
 
-![Mount storage account と subscription を選択する実画面](../docs/images/lab01-cloud-shell-storage.png)
+1. Azure Portal の検索から **Deploy a custom template** を開きます。
+2. **Build your own template in the editor > Load file** を選びます。
+3. PC の `infra/azuredeploy.json` を読み込み、**Save** を選択します。
+4. **Subscription** と **Resource group** に、手順 1 で作成した RG を選びます。
+   この画面の **Create new** は使いません。
 
-![Cloud Shell が Storage account を作成する実画面](../docs/images/lab01-cloud-shell-create-storage.png)
+手動の **Load file** が標準経路です。テンプレートを保存しただけでは deployment は始まりません。
 
-## 1. Azure Cloud Shell Bash と subscription を確認
+## 3. 管理者確認済みパラメーターを入力して実行する
 
-Section 0 から続く Cloud Shell **Bash**、または再度開いた Bash で、作成または再利用した
-healthy persistent `~/clouddrive` が mount されていることを確認します。Cloud Shell の既定
-subscription が workshop subscription とは限らないため、講師指定の ID を設定し、Azure CLI
-の既定 context を明示的に切り替えます。
+UI の表示名と JSON の parameter key を照合します。モデル名と capacity は固定です。
 
-```bash
-SUBSCRIPTION_ID="<講師指定の subscription ID>"
+| Parameter key | 入力 |
+|---|---|
+| `location` | `japaneast`（Japan East） |
+| `primaryModelVersion` | 管理者が `gpt-5.6-luna` / GlobalStandard 40K TPM で確認した version |
+| `evaluationModelVersion` | 管理者が `gpt-5.5` / GlobalStandard 100K TPM で確認した version |
+| `embeddingModelVersion` | 管理者が `text-embedding-3-small` / GlobalStandard 40K TPM で確認した version |
+| `travelApiImageRef` | 管理者検証済みの GHCR image reference。`@sha256:` digest 必須 |
+| `sourceRevision` | 公開済み教材 commit の小文字 40 桁 hex SHA。branch 名は入力しない |
+| `participantObjectIdOverride` | 本人の初回 deployment は空欄で root deployer の object ID を使用。代理 deployment / 別実行者の redeployment は**利用する参加者本人の Entra object ID**を明示 |
+| `bootstrapRunId` | 管理者指定値を維持。初期化を意図的にやり直す場合だけ変更 |
 
-az account set --subscription "$SUBSCRIPTION_ID"
+1. **Review + create** を選び、validation と対象 RG / パラメーターを確認。
+2. **Create** を選択し、deployment の完了を待ちます。同じ deployment を重複送信しません。
 
-az account show \
-  --query "{subscription:id,name:name,user:user.name}" \
-  --output table
-```
+管理者の quota / capacity 確認は予約ではありません。不足や Policy により失敗した場合は
+停止して管理者へ連絡します。リージョン、モデル、SKU、image の mutable tag への
+自動・手動 fallback で通しません。
 
-表示された `subscription` が `SUBSCRIPTION_ID` と一致しない場合は続行しません。
-`SUBSCRIPTION_ID` 変数を設定しただけでは Azure CLI の既定 context は変わらないため、
-`az account set` を省略しません。token、device code、credential を出力・共有しません。
+## 4. bootstrap を含む成功を確認する
 
-正しい account/subscription を確認後、この Bash session で使う残りの値を設定します。
+テンプレートは次を作成します。
 
-```bash
-RESOURCE_GROUP="<講師指定のリソース グループ名>"
-LOCATION="japaneast"
-```
+- Foundry resource / project `contoso-travel`、Basic Agent Setup
+- Luna 40K TPM（`gpt-5.6-luna`）、GPT-5.5 100K TPM（`gpt-5.5`）、embedding 40K TPM
+- Azure AI Search **Basic**、Application Insights / Log Analytics、Container Apps Travel Ops API
+- Azure ML workspace、Storage、Key Vault、scoped RBAC / connections
+- bootstrap 専用 user-assigned managed identity と Deployment Scripts
 
-`RESOURCE_GROUP` の placeholder は、講師から指定された workshop 専用 name に置き換えます。
+Azure ML Compute instance は作成しません。**Lab 7** 開始時に作成します。
+public endpoints と既存サービスの system identities を使い、Foundry / Search の
+local auth は無効です。Cosmos DB、Agent capability host、ACR、private networking は追加しません。
 
-## 2. workload resource group を 1 個作る
+`contoso-travel-search` は AAD Search resource connection です。
+`contoso-travel-knowledge-lab-mcp` と `contoso-travel-appinsights` は
+**Project Managed Identity** を使います。runtime identity に subscription role は付けません。
 
-同じ Cloud Shell Bash で Azure CLI を実行します。
+Deployment Scripts は専用 identity で、2 Search indexes の seed、evaluation dataset /
+rubric 準備、resource / participant RBAC / API / Search の validation、
+live OpenAPI / Skill assets と教材 ZIP の生成を順に実行します。
+Prompt Agent、Foundry IQ knowledge base、Toolbox の作成と評価実行は後続 Lab の学習対象です。
 
-```bash
-az group create \
-  --name "$RESOURCE_GROUP" \
-  --location "$LOCATION" \
-  --subscription "$SUBSCRIPTION_ID" \
-  --query "{resourceGroup:name,location:location,state:properties.provisioningState}" \
-  --output table
-```
+1. RG の **Deployments** で、初期化を含む deployment 全体が **Succeeded** であることを確認。
+2. Deployment Scripts の **Overview / Logs** と deployment の **Outputs** を確認。
+   bootstrap の出力は `status = complete`、`container_name = workshop-files`、
+   `blob_name = foundry-workshop-files.zip`、実際の `source_revision` と `sha256` を含みます。
+3. validation の全 check が `pass` であることを確認します。
+   リソースが作成されたことだけを初期化成功とみなしません。
 
-resourceGroup が `$RESOURCE_GROUP`、location が `japaneast`、state が `Succeeded` である
-ことを確認します。この Lab で作る workload resource group はこの 1 個だけです。
+一時 ACI / Azure Files Storage は `OnSuccess` で削除され、失敗時は `P1D` の有限保持です。
+bootstrap identity と scoped grants は再実行のため RG 削除まで残ります。
+失敗した deployment は自動 rollback ではなく、部分的なリソースが残り得ます。
+失敗時は [トラブルシューティング](../docs/participant/troubleshooting.md) に進み、
+新規 ZIP の成功扱いや無制限の再実行はしません。
 
-Cloud Shell storage resource group は workload resource group とは別 lifecycle です。
-初回 UI が作成する storage を workload resource group 内へ移動しません。
+## 5. Storage browser で private ZIP を 1 回 download する
 
-## 3. repository を永続 clouddrive へ shallow clone
+1. deployment の outputs で `storage_account_name` を確認し、同じ RG の Storage account を開く。
+2. **Storage browser > Blob containers > workshop-files** を開く。
+3. 認証方式が **Microsoft Entra user account** であることを確認。
+   表示が Access key なら **Switch to Microsoft Entra user account** で切り替えます。
+4. private container 内の `foundry-workshop-files.zip` を選び、**Download**。
+5. PC の download 完了を確認。正常時はこの ZIP を **1 回だけ**取得します。
 
-repository、`.workshop`、Terraform state を session 間で保持するため、Azure Files-backed
-`clouddrive` の下へ clone します。`~/Microsoft-Foundry-Agent-Service-Handson` など
-`clouddrive` の外側へ clone しません。
+403 の場合は account / participant object ID / scoped data role の反映を確認してもらいます。
+account key、SAS、公開 container、直接の公開 Blob URL へ切り替えません。
+Storage は `allowBlobPublicAccess: false`、`defaultToOAuthAuthentication: true` です。
+Azure ML の互換性のため Shared Key は維持されますが、教材の取得には使いません。
 
-```bash
-cd ~/clouddrive
-git clone --depth 1 --branch main --single-branch \
-  https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson.git
-cd Microsoft-Foundry-Agent-Service-Handson
-```
+生成側の ZIP パスは `.workshop/download/foundry-workshop-files.zip` です。
+これは Azure 側の packaging path であり、Portal の download 欄へ入力するパスではありません。
 
-既に `~/clouddrive/Microsoft-Foundry-Agent-Service-Handson` がある場合は、講師が指定した
-revision であることを確認し、新しい clone を重ねません。
+## 6. PC で展開し、handoff を確認する
 
-## 4. 軽量 provisioning environment
-
-```bash
-bash scripts/setup-cloud-shell.sh &&
-  source scripts/activate-cloud-shell.sh
-```
-
-最初の command は built-in Python 3.12 を使う provisioning-only virtual environment を
-session-local `$HOME/.cache` に準備します。repository と Terraform state は `clouddrive` に残ります。
-新しい Cloud Shell session ではこの command を再実行します。成功メッセージに
-**No Jupyter, notebook kernels, Hosted Agent environment, Graphviz, or web preview was
-installed** と表示されます。
-
-storage validation が失敗したら、その安全な拒否を回避しません。`clouddrive` の外側へ
-repository や state を作らず、ここで停止します。最初の command が失敗した場合は
-`source scripts/activate-cloud-shell.sh` や `scripts/setup.sh` を実行しません。
-
-## 5. Terraform provisioning
-
-```bash
-./scripts/setup.sh \
-  --subscription "$SUBSCRIPTION_ID" \
-  --resource-group "$RESOURCE_GROUP"
-```
-
-plan に自分の workload resource group だけが表示されることを確認して承認します。
-処理中は同じ command を再送しません。Terraform は次を作成します。
-
-- Foundry resource / project `contoso-travel` と Basic Agent Setup
-- Luna 40K TPM、GPT-5.5 100K TPM、embedding 40K TPM
-- Azure AI Search、monitoring、Container Apps Travel Ops API
-- scoped RBAC と managed-identity connections
-- Azure ML workspace、Storage、Key Vault、workspace-based Application Insights
-
-Azure ML Compute instance は作成しません。Lab 7 で必要になった時点で作成します。
-Travel Ops API image は setup が immutable digest を解決して pin し、mutable tag へ
-fallback しません。public endpoints と system identities を使い、Foundry/Search の local
-authentication は無効です。Cosmos DB、Agent capability host、ACR、private networking は
-追加しません。
-
-connections は direct Search／knowledge source 用の `contoso-travel-search`、
-Foundry IQ MCP 用の `contoso-travel-knowledge-lab-mcp`、trace 用の
-`contoso-travel-appinsights` です。後ろの 2 つは **Project Managed Identity** を使います。
-Terraform が作る scoped RBAC:
-
-| Principal | Scope | Roles |
-|---|---|---|
-| Participant | Foundry account / project | Foundry User; Foundry Project Manager |
-| Participant | Search / monitoring | Search Service Contributor; Search Index Data Contributor; Log Analytics Reader; Privileged Monitoring Data Reader |
-| Project MI | Foundry / Search / monitoring | Foundry User; both Search contributor roles; Monitoring Metrics Publisher; Log Analytics Reader; Privileged Monitoring Data Reader |
-| Search MI | Foundry account | Cognitive Services OpenAI User |
-
-setup は 2 Search indexes を seed し、evaluation assets を準備し、resources を検証し、
-live OpenAPI / Skill assets と canonical `resource_outputs` context を作成します。
-
-成功時は terminal の **Environment validation report** が **Overall status: pass** となり、
-resource、RBAC、Travel Ops API、2 Search indexes の全 check が `pass` になります。画像では
-なく、実行した terminal の結果を確認してください。
-
-成功時は次のファイルが 1 個だけ download 対象として表示されます。
+最上位 folder が `Microsoft-Foundry-Agent-Service-Handson` であることを確認します。
+隠し folder の `.workshop` を含め、次の構成を維持します。
 
 ```text
-.workshop/download/foundry-workshop-files.zip
+Microsoft-Foundry-Agent-Service-Handson/
+  bundle-manifest.json
+  .workshop/context.json
+  portal-assets/portal-values.json
+  portal-assets/travel-ops.openapi.json
+  portal-assets/travel-estimation.zip
+  portal-assets/preapproval-simulation.zip
+  labs/
+  notebooks/00-azureml-setup.ipynb
+  notebooks/07-agent-framework-harness.ipynb
+  notebooks/08-hosted-agent.ipynb
+  src/hosted-agent/
+  scripts/
+  tests/
 ```
 
-ZIP には non-secret context、Portal assets、Notebooks、Hosted Agent source が含まれます。
-Terraform state、token、`.env`、credential は含まれません。
+`.workshop/context.json` を text editor で開き、`provisioning_method = azure-custom-template`、
+`setup_status = complete`、`source_revision` が配布された SHA と一致することを確認。
+値は必ず **`resource_outputs.<key>.value`** から読みます。
+`bundle-manifest.json` の `source_revision` も同じ SHA であることを確認します。
+manifest は各収録ファイルの hash を持ちます。bootstrap outputs の `sha256` は **ZIP 全体**の
+hash なので、必要に応じて管理者が取得した ZIP の hash と照合します。
+token、credential、`.env`、認証キャッシュを教材として追加しません。
 
-## 6. 1 回だけ download して exit
-
-1. Cloud Shell toolbar の **Manage files > Download**。
-2. setup output に表示された
-   `.workshop/download/foundry-workshop-files.zip` の absolute path を入力。
-3. PC への download 完了を確認。
-4. Terminal で直ちに実行:
-
-```bash
-exit
-```
-
-![Manage files から Download を選択する実画面](../docs/images/lab01-cloud-shell-download.png)
-
-Cloud Shell で ZIP を展開したり、Notebook、Jupyter、Graphviz、web preview、Hosted
-environment を起動したりしません。`exit` により tenant slot を解放します。
-
-## 7. PC で展開
-
-download した ZIP を PC で展開し、最上位 folder に `.workshop/context.json`、
-`portal-assets/`、`labs/`、`notebooks/`、`src/` があることを確認します。
-Labs 2〜6 は Foundry Portal で進め、Lab 4 はこの `portal-assets/` を使います。
+Labs 2〜6 は Foundry Portal で進めます。Lab 4 はこの `portal-assets/` を使用します。
+Azure ML への folder upload と kernel 準備は Lab 7 です。
 
 ## 完了チェック
 
-- persistent `clouddrive` validation が pass
-- Terraform / bootstrap / validation が成功
-- `.workshop/context.json` の key が `resource_outputs`
-- PC に ZIP を 1 回 download・展開
-- Cloud Shell で `exit` 済み
+- RG を手動作成後に template を開き、同じ既存 RG へ deploy した
+- bootstrap と validation を含む deployment が成功し、`status = complete`
+- private `workshop-files` から Entra ID で ZIP を 1 回 download・展開した
+- `.workshop/context.json` の `resource_outputs.<key>.value` と revision を確認した
+- Compute はまだ作成していない
 
 ## 次の Lab
 

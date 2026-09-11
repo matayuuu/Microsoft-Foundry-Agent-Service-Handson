@@ -11,8 +11,10 @@ constructs (but does not use) a credential object.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 from azure.core.credentials import TokenCredential
 from azure.identity import AzureCliCredential, DefaultAzureCredential
@@ -28,6 +30,43 @@ DEFAULT_CONTEXT_PATH = REPO_ROOT / ".workshop" / "context.json"
 DEFAULT_SEARCH_INDEX_NAME = "contoso-travel-policy"
 DEFAULT_AGENT_NAME = "contoso-travel-assistant"
 DEFAULT_TOOLBOX_NAME = "contoso-travel-toolbox"
+SOURCE_REPOSITORY = "https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson"
+CUSTOM_TEMPLATE_RESOURCE_OUTPUTS = (
+    "resource_group_name",
+    "location",
+    "ai_services_account_name",
+    "ai_services_endpoint",
+    "openai_endpoint",
+    "foundry_project_name",
+    "foundry_project_id",
+    "foundry_project_endpoint",
+    "primary_model_deployment_name",
+    "evaluation_model_deployment_name",
+    "optimizer_model_deployment_name",
+    "embedding_model_deployment_name",
+    "search_service_name",
+    "search_service_endpoint",
+    "search_pricing_model",
+    "log_analytics_workspace_name",
+    "application_insights_name",
+    "application_insights_id",
+    "azureml_workspace_name",
+    "azureml_workspace_id",
+    "storage_account_name",
+    "storage_account_id",
+    "key_vault_name",
+    "key_vault_id",
+    "search_connection_name",
+    "knowledge_mcp_connection_name",
+    "application_insights_connection_name",
+    "travel_api_fqdn",
+    "travel_api_container_app_name",
+    "foundry_portal_url",
+)
+CONTEXT_RECOVERY = (
+    "Check the custom-template deployment in Azure Portal, then download and extract "
+    "the completed workshop ZIP from the private workshop-files container."
+)
 
 
 class WorkshopContextError(Exception):
@@ -47,11 +86,7 @@ def load_context(path: Path) -> dict[str, Any]:
     ``resource_outputs`` object.
     """
     if not path.exists():
-        raise WorkshopContextError(
-            f"context file not found: {path}\n"
-            "Run scripts/setup.sh from the activated Cloud Shell before this script; "
-            "it writes .workshop/context.json after provisioning and validation."
-        )
+        raise WorkshopContextError(f"context file not found: {path}\n{CONTEXT_RECOVERY}")
     try:
         raw = path.read_text(encoding="utf-8")
     except OSError as exc:
@@ -64,8 +99,7 @@ def load_context(path: Path) -> dict[str, Any]:
         raise WorkshopContextError(f"context file {path} must contain a JSON object")
     if not isinstance(context.get("resource_outputs"), dict):
         raise WorkshopContextError(
-            f"context file {path} is missing the 'resource_outputs' object. "
-            "Re-run scripts/setup.sh to regenerate it."
+            f"context file {path} is missing the 'resource_outputs' object. {CONTEXT_RECOVERY}"
         )
     return context
 
@@ -82,17 +116,40 @@ def workshop_output(context: dict[str, Any], key: str) -> str:
         available = ", ".join(sorted(outputs)) or "(none)"
         raise WorkshopContextError(
             f"workshop resource output '{key}' not found in .workshop/context.json. "
-            f"Available resource outputs: {available}. Re-run "
-            "scripts/setup.sh to refresh the workshop context."
+            f"Available resource outputs: {available}. {CONTEXT_RECOVERY}"
         )
     value = entry["value"]
     if value is None or value == "":
         raise WorkshopContextError(
             f"workshop resource output '{key}' is unavailable in .workshop/context.json. "
-            "This required output is empty; inspect the setup report and re-run "
-            "scripts/setup.sh."
+            f"This required output is empty. {CONTEXT_RECOVERY}"
         )
     return str(value)
+
+
+def participant_object_id(context: dict[str, Any], override: str | None = None) -> str:
+    """Resolve the intended participant, never the bootstrap's signed-in identity."""
+    value = override if override is not None else context.get("participant_object_id")
+    if (
+        not isinstance(value, str)
+        or re.fullmatch(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", value) is None
+        or UUID(value).int == 0
+    ):
+        raise WorkshopContextError(
+            "A valid, nonzero participant_object_id is required in context, or pass "
+            "--participant-object-id with the intended participant's Microsoft Entra object ID. "
+            "The deployment managed identity is not the participant."
+        )
+    return str(UUID(value))
+
+
+def validate_source_revision(value: Any) -> str:
+    """Accept only an immutable, published-source SHA; never a branch or tag."""
+    if not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{40}", value) is None:
+        raise WorkshopContextError(
+            "source_revision must be a published lowercase 40-character commit SHA."
+        )
+    return value
 
 
 def project_endpoint(context: dict[str, Any]) -> str:

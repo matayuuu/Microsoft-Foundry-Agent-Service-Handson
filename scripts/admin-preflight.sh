@@ -36,8 +36,8 @@ Usage: admin-preflight.sh --subscription <subscription-id> [options]
 Options:
   --subscription <id>   Azure subscription ID to inspect (required).
   --location <region>   Primary region to validate model/quota availability
-                        against. Default: japaneast. The next recommended
-                        region is checked too.
+                        against. Default: japaneast. Only this explicitly
+                        selected region is checked; there is no fallback.
   --participant-count <n>
                         Number of participants/teams (each with their own
                         resource group and model deployments) the event must
@@ -54,7 +54,7 @@ Options:
 
 This script never creates/deletes resource groups, changes subscription
 quota or Azure Policy, or writes role assignments. Its only mutating action,
-gated behind --apply, is `az provider register` for the eight resource
+gated behind --apply, is `az provider register` for the required resource
 providers this workshop depends on.
 EOF
 }
@@ -130,15 +130,6 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-FALLBACK_LOCATION="japaneast"
-case "${LOCATION}" in
-  japaneast) FALLBACK_LOCATION="australiaeast" ;;
-  australiaeast) FALLBACK_LOCATION="centralus" ;;
-  centralus) FALLBACK_LOCATION="japaneast" ;;
-  eastus2) FALLBACK_LOCATION="swedencentral" ;;
-  swedencentral) FALLBACK_LOCATION="eastus2" ;;
-esac
-
 REQUIRED_PROVIDERS=(
   "Microsoft.CognitiveServices"
   "Microsoft.Search"
@@ -148,6 +139,9 @@ REQUIRED_PROVIDERS=(
   "Microsoft.MachineLearningServices"
   "Microsoft.Storage"
   "Microsoft.KeyVault"
+  "Microsoft.ManagedIdentity"
+  "Microsoft.ContainerInstance"
+  "Microsoft.Resources"
 )
 
 # Required resource types per provider, used to check regional availability
@@ -162,13 +156,15 @@ declare -A REQUIRED_RESOURCE_TYPES=(
   ["Microsoft.MachineLearningServices"]="workspaces"
   ["Microsoft.Storage"]="storageAccounts"
   ["Microsoft.KeyVault"]="vaults"
+  ["Microsoft.ManagedIdentity"]="userAssignedIdentities"
+  ["Microsoft.ContainerInstance"]="containerGroups"
+  ["Microsoft.Resources"]="deploymentScripts"
 )
 
 # Models this workshop deploys, and the exact SKU (deployment type) + TPM
-# capacity (thousands) infra/variables.tf requests for each
-# (primary/evaluation/embedding model capacity). Exact version selection is
-# left to scripts/preflight.sh, which must be told a value this script
-# confirms actually exists -- but this report DOES verify the specific
+# capacity (thousands) infra/main.bicep requests for each
+# (primary/evaluation/embedding model capacity). Administrators supply the
+# verified versions as template parameters. This report verifies the specific
 # SKU/usageName bucket each model deployment needs, with real headroom
 # evidence, so an administrator can see actionable capacity numbers rather
 # than a generic "some quota bucket somewhere is tight" signal.
@@ -265,7 +261,7 @@ for provider in "${REQUIRED_PROVIDERS[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
-# Regional resource-type availability (East US 2 primary, Sweden Central fallback)
+# Regional resource-type availability for the explicitly selected region
 # ---------------------------------------------------------------------------
 
 for provider in "${REQUIRED_PROVIDERS[@]}"; do
@@ -278,7 +274,7 @@ for provider in "${REQUIRED_PROVIDERS[@]}"; do
     continue
   fi
 
-  for loc in "${LOCATION}" "${FALLBACK_LOCATION}"; do
+  for loc in "${LOCATION}"; do
     # az provider location names are display names ("East US 2"), not the
     # short form ("eastus2"); match case-insensitively against a normalized
     # (spaces/case removed) comparison.
@@ -302,7 +298,7 @@ done
 # ---------------------------------------------------------------------------
 
 SEARCH_USAGE_API_VERSION="2025-05-01"
-for loc in "${LOCATION}" "${FALLBACK_LOCATION}"; do
+for loc in "${LOCATION}"; do
   search_usage_url="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/providers/Microsoft.Search/locations/${loc}/usages?api-version=${SEARCH_USAGE_API_VERSION}"
   search_usage_json="$(az_json az rest --method get --url "${search_usage_url}" --subscription "${SUBSCRIPTION_ID}")"
 
@@ -352,10 +348,8 @@ done
 # per-environment-capacity * participant-count, not just one environment's
 # worth. Never silently treats unknown quota as sufficient: any call
 # failure, missing SKU, or missing/insufficient usage bucket is reported as
-# "warn" (this report is informational across both regions and does not
-# itself select one -- scripts/preflight.sh does that, for a single
-# participant's own environment, and there it is a hard "fail"), never
-# silently skipped or assumed sufficient.
+# "warn" in this informational report. A warning is not deployment readiness
+# or a reservation of capacity, and never causes a region/model substitution.
 #
 # Model entries are filtered down to only the ones that expose the required
 # SKU in their OWN model.skus[] list BEFORE a "resolved" version is chosen
@@ -365,12 +359,11 @@ done
 # Azure reports as model.isDefaultVersion == true is preferred; failing that,
 # the highest version with no reported inference deprecation date; only
 # failing both signals does this fall back to the highest (lexicographically
-# last) SKU-supporting version -- same selection logic as
-# scripts/preflight.sh, so the evidence shown to an administrator matches
-# what a participant's own environment would actually resolve to.
+# last) SKU-supporting version. Administrators must review this evidence
+# before distributing the explicit model-version template parameters.
 # ---------------------------------------------------------------------------
 
-for loc in "${LOCATION}" "${FALLBACK_LOCATION}"; do
+for loc in "${LOCATION}"; do
   models_json="$(az_json az cognitiveservices model list --location "${loc}" --subscription "${SUBSCRIPTION_ID}")"
   usage_json="$(az_json az cognitiveservices usage list --location "${loc}" --subscription "${SUBSCRIPTION_ID}")"
 
@@ -400,12 +393,12 @@ for loc in "${LOCATION}" "${FALLBACK_LOCATION}"; do
     # their OWN model.skus[] list BEFORE picking a "resolved" version --
     # picking the highest version across every entry and separately grepping
     # any entry for the SKU (the previous approach) could report a version
-    # that does not itself support the SKU Terraform requests for this model.
+    # that does not itself support the SKU the template requests for this model.
     sku_matches="$(jq -c --arg sku "${required_sku}" \
       '[.[] | select([.model.skus[]?.name] | index($sku) != null)]' <<<"${matches}")"
     sku_count="$(jq 'length' <<<"${sku_matches}")"
     if [[ "${sku_count}" -eq 0 ]]; then
-      add_check "model-sku:${model}/${loc}" "warn" "Model '${model}' is offered in ${loc} (versions=[${versions}], skus=[${all_skus}]) but does not expose the required SKU '${required_sku}' this workshop's Terraform requests. Required aggregate capacity ${per_environment_capacity}K * ${PARTICIPANT_COUNT} participant(s) = ${required_capacity}K TPM cannot be validated in this region."
+      add_check "model-sku:${model}/${loc}" "warn" "Model '${model}' is offered in ${loc} (versions=[${versions}], skus=[${all_skus}]) but does not expose the required SKU '${required_sku}' this workshop's template requests. Required aggregate capacity ${per_environment_capacity}K * ${PARTICIPANT_COUNT} participant(s) = ${required_capacity}K TPM cannot be validated in this region."
       continue
     fi
     sku_versions="$(jq -r '[.[].model.version] | unique | join(", ")' <<<"${sku_matches}")"
@@ -469,7 +462,7 @@ for loc in "${LOCATION}" "${FALLBACK_LOCATION}"; do
     if [[ "${sufficient}" == "true" ]]; then
       add_check "model-sku:${model}/${loc}" "pass" "Model '${model}' resolved version='${chosen_version}' (${selection_basis}), SKU='${required_sku}', usageName='${usage_name}': headroom=${headroom_k}K (limit=${limit_k}K, current=${current_k}K) >= required aggregate ${per_environment_capacity}K * ${PARTICIPANT_COUNT} participant(s) = ${required_capacity}K TPM."
     else
-      add_check "model-sku:${model}/${loc}" "warn" "Model '${model}' resolved version='${chosen_version}' (${selection_basis}), SKU='${required_sku}', usageName='${usage_name}': headroom=${headroom_k}K (limit=${limit_k}K, current=${current_k}K) is BELOW the required aggregate ${per_environment_capacity}K * ${PARTICIPANT_COUNT} participant(s) = ${required_capacity}K TPM in ${loc}. Request a quota increase, reduce concurrent participant count, or rely on the fallback region."
+      add_check "model-sku:${model}/${loc}" "warn" "Model '${model}' resolved version='${chosen_version}' (${selection_basis}), SKU='${required_sku}', usageName='${usage_name}': headroom=${headroom_k}K (limit=${limit_k}K, current=${current_k}K) is BELOW the required aggregate ${per_environment_capacity}K * ${PARTICIPANT_COUNT} participant(s) = ${required_capacity}K TPM in ${loc}. Stop preparation and ask the administrator to resolve the quota requirement; no fallback region is selected."
     fi
   done
 done
@@ -492,7 +485,7 @@ else
   deny_count="$(jq 'length' <<<"${deny_json}")"
   if [[ "${deny_count}" -gt 0 ]]; then
     deny_names="$(jq -r '[.[].displayName] | join(", ")' <<<"${deny_json}")"
-    add_check "policy-scan" "warn" "Found ${deny_count} enforced policy assignment(s) visible from this subscription that may restrict Foundry, Search, Azure Machine Learning, Storage, Key Vault, or Container Apps. Check public network access, Storage shared-key requirements for Azure Machine Learning, Key Vault RBAC, managed identities, allowed types, and regions (best-effort scan, not exhaustive -- inspect each policy's actual effect and scope): ${deny_names}."
+    add_check "policy-scan" "warn" "Found ${deny_count} enforced policy assignment(s) visible from this subscription that may restrict workshop resources. Check public network access, Storage shared-key requirements for Azure Machine Learning and Deployment Scripts Azure Files, temporary Container Instances, Key Vault RBAC, user-assigned managed identities, allowed types, and regions (best-effort scan, not exhaustive -- inspect each policy's actual effect and scope): ${deny_names}."
   else
     add_check "policy-scan" "pass" "No enforced policy assignments found in this best-effort scan (not exhaustive: management-group-level policies with narrower conditions may still apply)."
   fi
@@ -506,7 +499,6 @@ REPORT_JSON="$(jq -n \
   --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg subscription_id "${SUBSCRIPTION_ID}" \
   --arg location "${LOCATION}" \
-  --arg fallback_location "${FALLBACK_LOCATION}" \
   --arg apply "${APPLY}" \
   --argjson participant_count "${PARTICIPANT_COUNT}" \
   --arg overall_status "${OVERALL_STATUS}" \
@@ -515,7 +507,6 @@ REPORT_JSON="$(jq -n \
     generated_at: $generated_at,
     subscription_id: $subscription_id,
     location: $location,
-    fallback_location: $fallback_location,
     apply: ($apply == "true"),
     participant_count: $participant_count,
     overall_status: $overall_status,
@@ -527,7 +518,7 @@ render_markdown() {
   echo "# Admin preflight report"
   echo
   echo "- Subscription: \`${SUBSCRIPTION_ID}\`"
-  echo "- Region: \`${LOCATION}\` (fallback: \`${FALLBACK_LOCATION}\`)"
+  echo "- Region: \`${LOCATION}\` (no automatic fallback)"
   echo "- Generated: $(jq -r '.generated_at' <<<"${REPORT_JSON}")"
   echo "- Apply mode: $(jq -r '.apply' <<<"${REPORT_JSON}")"
   echo "- Participant/team count (aggregate quota target): \`${PARTICIPANT_COUNT}\`"

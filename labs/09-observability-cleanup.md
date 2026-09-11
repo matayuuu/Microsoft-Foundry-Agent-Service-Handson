@@ -2,8 +2,9 @@
 
 ## ゴール
 
-Prompt / Hosted Agent traces を比較し、Hosted data plane、Azure ML Compute、Terraform
-resources、workload resource group の順で完全に cleanup します。
+Prompt / Hosted Agent traces を比較し、**Export → Hosted Agent / versions 削除 →
+Azure ML Compute Stop / Delete → Azure Portal で専用 RG 削除 → 削除完了確認**の順に
+完全に cleanup します。ブラウザーを閉じるだけでは resources は残ります。
 
 ## 1. Trace を比較
 
@@ -20,10 +21,10 @@ trace には prompt、response、tool arguments が残ります。secret や実�
 ## 2. Export と Hosted Agent cleanup
 
 Azure ML **User files** から必要な Notebook / safe result を PC へ **Export** します。
-`.workshop/context.json`、credential、token は配布しません。
+token、credential、個人の環境識別情報を含む context や認証出力は共有しません。
 
-**Python (Foundry Hosted Agent)** で Notebook の cleanup cell を実行するか、Azure ML
-Terminal の同じ environment から次を実行します。
+**Python (Foundry Hosted Agent)** で Lab 8 Notebook の cleanup cell を実行します。
+同じ環境の Azure ML Terminal を使う場合は、同梱の `delete_hosted_agent.py` を実行できます。
 
 ```bash
 conda run --name foundry-hosted-agent python scripts/delete_hosted_agent.py \
@@ -32,8 +33,9 @@ conda run --name foundry-hosted-agent python scripts/delete_hosted_agent.py \
   --output json
 ```
 
-全 Hosted Agent versions と agent が deleted / not found になったことを確認します。
-成功前に parent Foundry resource を削除しません。
+自分が作成した全 Hosted Agent versions と agent が deleted / not found になったことを確認します。
+成功前に parent Foundry resource を削除しません。Lab 8 を行っていない場合も、対象の
+Hosted Agent が存在しないことを確認して次へ進みます。
 
 ## 3. Compute を Stop / Delete
 
@@ -42,60 +44,49 @@ Azure ML Studio の **Compute > Compute instances** で対象 instance を選び
 1. **Stop** を選び、status **Stopped** まで待つ。
 2. **Delete** を選び、Compute が一覧から消えるまで待つ。
 
-> [!CAUTION]
-> Terraform destroy より先に Compute を削除します。必要な Notebook を Export せずに
-> Compute/workspace を削除しません。
+必要な成果物を Export せずに Compute / workspace を削除しません。
+Compute を作成していない場合は、対象 workspace の一覧に存在しないことを確認します。
+Stop だけでは Storage や他の Azure resources は削除されません。
 
-## 4. 同じ persistent clouddrive に戻る
+## 4. Azure Portal で専用 resource group を削除
 
-Azure Portal から Azure Cloud Shell **Bash** を開き、Lab 1 と同じ `clouddrive` repository、
-`.workshop`、Terraform state であることを確認します。Python environment は session-local
-なので再作成します。
+1. Azure Portal の **Resource groups** から、Lab 1 で手動作成した **自分の専用 RG** を開く。
+2. subscription と RG 名を照合し、表示される resources が今回の workshop 用だけであることを確認。
+3. **Delete resource group** を選ぶ。
+4. 確認欄へその RG 名を入力し、**Delete** で確定する。
 
-```bash
-cd ~/clouddrive/Microsoft-Foundry-Agent-Service-Handson
-bash scripts/setup-cloud-shell.sh &&
-  source scripts/activate-cloud-shell.sh &&
-  ./scripts/destroy.sh
-```
+Foundry、Search、Container Apps、monitoring、AML backing Storage / Key Vault、
+bootstrap identity と scoped grants は **RG とまとめて削除**します。
+初期化失敗後に一時 ACI / Azure Files Storage が残っている場合も対象 RG 内を確認します。
+resources が表示されていること自体は、RG 削除を妨げる条件ではありません。
+共有 resource や他人の resource が見つかった場合だけ、削除前に管理者へ確認します。
 
-storage validation / activation / state recovery が失敗した場合は destroy を推測で続けません。
-`clouddrive` の外側に clone し直した repository から実行せず、講師へ連絡します。
+![Delete resource group を選択する Microsoft Learn の画面例](../docs/images/lab09-delete-resource-group.png)
 
-## 5. workload resource group を確認・削除
+この画像は一般的な UI の参考であり、今回の deployment や削除を実行した証拠ではありません。
 
-destroy 成功後、Azure Portal の workload resource group を開き、resource inventory が空で
-あることを確認します。残っている場合は Activity log と destroy output を確認し、先に解消します。
+> [!IMPORTANT]
+> **Deployments の履歴（deployment history / deployment record）を削除しても、
+> deploy された resources は削除されません。**
+> cleanup は必ず **Delete resource group** と、その削除完了確認まで行います。
 
-空であることを確認後:
+## 5. 削除完了を確認
 
-1. **Delete resource group**。
-2. workload resource group name を入力して確定。
-3. **Resource groups** list から消えるまで待つ。
+- **Resource groups** 一覧を更新し、対象 RG が消えたことを確認します。
+- 削除通知と **Activity log** を確認し、失敗・進行中を完了とみなしません。
+- 削除失敗の場合は lock、deny assignment、未削除の Compute / Hosted version を
+  管理者と確認。既存の保護設定を勝手に外したり、別の RG を削除したりしません。
+- 講師へ、自分の workload RG の削除完了を報告します。追加演習の resources がある場合は
+  その所有者と別途 cleanup を確認します。
 
-![Delete resource group を選択する実画面](../docs/images/lab09-delete-resource-group.png)
-
-画面例には sample resources が表示されていますが、このハンズオンでは必ず resource inventory
-が空であることを確認してから **Delete resource group** を選択します。
-
-Cloud Shell terminal で:
-
-```bash
-exit
-```
-
-## 6. Cloud Shell storage lifecycle
-
-Cloud Shell storage は workload resource group と別です。dedicated storage であり、workload
-cleanup が成功し、組織 policy が許可する場合だけ別途削除します。shared/existing storage、
-他用途の file share、別 participant の storage は削除しません。
+Deployment Scripts の `OnSuccess` は一時 supporting resources の cleanup であり、
+Foundry や Search の削除ではありません。bootstrap identity / grants はここで RG と削除します。
 
 ## 完了チェック
 
-- traces を比較
-- Notebook を Export
-- Hosted Agent / versions を削除
-- Compute を Stop / Delete
-- same persistent repository/state で `destroy.sh` 成功
-- workload RG が空であることを確認後、Portal で削除
-- Cloud Shell を `exit`
+- Prompt / Hosted traces を比較した
+- 必要な Notebook / safe result を Export した
+- Hosted Agent / versions が削除済み、または存在しない
+- Compute が Stop / Delete 済み、または存在しない
+- Azure Portal の Delete resource group で専用 RG を削除した
+- RG が一覧から消え、削除失敗がないことを確認した

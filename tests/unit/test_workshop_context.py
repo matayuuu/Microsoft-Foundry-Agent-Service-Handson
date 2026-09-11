@@ -156,3 +156,53 @@ def test_build_credential_default_kind_string_returns_default_azure_credential()
 def test_build_credential_rejects_unknown_kind() -> None:
     with pytest.raises(ctx.WorkshopContextError, match="unknown credential kind"):
         ctx.build_credential("client-secret")
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "",
+        "participant",
+        "user@example.invalid",
+        "0" * 32,
+        "00000000-0000-0000-0000-000000000000",
+        ["not-a-UUID"],
+    ],
+)
+def test_participant_identity_is_required_and_never_inferred(value: object) -> None:
+    with pytest.raises(ctx.WorkshopContextError, match="managed identity is not the participant"):
+        ctx.participant_object_id({"participant_object_id": value})
+
+
+def test_participant_override_is_explicit_and_normalized() -> None:
+    participant = "abcdefff-1234-4567-89ab-123456789abc"
+    override = "FFFFFFFF-1234-4567-89AB-123456789ABC"
+
+    assert ctx.participant_object_id({"participant_object_id": participant}) == participant
+    assert (
+        ctx.participant_object_id({"participant_object_id": participant}, override)
+        == override.lower()
+    )
+    assert ctx.participant_object_id({}, override) == override.lower()
+    with pytest.raises(ctx.WorkshopContextError, match="participant_object_id"):
+        ctx.participant_object_id({"participant_object_id": participant}, "")
+
+
+@pytest.mark.parametrize("revision", [None, "", "main", "v1", "a" * 39, "a" * 41, "A" * 40])
+def test_source_revision_rejects_mutable_or_malformed_values(revision: object) -> None:
+    with pytest.raises(ctx.WorkshopContextError, match="lowercase 40-character"):
+        ctx.validate_source_revision(revision)
+
+
+def test_source_revision_accepts_only_the_exact_commit() -> None:
+    assert ctx.validate_source_revision("1a" * 20) == "1a" * 20
+
+
+def test_context_recovery_uses_private_portal_download(tmp_path: Path) -> None:
+    with pytest.raises(ctx.WorkshopContextError) as error:
+        ctx.load_context(tmp_path / "missing.json")
+    assert "Azure Portal" in str(error.value)
+    assert "private workshop-files container" in str(error.value)
+    assert "setup.sh" not in str(error.value)
+    assert "Cloud Shell" not in str(error.value)

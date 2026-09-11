@@ -2,14 +2,15 @@
 
 ## この文書の位置づけ
 
-本編 [Lab 8](../08-hosted-multi-agent.md) の代替経路として、
 本編の core は `scripts/deploy_hosted_agent.py` による **source-code remote build** のみで
 完結し、`azd` は一切使いません。この付録は、`azd` の Foundry 拡張機能を使った代替デプロイ
-経路を、**本編とは別の認証方式が必要になる**ことを明示したうえで説明します。
+経路を、**本編とは別の認証と承認済み検証環境が必要になる**ことを明示したうえで説明します。
+本編 [Lab 8](../08-hosted-multi-agent.md) の履修にも、Lab 1 の RG 手動作成 / custom template /
+private ZIP 取得にも不要です。本編の source directory と固定インフラを変更しません。
 
 > [!IMPORTANT]
-> **`azd auth login` は `az login` とは別の認証です。** 本編は AGENTS.md の非交渉制約により
-> `az login` のみで完結するように設計されています。この付録の手順を試す場合、`az login` に
+> **`azd auth login` は `az login` とは別の認証です。** 本編の Hosted execution は
+> Azure ML の既存 Azure CLI 認証で動作します。この付録の手順を試す場合、`az login` に
 > 加えて **`azd auth login` を別途実行する必要があります**。これは本編の設計方針を変更する
 > ものではなく、azd という別のツールを使う場合にのみ必要な追加手順です。
 
@@ -44,15 +45,13 @@ azd extension install microsoft.foundry
 
 ## 3. プロジェクトを初期化する
 
-```bash
-cd src/hosted-agent
-azd ai agent init
-```
+本編の `src/hosted-agent/` ではなく、別途用意した独立した agent project の directory で
+`azd ai agent init` を実行します。
 
 このコマンドは対話式に次を確認します。
 
-- 使用する既存の Foundry project（`.workshop/context.json` に記録された本編の project を
-  指定することも、新しいものを作ることもできます）。
+- 使用する別の承認済み Foundry project。本編の `.workshop/context.json` の project を
+  追加インフラの provision 対象にしません。
 - コンテナイメージの push 先とする ACR（未指定の場合、`azd provision` がプロジェクト専用の
   新しい ACR を作成します — 詳細は [Advanced Hosted Agent](advanced-hosted-agent.md) 参照）。
 
@@ -76,9 +75,9 @@ agent 用 Microsoft Entra identity の作成・必要な RBAC 割り当てまで
 
 | 観点 | 本編 core（`scripts/deploy_hosted_agent.py`） | この付録（`azd ai agent`） |
 |---|---|---|
-| 認証 | `az login` のみ | `az login` + `azd auth login` |
+| 認証 | Azure ML の既存 Azure CLI 認証 | `az login` + `azd auth login` |
 | デプロイ方式 | source zip + `REMOTE_BUILD`（Foundry がサーバー側でビルド） | ローカルでコンテナビルド → ACR へ push |
-| 追加インフラ | 不要（本編 Terraform resources の範囲内） | ACR（既存のものを使うか、`azd provision` が新規作成） |
+| 追加インフラ | 不要（本編 custom template resources の範囲内） | 別環境の ACR（既存のものを使うか、`azd provision` が新規作成） |
 | 対象読者 | 全参加者（本編必須） | azd に慣れた参加者向けの任意経路 |
 | べき等性・cleanup | `scripts/delete_hosted_agent.py` と Lab 9 の対象 | azd 独自の state・ACR イメージは別途 cleanup が必要（[Advanced Hosted Agent](advanced-hosted-agent.md) §7 参照） |
 

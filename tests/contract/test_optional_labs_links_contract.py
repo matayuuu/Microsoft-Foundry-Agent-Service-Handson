@@ -1,22 +1,7 @@
-"""Contract test: every local markdown link under labs/optional/ and instructor/ resolves.
+"""Optional labs remain discoverable and all local instructor/document links resolve.
 
-This workstream owns ``labs/optional/**`` and ``instructor/**`` exclusively (see the
-`author-optional-content` todo). It must not modify ``tests/contract/test_labs_links_contract.py``
-(owned by the core-labs workstream), so this is a deliberately separate, self-contained test
-module that duplicates the small amount of link-extraction/resolution logic needed, scoped only
-to the files this workstream authors.
-
-Unlike the core-labs link contract, the optional labs are **not** a fixed linear sequence (see
-``labs/optional/README.md`` "読む順序"), so this test does not enforce a "must link onward"
-tripwire per file. Instead it enforces the weaker, more relevant invariant that the two index
-files (``labs/optional/README.md`` and ``instructor/README.md``) actually link to every sibling
-document they are supposed to index, so a newly authored (or renamed) file can never silently
-become undiscoverable.
-
-Links into files outside this workstream's ownership (e.g. ``../00-overview.md``,
-``../../README.md``, ``../../docs/architecture.md``) are still resolved and checked -- a
-dangling cross-link is just as much a participant/instructor-facing 404 as a link within the
-owned tree, and checking it does not require *modifying* any file outside the owned tree.
+Unlike the core labs, these appendices are not a fixed linear sequence. Preserve the
+index-to-sibling links and the independent link-helper tests alongside the core flow contract.
 """
 
 from __future__ import annotations

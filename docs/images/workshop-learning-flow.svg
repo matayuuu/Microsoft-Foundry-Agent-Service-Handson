@@ -1,105 +1,93 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1152" viewBox="0 0 1440 1152" role="img" aria-labelledby="diagram-title diagram-description">
-  <title id="diagram-title">学習の流れ — ひとつの Agent から、workflow へ</title>
-  <desc id="diagram-description">Lab 0・1 で Azure Portal と Azure ML を準備し、Lab 2〜6 で同じ Prompt Agent を拡張する。Lab 7 では Foundry IQ・Toolbox・Skills を plain Agent と Harness Agent から再利用する。Lab 8 では token 消費を抑えるため intake、policy、reviewer の通常 Agent を sequential workflow として Hosted Agent にデプロイする。Lab 7 の session state には依存しない。Lab 9 で Prompt と Hosted の trace を比較し、専用 resource group を削除する。実際の予約・承認・精算は行わない。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1640" height="1880" viewBox="0 0 1640 1880" role="img" aria-labelledby="diagram-title diagram-description">
+  <title id="diagram-title">Workshop learning flow</title>
+  <desc id="diagram-description">Labs 0–1 manually create the resource group, load the custom template, validate bootstrap, and download the private ZIP. Labs 2–6 develop one Prompt Agent in Foundry Portal. Lab 7 prepares Azure ML and compares plain and Harness Agents. Lab 8 deploys a source-based intake, policy, reviewer workflow. Lab 9 exports results, removes Hosted Agents and Compute, and deletes the resource group.</desc>
   <defs>
-    <radialGradient id="ambient" cx="100%" cy="0%" r="90%">
-      <stop offset="0" stop-color="#18334e"/>
-      <stop offset="1" stop-color="#091321"/>
-    </radialGradient>
-    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
-      <path d="M 48 0 H 0 V 48" fill="none" stroke="#b7d3f0" stroke-opacity=".035"/>
-    </pattern>
-    <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-      <path d="m 2 1 4 4-4 4" fill="none" stroke="#55dbd0" stroke-width="1.5"/>
-    </marker>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#0078D4" stroke-width="1.5"/></marker>
+    <marker id="green-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#107C10" stroke-width="1.5"/></marker>
     <style>
-      text { fill: #e9f1fa; font-family: "Bahnschrift", "Aptos", "Yu Gothic", Meiryo, sans-serif; }
-      .mono { font-family: "Cascadia Code", Consolas, "Yu Gothic", Meiryo, monospace; }
-      .muted { fill: #a2b4c8; }
-      .cyan { fill: #55dbd0; }
-      .blue { fill: #89b8ff; }
-      .rule { fill: none; stroke: #30475f; stroke-width: 1; }
-      .edge { fill: none; stroke: #55dbd0; stroke-width: 1.5; }
-      .surface { fill: #0e1c2d; stroke: #30475f; stroke-width: 1; }
+      text { fill: #000000; font-family: Arial, Helvetica, sans-serif; font-size: 16px; }
+      .container { fill: none; stroke-width: 2; }
+      .box { stroke-width: 2; }
+      .blue { fill: #CFE4FA; stroke: #0078D4; }
+      .purple { fill: #E8DAEF; stroke: #5C2D91; }
+      .green { fill: #DFF6DD; stroke: #107C10; }
+      .gray { fill: #F3F2F1; stroke: #1e1e1e; }
+      .edge { fill: none; stroke: #107C10; stroke-width: 2; marker-end: url(#green-arrow); }
     </style>
   </defs>
-
-  <rect width="1440" height="1152" rx="16" fill="url(#ambient)"/>
-  <rect width="1440" height="1152" rx="16" fill="url(#grid)"/>
-  <rect x=".5" y=".5" width="1439" height="1151" rx="16" fill="none" stroke="#30475f"/>
-  <path d="M 48 64 H 64 M 56 56 V 72 M 1376 64 H 1392 M 1384 56 V 72" class="rule"/>
-  <text id="learning-eyebrow" class="mono cyan" x="80" y="72" font-size="20" letter-spacing="3">LEARNING PATH</text>
-  <text id="learning-meta" class="mono muted" x="1360" y="72" font-size="20" text-anchor="end">10 LABS / 4 STAGES</text>
-  <text id="learning-title" x="64" y="134" font-size="38" font-weight="600">ひとつの Agent から、workflow へ。</text>
-
-  <rect id="shared-preparation" class="surface" x="64" y="180" width="1312" height="104" rx="8"/>
-  <text id="preparation-stage" class="mono muted" x="88" y="224" font-size="20">01 / PREPARE</text>
-  <text id="preparation-labs" class="mono blue" x="88" y="257" font-size="22">Lab 0–1</text>
-  <text id="shared-preparation-text" x="320" y="224" font-size="28" font-weight="600">共通の準備</text>
-  <text id="preparation-outcome" class="muted" x="320" y="260" font-size="23">Portal で専用 RG → Cloud Shell で構築・ZIP → Azure ML へ upload</text>
-  <path id="prepare-to-build" class="edge" data-from="shared-preparation" data-to="prompt-learning-container" d="M 104 284 V 322" marker-end="url(#arrowhead)"/>
-
-  <path id="prompt-learning-container" class="rule" d="M 64 340 H 656"/>
-  <path d="M 64 340 H 144" fill="none" stroke="#89b8ff" stroke-width="3"/>
-  <text id="prompt-stage" class="mono blue" x="64" y="374" font-size="20" letter-spacing="1">02 / BUILD</text>
-  <text id="prompt-learning-surface" class="mono muted" x="656" y="374" font-size="19" text-anchor="end">FOUNDRY PORTAL</text>
-  <text id="prompt-learning-title" x="64" y="422" font-size="30" font-weight="600">同じ Prompt Agent を育てる</text>
-  <text id="prompt-learning-intro" class="muted" x="64" y="458" font-size="22">Lab 2–6 / 検索・実行・評価を少しずつ追加</text>
-
-  <text id="lab2-number" class="mono blue" x="64" y="514" font-size="22">Lab 2</text>
-  <text id="lab2-prompt-text" x="176" y="514" font-size="28">Prompt Agent</text>
-  <text id="lab2-outcome" class="muted" x="176" y="548" font-size="22">役割を設定し、規程の直接検索を確認</text>
-  <path id="lab2-to-lab3" class="rule" d="M 176 568 H 656"/>
-
-  <text id="lab3-number" class="mono blue" x="64" y="600" font-size="22">Lab 3</text>
-  <text id="lab3-knowledge-text" x="176" y="600" font-size="28">Foundry IQ</text>
-  <text id="lab3-outcome" class="muted" x="176" y="634" font-size="22">複数の規程を横断検索し、出典を読む</text>
-  <path id="lab3-to-lab4" class="rule" d="M 176 654 H 656"/>
-
-  <text id="lab4-number" class="mono blue" x="64" y="686" font-size="22">Lab 4</text>
-  <text id="lab4-toolbox-text" x="176" y="686" font-size="28">Tool / Skill / Toolbox</text>
-  <text id="lab4-outcome" class="muted" x="176" y="720" font-size="22">必要な tool を発見し、API で計算する</text>
-  <path id="lab4-to-lab5" class="rule" d="M 176 740 H 656"/>
-
-  <text id="lab5-number" class="mono blue" x="64" y="772" font-size="22">Lab 5</text>
-  <text id="lab5-evaluation-text" x="176" y="772" font-size="28">Evaluation</text>
-  <text id="lab5-outcome" class="muted" x="176" y="806" font-size="22">同じ質問集で回答と判定理由を点検</text>
-  <path id="lab5-to-lab6" class="rule" d="M 176 826 H 656"/>
-
-  <text id="lab6-number" class="mono blue" x="64" y="858" font-size="22">Lab 6</text>
-  <text id="lab6-optimizer-text" x="176" y="858" font-size="28">Optimizer</text>
-  <text id="lab6-outcome" class="muted" x="176" y="892" font-size="22">指示文の候補を比較し、採用を判断</text>
-
-  <path id="build-to-code" class="edge" data-from="prompt-learning-container" data-to="hosted-learning-container" d="M 676 408 H 732" marker-end="url(#arrowhead)"/>
-  <path id="hosted-learning-container" class="rule" d="M 752 340 H 1376"/>
-  <path d="M 752 340 H 832" fill="none" stroke="#55dbd0" stroke-width="3"/>
-  <text id="hosted-stage" class="mono cyan" x="752" y="374" font-size="20" letter-spacing="1">03 / REUSE &amp; DEPLOY</text>
-  <text id="hosted-learning-surface" class="mono muted" x="1376" y="374" font-size="19" text-anchor="end">AZURE ML</text>
-  <text id="hosted-learning-title" x="752" y="422" font-size="30" font-weight="600">同じ資産をコードで再利用</text>
-  <text id="lab7-independent-note-text" class="muted" x="752" y="458" font-size="22">Lab 7–8 / Foundry IQ をコードで再利用</text>
-
-  <rect id="lab7-comparison" class="surface" x="752" y="486" width="624" height="160" rx="8"/>
-  <text id="lab7-number" class="mono cyan" x="776" y="522" font-size="22">Lab 7</text>
-  <text id="lab7-policy-text" x="888" y="522" font-size="26">plain Agent → Harness Agent</text>
-  <text id="lab7-connections" class="muted" x="776" y="572" font-size="22">Foundry IQ / Toolbox / Skills を接続</text>
-  <text id="lab7-planner-text" class="muted" x="776" y="608" font-size="22">plan / todo / memory の動きを比較する</text>
-  <path id="code-to-workflow" class="edge" data-from="lab7-comparison" data-to="lab8-deployment" d="M 800 646 V 674" marker-end="url(#arrowhead)"/>
-
-  <rect id="lab8-deployment" class="surface" x="752" y="686" width="624" height="160" rx="8"/>
-  <text id="lab8-number" class="mono cyan" x="776" y="722" font-size="22">Lab 8</text>
-  <text id="lab7-hosted-text" x="888" y="722" font-size="26">Hosted Agent にデプロイ</text>
-  <text id="lab7-reviewer-text" class="muted" x="776" y="772" font-size="22">intake → policy → reviewer</text>
-  <text id="lab8-outcome" class="muted" x="776" y="808" font-size="22">通常 Agent 3つの sequential workflow を配置</text>
-
-  <path d="M 752 870 V 922" fill="none" stroke="#55dbd0" stroke-width="2"/>
-  <text id="lab8-source-note" class="muted" x="776" y="886" font-size="20">Lab 8 は checked-in source を使用。</text>
-  <text id="lab8-session-note" class="muted" x="776" y="918" font-size="20">Lab 7 の session state には依存しない。</text>
-  <path id="workflow-to-cleanup" class="edge" data-from="lab8-deployment" data-to="shared-cleanup" d="M 1376 766 H 1400 V 948 H 1328 V 968" marker-end="url(#arrowhead)"/>
-
-  <rect id="shared-cleanup" class="surface" x="64" y="980" width="1312" height="104" rx="8"/>
-  <text id="cleanup-stage" class="mono muted" x="88" y="1024" font-size="20">04 / FINISH</text>
-  <text id="cleanup-lab" class="mono cyan" x="88" y="1057" font-size="22">Lab 9</text>
-  <text id="shared-cleanup-text" x="320" y="1024" font-size="28" font-weight="600">trace の比較と cleanup</text>
-  <text id="cleanup-outcome" class="muted" x="320" y="1060" font-size="22">Prompt / Hosted を比較 → 専用 RG を削除</text>
-  <text id="learning-footer" class="muted" x="64" y="1124" font-size="20">合成データのみ。実際の予約・承認・精算は行いません。</text>
+  <rect width="1640" height="1880" fill="#ffffff"/>
+  <text id="learning-title" x="40" y="50" style="font-size:30px">Learning flow — one Prompt Agent, then reusable code</text>
+  <text id="learning-subtitle" x="40" y="118" style="font-size:18px">10 Labs · synthetic data only · no real booking, approval, or payment</text>
+  <rect id="shared-preparation" class="container" x="40" y="170" width="1560" height="470" rx="12" stroke="#0078D4"/>
+  <text id="preparation-title" x="60" y="212" style="font-size:22px">Labs 0–1 — prepare in Azure Portal</text>
+  <rect id="preparation-steps" class="box blue" x="60" y="260" width="1520" height="290" rx="12"/>
+  <text id="preparation-steps-text" x="80" y="292" style="font-size:17px">
+    <tspan x="80">Lab 0: overview and safety</tspan>
+    <tspan x="80" dy="42.5">1. Resource groups &gt; Create: manually create ONE dedicated RG</tspan>
+    <tspan x="80" dy="42.5">2. Deploy a custom template &gt; Build your own template in the editor &gt; Load file</tspan>
+    <tspan x="80" dy="42.5">3. infra/azuredeploy.json &gt; existing RG &gt; Review + create &gt; Create</tspan>
+    <tspan x="80" dy="42.5">4. Deployment Scripts validation passes &gt; private ZIP download via Microsoft Entra user account</tspan>
+    <tspan x="80" dy="42.5">5. PC extract: Microsoft-Foundry-Agent-Service-Handson</tspan>
+  </text>
+  <text id="preparation-boundary" x="60" y="596">No Compute until Lab 7. Context = resource_outputs.&lt;key&gt;.value. Private container = workshop-files.</text>
+  <path id="prepare-to-build" d="M415 650 V695" fill="none" stroke="#0078D4" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect id="prompt-learning" class="container" x="40" y="705" width="750" height="720" rx="12" stroke="#5C2D91"/>
+  <text id="prompt-title" x="60" y="747" style="font-size:22px">Labs 2–6 — Microsoft Foundry Portal</text>
+  <rect id="lab2" class="box purple" x="60" y="810" width="710" height="100" rx="12"/>
+  <text id="lab2-text" x="80" y="836">
+    <tspan x="80">Lab 2 — Prompt Agent + direct Search</tspan>
+    <tspan x="80" dy="40">Create contoso-travel-assistant; Luna 40K TPM</tspan>
+  </text>
+  <rect id="lab3" class="box purple" x="60" y="925" width="710" height="100" rx="12"/>
+  <text id="lab3-text" x="80" y="951">
+    <tspan x="80">Lab 3 — Foundry IQ</tspan>
+    <tspan x="80" dy="40">Two indexes; gpt-5.5; reuse the same remote knowledge base</tspan>
+  </text>
+  <rect id="lab4" class="box purple" x="60" y="1040" width="710" height="100" rx="12"/>
+  <text id="lab4-text" x="80" y="1066">
+    <tspan x="80">Lab 4 — Toolbox / OpenAPI / Skills</tspan>
+    <tspan x="80" dy="40">Live portal-assets; Publish; Tool Search</tspan>
+  </text>
+  <rect id="lab5" class="box purple" x="60" y="1155" width="710" height="100" rx="12"/>
+  <text id="lab5-text" x="80" y="1181">
+    <tspan x="80">Lab 5 — Evaluation</tspan>
+    <tspan x="80" dy="40">Seven synthetic rows; gpt-5.5 judge; inspect reasons / traces</tspan>
+  </text>
+  <rect id="lab6" class="box purple" x="60" y="1270" width="710" height="100" rx="12"/>
+  <text id="lab6-text" x="80" y="1296">
+    <tspan x="80">Lab 6 — Agent Optimizer</tspan>
+    <tspan x="80" dy="40">Compare baseline + one candidate; gpt-5.5; promote only if better</tspan>
+  </text>
+  <path id="build-to-code" class="edge" d="M800 1090 H840"/>
+  <rect id="hosted-learning" class="container" x="850" y="705" width="750" height="720" rx="12" stroke="#107C10"/>
+  <text id="hosted-title" x="870" y="747" style="font-size:22px">Labs 7–8 — Azure Machine Learning</text>
+  <rect id="lab7-setup" class="box green" x="870" y="810" width="710" height="190" rx="12"/>
+  <text id="lab7-setup-text" x="890" y="841">
+    <tspan x="890">Lab 7 preparation: Standard_DS3_v2 + Idle shutdown</tspan>
+    <tspan x="890" dy="40">Notebooks &gt; User files &gt; Upload folder</tspan>
+    <tspan x="890" dy="40">00-azureml-setup.ipynb: Python 3.10 - SDK v2</tspan>
+    <tspan x="890" dy="40">Creates Python (Foundry Workshop) + Python (Foundry Hosted Agent)</tspan>
+  </text>
+  <rect id="lab7-agents" class="box green" x="870" y="1030" width="710" height="130" rx="12"/>
+  <text id="lab7-agents-text" x="890" y="1066">
+    <tspan x="890">Lab 7 — plain Agent &gt; Harness Agent</tspan>
+    <tspan x="890" dy="40">Foundry IQ + Toolbox + Skills; plan / todos / execute</tspan>
+  </text>
+  <rect id="lab8" class="box green" x="870" y="1190" width="710" height="170" rx="12"/>
+  <text id="lab8-text" x="890" y="1226">
+    <tspan x="890">Lab 8 — Hosted Agent source remote build</tspan>
+    <tspan x="890" dy="40">intake_agent &gt; policy_agent &gt; reviewer_agent</tspan>
+    <tspan x="890" dy="40">Reuses Foundry IQ; no Lab 7 session state</tspan>
+  </text>
+  <text id="hosted-kernel" x="870" y="1394" style="font-size:14px">Labs 7/8 kernel: Python (Foundry Hosted Agent)</text>
+  <path id="workflow-to-cleanup" class="edge" d="M1225 1435 V1490"/>
+  <rect id="shared-cleanup" class="container" x="40" y="1500" width="1560" height="290" rx="12" stroke="#1e1e1e"/>
+  <text id="cleanup-title" x="60" y="1542" style="font-size:22px">Lab 9 — trace comparison and complete cleanup</text>
+  <rect id="cleanup-steps" class="box gray" x="60" y="1595" width="1520" height="150" rx="12"/>
+  <text id="cleanup-steps-text" x="80" y="1626">
+    <tspan x="80">Export notebooks &gt; delete Hosted Agent / versions &gt; Compute Stop / Delete</tspan>
+    <tspan x="80" dy="40">Azure Portal &gt; Delete resource group &gt; verify deletion</tspan>
+    <tspan x="80" dy="40">Delete the dedicated RG with its resources; deployment history deletion is not resource deletion</tspan>
+  </text>
+  <text id="learning-footer" x="40" y="1836">Portal E2E must use actual UI; diagrams and simulated assets are not execution evidence.</text>
 </svg>

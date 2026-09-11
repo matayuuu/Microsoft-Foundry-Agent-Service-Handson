@@ -1,4 +1,4 @@
-# completed-run-assets — SIMULATED / REFERENCE フォールバック資料
+# completed-run-assets — SIMULATED / REFERENCE 参考資料
 
 ## これは何か
 
@@ -34,10 +34,14 @@ preview 機能の不安定さやネットワーク・quota の事情で当日時
 | [optimizer-run.simulated.json](optimizer-run.simulated.json) | [Lab 6](../../labs/06-optimization.md) | [schemas/optimizer-run.schema.json](schemas/optimizer-run.schema.json) |
 | [hosted-agent-deploy.simulated.json](hosted-agent-deploy.simulated.json) | [Lab 8](../../labs/08-hosted-multi-agent.md) | [schemas/hosted-agent-deploy.schema.json](schemas/hosted-agent-deploy.schema.json) |
 
-`tests/contract/test_completed_run_assets_contract.py`（本タスクで追加）が、各 JSON ファイル
+`tests/contract/test_completed_run_assets_contract.py` が、各 JSON ファイル
 がそのスキーマに準拠していること、`asset_status` が `SIMULATED`/`REFERENCE` のいずれかで
 あること、`disclaimer_ja` が空でないこと、秘密情報らしき文字列（`sk-`、`AccountKey=` など）
 や実在しそうな GUID 形式の ID を含まないことを検証します。
+
+これらを custom template / Deployment Scripts の成功、private ZIP の取得、
+Notebook UI、cleanup、Playwright の実 Portal E2E の証拠として使用しません。
+live 実行の阻害事項と未実施範囲は、そのまま記録します。
 
 ## 使い方（講師向け）
 

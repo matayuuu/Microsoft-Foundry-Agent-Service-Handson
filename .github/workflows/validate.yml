@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - dev-portal
+      - dev-custom-template
 
 permissions:
   contents: read
@@ -48,19 +48,32 @@ jobs:
           python -m ruff check src/hosted-agent tests/unit/hosted_agent tests/contract/hosted_agent
           python -m ruff format --check src/hosted-agent tests/unit/hosted_agent tests/contract/hosted_agent
 
-  terraform:
+  bicep:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/setup-python@v5
         with:
-          terraform_version: "1.16.0"
-      - name: Format
-        run: terraform fmt -check -recursive
-      - name: Initialize
-        run: terraform -chdir=infra init -backend=false
-      - name: Validate
-        run: terraform -chdir=infra validate
+          python-version: "3.12"
+      - name: Install pinned Bicep compiler
+        run: az bicep install --version v0.46.1
+      - name: Verify generated Portal template
+        run: make bicep-validate
+
+  bootstrap-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate the exact bootstrap CLI image
+        shell: bash
+        run: |
+          cli_version=$(jq -er '.resources[] | select(.type == "Microsoft.Resources/deploymentScripts") | .properties.azCliVersion' infra/azuredeploy.json)
+          [[ "$cli_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          runtime_context=$(mktemp -d "$RUNNER_TEMP/bootstrap-runtime.XXXXXX")
+          cp pyproject.toml README.md "$runtime_context/"
+          docker build --build-arg "AZURE_CLI_VERSION=$cli_version" \
+            --file tests/runtime/bootstrap.Dockerfile \
+            --tag workshop-bootstrap-runtime:validation "$runtime_context"
 
   travel-api-container:
     runs-on: ubuntu-latest

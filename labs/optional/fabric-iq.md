@@ -3,7 +3,7 @@
 ## この文書の位置づけ
 
 このラボは**本編の所要時間に含まれません**。[architecture.md](../../docs/architecture.md)
-の方針どおり、本ハンズオンの core Terraform resources は Microsoft Fabric の容量・ワークスペース・
+の方針どおり、本ハンズオンの core custom template は Microsoft Fabric の容量・ワークスペース・
 ontology・data agent を一切作成しません。ここで説明する手順は、**別途 Fabric 容量とワーク
 スペースを持つ組織**が、本編の Contoso 出張・経費シナリオを Fabric IQ 経由で Foundry agent に
 つなぐ場合の**設計と接続手順**です。実際に手を動かす場合は、この文書の前提条件をすべて満たす
@@ -75,8 +75,8 @@ Fabric IQ は、その地域で **Power BI のみが Fabric ワークロード�
 | **Foundry User** | 開発者本人、agent の実行時 identity、OAuth フローに関わるユーザー identity | Fabric IQ ツールを使う agent の作成・実行 |
 | **Foundry Project Manager** | 接続を作成する担当者 | Fabric IQ エンドポイントへの Foundry connection 作成 |
 
-これらは本編 Lab 4/5 と同じ Foundry project 上のロールですが、`infra/rbac.tf` は Fabric IQ
-connection 用のロールを付与しません。本ラボを行う場合は、Fabric 管理者と Foundry project
+これらは本編 Lab 4/5 と同じ Foundry project 上のロールですが、本編の template は Fabric IQ
+connection 用の追加権限を管理しません。本ラボを行う場合は、Fabric 管理者と Foundry project
 管理者が individually にロールを付与する必要があります。
 
 ### 2.6 認証方式: managed OAuth と BYO（Bring Your Own）Entra app の違い、および admin consent
@@ -184,7 +184,7 @@ with (
 
 `FABRIC_IQ_PROJECT_CONNECTION_ID` は Fabric 管理者と Foundry Project Manager が事前に作成した
 connection の完全なリソース ID です。本編の `.workshop/context.json` にはこの値は含まれません
-（本編の Terraform setup は Fabric connection を作らないためです）。このコードは**参考実装**であり、
+（本編の custom template は Fabric connection を作らないためです）。このコードは**参考実装**であり、
 `scripts/` 配下には追加しません — 実行する場合は自分のスクラッチファイルとして保存してください。
 
 ## 5. 検証する

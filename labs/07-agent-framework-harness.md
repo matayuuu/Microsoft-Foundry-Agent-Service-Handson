@@ -41,10 +41,12 @@ Toolbox へ登録しただけの状態と、Agent が実際に利用した状態
 
 ## 1. Azure ML を準備して Notebook を開く
 
-1. [Azure ML 実行環境](../docs/participant/environments/azure-ml.md)に従い、Terraform が
-   作成した workspace を開きます。
+1. **この Lab の開始時に初めて** [Azure ML 実行環境](../docs/participant/environments/azure-ml.md)
+   に従い、Lab 1 の custom template が作成した workspace を開きます。
 2. **Standard_DS3_v2** Compute instance を **Idle shutdown** 有効で作成します。
-3. Lab 1 で PC に展開した最上位 bundle folder を **Notebooks > User files** へ upload。
+3. Lab 1 の private ZIP を PC に展開した最上位 `Microsoft-Foundry-Agent-Service-Handson`
+   folder を **Notebooks > User files > Upload folder** へ upload。
+   `.workshop/context.json`、`scripts/`、`notebooks/`、`src/`、必要な `tests/` を含む構成を保ちます。
 4. `notebooks/00-azureml-setup.ipynb` を built-in **Python 3.10 - SDK v2** で実行し、
    2 kernels を作成します。
 5. Azure ML Studio の **Notebooks > User files** で
@@ -55,7 +57,7 @@ Toolbox へ登録しただけの状態と、Agent が実際に利用した状態
    root の **Python (Foundry Workshop)** は選びません。
 7. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばしません。
 
-Notebook は download bundle 内の `.workshop/context.json` と `resource_outputs` を読みます。
+Notebook は download bundle 内の `.workshop/context.json` の `resource_outputs.<key>.value` を読みます。
 接続先や model deployment を
 手入力する必要はありません。認証には Azure ML Terminal で行った `az login --use-device-code` を使い、API key や
 client secret は使いません。
@@ -163,7 +165,8 @@ session、loop が担当します。
 Lab 8 は、この Notebook の session、todos、memory、出力を引き継ぎません。
 Lab 8 は `intake_agent`、`policy_agent`、`reviewer_agent` という通常 Agent の
 sequential workflow です。Lab 3 の Foundry IQ が準備できていれば、経験者は
-Lab 7 を実行せず Lab 8 へ進めます。
+Lab 7 の Agent 実行を省略して Lab 8 へ進めます。ただし、この Lab の環境準備
+（Compute、folder upload、`00-azureml-setup.ipynb`、2 kernels）は省略できません。
 
 連続して受講する場合は、この Lab で単一 Agent 内の仕組みを観察してから、Lab 8 で
 複数の通常 Agent に役割を分ける構成と比較してください。

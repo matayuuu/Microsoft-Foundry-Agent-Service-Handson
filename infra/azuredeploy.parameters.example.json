@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "japaneast"
+    },
+    "primaryModelVersion": {
+      "value": "REPLACE_WITH_ADMIN_VERIFIED_VERSION"
+    },
+    "evaluationModelVersion": {
+      "value": "REPLACE_WITH_ADMIN_VERIFIED_VERSION"
+    },
+    "embeddingModelVersion": {
+      "value": "REPLACE_WITH_ADMIN_VERIFIED_VERSION"
+    },
+    "travelApiImageRef": {
+      "value": "ghcr.io/<owner>/<image>@sha256:<verified-64-lowercase-hex-digest>"
+    },
+    "sourceRevision": {
+      "value": "REPLACE_WITH_PUBLISHED_40_CHARACTER_SHA"
+    },
+    "participantObjectIdOverride": {
+      "value": ""
+    },
+    "bootstrapRunId": {
+      "value": "1"
+    }
+  }
+}

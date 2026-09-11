@@ -1,0 +1,1026 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.46.1.21595",
+      "templateHash": "8235361334062801107"
+    },
+    "description": "Deploy the Foundry workshop into the dedicated resource group already created in Azure Portal."
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "japaneast",
+      "allowedValues": [
+        "japaneast"
+      ],
+      "metadata": {
+        "description": "Workshop resource location. Japan East only; the existing resource group metadata location does not override this value."
+      }
+    },
+    "primaryModelVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "metadata": {
+        "description": "Administrator-verified gpt-5.6-luna version available with GlobalStandard in Japan East. No version is guessed."
+      }
+    },
+    "evaluationModelVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "metadata": {
+        "description": "Administrator-verified gpt-5.5 version available with GlobalStandard in Japan East. No version is guessed."
+      }
+    },
+    "embeddingModelVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "metadata": {
+        "description": "Administrator-verified text-embedding-3-small version available with GlobalStandard in Japan East."
+      }
+    },
+    "travelApiImageRef": {
+      "type": "string",
+      "minLength": 83,
+      "maxLength": 256,
+      "metadata": {
+        "description": "Public GHCR Travel Ops API image: ghcr.io/<owner>/<image>@sha256:<64 lowercase hexadecimal characters>. Tags and private registry credentials are not accepted."
+      }
+    },
+    "sourceRevision": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 40,
+      "metadata": {
+        "description": "Published lowercase 40-character commit SHA in matayuuu/Microsoft-Foundry-Agent-Service-Handson. Used for bootstrap source, citations, and the handoff manifest."
+      }
+    },
+    "participantObjectIdOverride": {
+      "type": "string",
+      "defaultValue": "",
+      "maxLength": 36,
+      "metadata": {
+        "description": "Intended participant Entra User object ID. Leave empty only when the participant deploys personally. Specify the same participant for administrator/automation redeployment."
+      }
+    },
+    "bootstrapRunId": {
+      "type": "string",
+      "defaultValue": "1",
+      "minLength": 1,
+      "maxLength": 64,
+      "metadata": {
+        "description": "Stable bootstrap rerun identifier. Keep unchanged for normal redeployment; change deliberately to repeat initialization. It does not change resource names."
+      }
+    }
+  },
+  "variables": {
+    "$fxv#0": "#!/usr/bin/env bash\nset -euo pipefail\n\nfor prerequisite in az python3; do\n    if ! command -v \"$prerequisite\" >/dev/null 2>&1; then\n        printf 'bootstrap runtime: required executable %s is missing from the Deployment Scripts image.\\n' \"$prerequisite\" >&2\n        exit 1\n    fi\ndone\n\n# Keep Azure CLI's interpreter and automatically signed-in identity untouched.\npython3 -I - <<'PY'\nimport importlib.util\nimport json\nimport os\nfrom pathlib import Path, PurePosixPath\nimport re\nimport shutil\nimport ssl\nimport subprocess\nimport sys\nimport tarfile\nimport tempfile\nimport time\nimport urllib.error\nimport urllib.request\n\nREPOSITORY = \"matayuuu/Microsoft-Foundry-Agent-Service-Handson\"\nMAX_ARCHIVE_BYTES = 128 * 1024 * 1024\nMAX_EXTRACTED_BYTES = 512 * 1024 * 1024\nMAX_MEMBERS = 20000\nTRANSIENT_HTTP = {408, 425, 429, 500, 502, 503, 504}\n\n\ndef fail(stage, message):\n    raise RuntimeError(f\"bootstrap {stage}: {message}\")\n\n\ndef validate_environment(environment):\n    revision = environment.get(\"WORKSHOP_SOURCE_REVISION\", \"\")\n    if re.fullmatch(r\"[0-9a-f]{40}\", revision) is None:\n        fail(\"inputs\", \"WORKSHOP_SOURCE_REVISION must be a published lowercase 40-character SHA.\")\n    try:\n        context = json.loads(environment.get(\"WORKSHOP_CONTEXT_JSON\", \"\"))\n    except (TypeError, ValueError):\n        fail(\"inputs\", \"WORKSHOP_CONTEXT_JSON must contain the non-secret template context.\")\n    if not isinstance(context, dict) or context.get(\"source_revision\") != revision:\n        fail(\"inputs\", \"context.source_revision must equal WORKSHOP_SOURCE_REVISION.\")\n    expected_source = f\"https://github.com/{REPOSITORY}/blob/{revision}\"\n    if context.get(\"source_base\") != expected_source:\n        fail(\"inputs\", \"context.source_base must reference the fixed workshop repository and SHA.\")\n    if environment.get(\"WORKSHOP_ARTIFACT_CONTAINER\") != \"workshop-files\":\n        fail(\"inputs\", \"WORKSHOP_ARTIFACT_CONTAINER must be workshop-files.\")\n    output = environment.get(\"AZ_SCRIPTS_OUTPUT_PATH\", \"\")\n    if not output or not Path(output).is_absolute():\n        fail(\"inputs\", \"AZ_SCRIPTS_OUTPUT_PATH must be supplied by Azure Deployment Scripts.\")\n    if Path(output).is_symlink() or Path(output).is_dir():\n        fail(\"inputs\", \"AZ_SCRIPTS_OUTPUT_PATH must name a regular output file, not a link/directory.\")\n    return revision\n\n\nclass NoRedirect(urllib.request.HTTPRedirectHandler):\n    def redirect_request(self, request, response, code, message, headers, new_url):\n        fail(\"source download\", \"unexpected archive redirect; only the fixed source URL is allowed.\")\n\n\ndef download_source(revision, destination, *, sleep=time.sleep):\n    url = f\"https://codeload.github.com/{REPOSITORY}/tar.gz/{revision}\"\n    opener = urllib.request.build_opener(NoRedirect())\n    for attempt in range(1, 6):\n        try:\n            request = urllib.request.Request(url, headers={\"User-Agent\": \"foundry-workshop-bootstrap\"})\n            with opener.open(request, timeout=120) as response, destination.open(\"wb\") as output:\n                total = 0\n                while chunk := response.read(1024 * 1024):\n                    total += len(chunk)\n                    if total > MAX_ARCHIVE_BYTES:\n                        fail(\"source download\", \"archive exceeds the supported size limit.\")\n                    output.write(chunk)\n            return\n        except urllib.error.HTTPError as exc:\n            if exc.code not in TRANSIENT_HTTP or attempt == 5:\n                fail(\"source download\", f\"HTTP {exc.code}; confirm that the exact SHA is published.\")\n        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:\n            if isinstance(getattr(exc, \"reason\", None), ssl.SSLCertVerificationError):\n                fail(\"source download\", \"TLS certificate verification failed.\")\n            if attempt == 5:\n                fail(\"source download\", \"network readiness retries exhausted.\")\n        delay = min(2 ** attempt, 30)\n        print(f\"bootstrap source download: transient failure; retry {attempt}/4 in {delay}s.\", flush=True)\n        sleep(delay)\n\n\ndef extract_source(archive_path, destination, revision):\n    expected_root = f\"Microsoft-Foundry-Agent-Service-Handson-{revision}\"\n    with tarfile.open(archive_path, \"r:gz\") as archive:\n        members = []\n        seen = set()\n        total = 0\n        for member in archive:\n            name = PurePosixPath(member.name)\n            if (\n                name.is_absolute()\n                or \"..\" in name.parts\n                or \"\\\\\" in member.name\n                or \":\" in member.name\n                or not name.parts\n                or name.parts[0] != expected_root\n                or not (member.isdir() or member.isfile())\n                or name in seen\n                or member.size < 0\n            ):\n                fail(\"source extraction\", \"archive contains an unsafe, duplicate, or unexpected entry.\")\n            seen.add(name)\n            total += member.size\n            if len(seen) > MAX_MEMBERS or total > MAX_EXTRACTED_BYTES:\n                fail(\"source extraction\", \"archive exceeds the supported extraction limits.\")\n            members.append(member)\n        for member in members:\n            path = destination.joinpath(*PurePosixPath(member.name).parts)\n            if member.isdir():\n                path.mkdir(parents=True, exist_ok=True)\n            else:\n                path.parent.mkdir(parents=True, exist_ok=True)\n                with archive.extractfile(member) as source, path.open(\"xb\") as output:\n                    shutil.copyfileobj(source, output)\n                path.chmod(0o755 if member.mode & 0o111 else 0o644)\n    root = destination / expected_root\n    for relative in (\"pyproject.toml\", \"scripts/bootstrap_custom_template.py\"):\n        if not (root / relative).is_file():\n            fail(\"source extraction\", f\"pinned archive is missing {relative}.\")\n    return root\n\n\ndef main():\n    revision = validate_environment(os.environ)\n    Path(os.environ[\"AZ_SCRIPTS_OUTPUT_PATH\"]).unlink(missing_ok=True)\n    if not (3, 10) <= sys.version_info[:2] < (3, 14):\n        fail(\"runtime\", \"select a supported AzureCLI image with Python 3.10 through 3.13.\")\n    for module in (\"venv\", \"ensurepip\", \"ssl\"):\n        if importlib.util.find_spec(module) is None:\n            fail(\n                \"runtime\",\n                f\"Python {module} is unavailable. Select a supported Deployment Scripts AzureCLI \"\n                \"image with venv and ensurepip; never install into Azure CLI's interpreter.\",\n            )\n    # The service working directory can be an Azure Files mount. Keep Python,\n    # executable files, and package build operations on the container filesystem.\n    work = Path(tempfile.mkdtemp(prefix=\"foundry-workshop-\", dir=\"/tmp\"))\n    archive = work / \"source.tar.gz\"\n    print(f\"bootstrap source download: fetching pinned revision {revision}.\", flush=True)\n    download_source(revision, archive)\n    try:\n        root = extract_source(archive, work, revision)\n    except (OSError, tarfile.TarError) as exc:\n        fail(\"source extraction\", f\"archive could not be safely extracted ({type(exc).__name__}).\")\n    archive.unlink()\n    virtual_environment = work / \"python\"\n    environment = os.environ.copy()\n    for key in (\"PYTHONHOME\", \"PYTHONPATH\"):\n        environment.pop(key, None)\n    environment[\"PYTHONNOUSERSITE\"] = \"1\"\n    build_work = work / \"pip-work\"\n    build_work.mkdir(mode=0o700)\n    for key in (\"TMPDIR\", \"TEMP\", \"TMP\"):\n        environment[key] = str(build_work)\n    try:\n        subprocess.run(\n            [sys.executable, \"-I\", \"-m\", \"venv\", str(virtual_environment)],\n            check=True, env=environment,\n        )\n    except subprocess.CalledProcessError:\n        fail(\"runtime\", \"venv creation failed; use an AzureCLI image with working venv/ensurepip.\")\n    python = virtual_environment / \"bin\" / \"python\"\n    print(\"bootstrap dependencies: installing only the project's provisioning dependencies.\", flush=True)\n    try:\n        subprocess.run(\n            [str(python), \"-I\", \"-m\", \"pip\", \"--isolated\", \"--disable-pip-version-check\",\n             \"install\", \"--no-input\", \"--no-cache-dir\", \".\"],\n            cwd=root, check=True, env=environment,\n        )\n    except subprocess.CalledProcessError:\n        fail(\"dependencies\", \"provisioning dependency installation failed in the isolated venv.\")\n    result = subprocess.run(\n        [str(python), \"-s\", \"scripts/bootstrap_custom_template.py\"],\n        cwd=root, env=environment, check=False,\n    )\n    return result.returncode\n\n\nif __name__ == \"__main__\":\n    try:\n        sys.exit(main())\n    except (OSError, RuntimeError, tarfile.TarError) as exc:\n        print(str(exc), file=sys.stderr)\n        sys.exit(1)\nPY\n",
+    "sourceRevisionIsImmutable": "[and(equals(length(parameters('sourceRevision')), 40), empty(filter(range(0, length(parameters('sourceRevision'))), lambda('index', not(contains('0123456789abcdef', substring(parameters('sourceRevision'), lambdaVariables('index'), 1)))))))]",
+    "validatedSourceRevision": "[if(variables('sourceRevisionIsImmutable'), parameters('sourceRevision'), fail('sourceRevision must be a published lowercase 40-character hexadecimal commit SHA.'))]",
+    "imageParts": "[split(parameters('travelApiImageRef'), '@sha256:')]",
+    "imageRepository": "[first(variables('imageParts'))]",
+    "imageDigest": "[last(variables('imageParts'))]",
+    "imagePathSegments": "[split(variables('imageRepository'), '/')]",
+    "imagePathIsValid": "[and(and(and(greaterOrEquals(length(variables('imagePathSegments')), 3), not(contains(variables('imagePathSegments'), ''))), not(contains(variables('imagePathSegments'), '.'))), not(contains(variables('imagePathSegments'), '..')))]",
+    "imageRepositoryIsValid": "[and(and(startsWith(variables('imageRepository'), 'ghcr.io/'), variables('imagePathIsValid')), empty(filter(range(0, length(variables('imageRepository'))), lambda('index', not(contains('abcdefghijklmnopqrstuvwxyz0123456789._/-', substring(variables('imageRepository'), lambdaVariables('index'), 1)))))))]",
+    "imageDigestIsValid": "[and(equals(length(variables('imageDigest')), 64), empty(filter(range(0, length(variables('imageDigest'))), lambda('index', not(contains('0123456789abcdef', substring(variables('imageDigest'), lambdaVariables('index'), 1)))))))]",
+    "imageReferenceIsImmutable": "[and(and(equals(length(variables('imageParts')), 2), variables('imageRepositoryIsValid')), variables('imageDigestIsValid'))]",
+    "validatedTravelApiImageRef": "[if(variables('imageReferenceIsImmutable'), parameters('travelApiImageRef'), fail('travelApiImageRef must be a public ghcr.io/<owner>/<image>@sha256:<64 lowercase hexadecimal characters> reference without a tag.'))]",
+    "participantObjectId": "[toLower(if(empty(parameters('participantObjectIdOverride')), deployer().objectId, parameters('participantObjectIdOverride')))]",
+    "sourceBase": "[format('https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/{0}', variables('validatedSourceRevision'))]",
+    "nameSuffix": "[uniqueString(resourceGroup().id, parameters('location'))]",
+    "names": {
+      "foundry": "[format('aif-fdyws-{0}', variables('nameSuffix'))]",
+      "project": "contoso-travel",
+      "search": "[format('srch-fdyws-{0}', variables('nameSuffix'))]",
+      "logAnalytics": "[format('log-fdyws-{0}', variables('nameSuffix'))]",
+      "appInsights": "[format('appi-fdyws-{0}', variables('nameSuffix'))]",
+      "containerEnvironment": "[format('cae-fdyws-{0}', variables('nameSuffix'))]",
+      "travelApi": "[format('ca-travel-api-{0}', variables('nameSuffix'))]",
+      "azureml": "[format('mlw-fdyws-{0}', variables('nameSuffix'))]",
+      "storage": "[format('stfdyws{0}', variables('nameSuffix'))]",
+      "keyVault": "[format('kv-fdyws-{0}', variables('nameSuffix'))]",
+      "bootstrapIdentity": "[format('id-fdyws-bootstrap-{0}', variables('nameSuffix'))]",
+      "bootstrap": "[format('ds-fdyws-bootstrap-{0}', variables('nameSuffix'))]"
+    },
+    "connectionNames": {
+      "search": "contoso-travel-search",
+      "knowledgeMcp": "contoso-travel-knowledge-lab-mcp",
+      "appInsights": "contoso-travel-appinsights"
+    },
+    "tags": {
+      "workshop": "foundry-agent-service-handson",
+      "managed-by": "bicep",
+      "source-revision": "[variables('validatedSourceRevision')]"
+    },
+    "roleIds": {
+      "foundryUser": "53ca6127-db72-4b80-b1b0-d745d6d5456d",
+      "foundryProjectManager": "eadc314b-1a2d-4efa-be10-5d325db5065e",
+      "searchIndexDataContributor": "8ebe5a00-799e-43f5-93ac-243d3dce84a7",
+      "searchServiceContributor": "7ca78c08-252a-4471-8644-bb5ff32d4ba0",
+      "logAnalyticsReader": "73c42c96-874c-492b-b04d-ab87d138a893",
+      "privilegedMonitoringDataReader": "dbc9c667-e97f-4491-aee6-90b9cf960190",
+      "monitoringMetricsPublisher": "3913510d-42f4-4e42-8a64-420c390055eb",
+      "cognitiveServicesOpenAIUser": "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd",
+      "azuremlDataScientist": "f6c7c914-8db3-469d-8ca1-694a8f32e121",
+      "storageBlobDataContributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+      "keyVaultSecretsUser": "4633458b-17de-408a-b874-0445c86b69e6",
+      "reader": "acdd72a7-3385-48ef-bd42-f606fba81ae7"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2026-05-01",
+      "name": "[variables('names').foundry]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "kind": "AIServices",
+      "sku": {
+        "name": "S0"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "allowProjectManagement": true,
+        "customSubDomainName": "[variables('names').foundry]",
+        "disableLocalAuth": true,
+        "publicNetworkAccess": "Enabled",
+        "networkAcls": {
+          "defaultAction": "Allow"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects",
+      "apiVersion": "2026-05-01",
+      "name": "[format('{0}/{1}', variables('names').foundry, variables('names').project)]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "displayName": "Contoso Travel & Expense Workshop",
+        "description": "Basic Agent Setup project for the Foundry Agent Service hands-on workshop."
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2026-05-01",
+      "name": "[format('{0}/{1}', variables('names').foundry, 'gpt-5.6-luna')]",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 40
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "gpt-5.6-luna",
+          "version": "[parameters('primaryModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2026-05-01",
+      "name": "[format('{0}/{1}', variables('names').foundry, 'gpt-5.5')]",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 100
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "gpt-5.5",
+          "version": "[parameters('evaluationModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('names').foundry, 'gpt-5.6-luna')]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2026-05-01",
+      "name": "[format('{0}/{1}', variables('names').foundry, 'embedding')]",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 40
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "text-embedding-3-small",
+          "version": "[parameters('embeddingModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('names').foundry, 'gpt-5.5')]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Search/searchServices",
+      "apiVersion": "2025-05-01",
+      "name": "[variables('names').search]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "sku": {
+        "name": "basic"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "partitionCount": 1,
+        "replicaCount": 1,
+        "semanticSearch": "free",
+        "disableLocalAuth": true,
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('names').logAnalytics]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "sku": {
+          "name": "PerGB2018"
+        },
+        "retentionInDays": 30,
+        "features": {
+          "enableLogAccessUsingOnlyResourcePermissions": true
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('names').appInsights]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('names').logAnalytics)]",
+        "DisableLocalAuth": true,
+        "IngestionMode": "LogAnalytics",
+        "publicNetworkAccessForIngestion": "Enabled",
+        "publicNetworkAccessForQuery": "Enabled"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('names').logAnalytics)]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2025-01-01",
+      "name": "[variables('names').containerEnvironment]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', variables('names').logAnalytics), '2023-09-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', variables('names').logAnalytics), '2023-09-01').primarySharedKey]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('names').logAnalytics)]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2025-01-01",
+      "name": "[variables('names').travelApi]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('names').containerEnvironment)]",
+        "configuration": {
+          "activeRevisionsMode": "Single",
+          "ingress": {
+            "external": true,
+            "targetPort": 8080,
+            "transport": "auto",
+            "allowInsecure": false,
+            "traffic": [
+              {
+                "latestRevision": true,
+                "weight": 100
+              }
+            ]
+          }
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "travel-api",
+              "image": "[variables('validatedTravelApiImageRef')]",
+              "resources": {
+                "cpu": "[json('0.25')]",
+                "memory": "0.5Gi"
+              },
+              "env": [
+                {
+                  "name": "WORKSHOP_SOURCE_BASE",
+                  "value": "[variables('sourceBase')]"
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 0,
+            "maxReplicas": 1
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', variables('names').containerEnvironment)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2025-01-01",
+      "name": "[variables('names').storage]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "properties": {
+        "accessTier": "Hot",
+        "publicNetworkAccess": "Enabled",
+        "supportsHttpsTrafficOnly": true,
+        "minimumTlsVersion": "TLS1_2",
+        "allowSharedKeyAccess": true,
+        "allowBlobPublicAccess": false,
+        "defaultToOAuthAuthentication": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/{1}', variables('names').storage, 'default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('names').storage)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/{1}/{2}', variables('names').storage, 'default', 'workshop-files')]",
+      "properties": {
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('names').storage, 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2024-11-01",
+      "name": "[variables('names').keyVault]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "enableRbacAuthorization": true,
+        "accessPolicies": [],
+        "publicNetworkAccess": "Enabled",
+        "enableSoftDelete": true,
+        "softDeleteRetentionInDays": 7,
+        "enablePurgeProtection": false
+      }
+    },
+    {
+      "type": "Microsoft.MachineLearningServices/workspaces",
+      "apiVersion": "2025-06-01",
+      "name": "[variables('names').azureml]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "sku": {
+        "name": "Basic",
+        "tier": "Basic"
+      },
+      "properties": {
+        "applicationInsights": "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+        "keyVault": "[resourceId('Microsoft.KeyVault/vaults', variables('names').keyVault)]",
+        "storageAccount": "[resourceId('Microsoft.Storage/storageAccounts', variables('names').storage)]",
+        "publicNetworkAccess": "Enabled",
+        "hbiWorkspace": false,
+        "v1LegacyMode": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('names').keyVault)]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('names').storage)]"
+      ]
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[variables('names').bootstrapIdentity]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]"
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), variables('participantObjectId'), variables('roleIds').foundryUser)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').foundryUser)]",
+        "principalId": "[variables('participantObjectId')]",
+        "principalType": "User"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('participantObjectId'), variables('roleIds').foundryProjectManager)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').foundryProjectManager)]",
+        "principalId": "[variables('participantObjectId')]",
+        "principalType": "User"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('names').search), variables('participantObjectId'), variables('roleIds').searchServiceContributor)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').searchServiceContributor)]",
+        "principalId": "[variables('participantObjectId')]",
+        "principalType": "User"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('names').search), variables('participantObjectId'), variables('roleIds').searchIndexDataContributor)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').searchIndexDataContributor)]",
+        "principalId": "[variables('participantObjectId')]",
+        "principalType": "User"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('names').logAnalytics)]",
+      "name": "[guid(resourceId('Microsoft.OperationalInsights/workspaces', variables('names').logAnalytics), variables('participantObjectId'), variables('roleIds').logAnalyticsReader)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').logAnalyticsReader)]",
+        "principalId": "[variables('participantObjectId')]",
+        "principalType": "User"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('names').logAnalytics)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+      "name": "[guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), variables('participantObjectId'), variables('roleIds').privilegedMonitoringDataReader)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').privilegedMonitoringDataReader)]",
+        "principalId": "[variables('participantObjectId')]",
+        "principalType": "User"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml)]",
+      "name": "[guid(resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml), variables('participantObjectId'), variables('roleIds').azuremlDataScientist)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').azuremlDataScientist)]",
+        "principalId": "[variables('participantObjectId')]",
+        "principalType": "User"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('names').storage)]",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('names').storage), variables('participantObjectId'), variables('roleIds').storageBlobDataContributor)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').storageBlobDataContributor)]",
+        "principalId": "[variables('participantObjectId')]",
+        "principalType": "User"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('names').storage)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('names').keyVault)]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('names').keyVault), resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml), variables('roleIds').keyVaultSecretsUser)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').keyVaultSecretsUser)]",
+        "principalId": "[reference(resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml), '2025-06-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml)]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('names').keyVault)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').foundryUser)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').foundryUser)]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), '2026-05-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('names').search), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').searchIndexDataContributor)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').searchIndexDataContributor)]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), '2026-05-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]",
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('names').search), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').searchServiceContributor)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').searchServiceContributor)]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), '2026-05-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]",
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+      "name": "[guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').monitoringMetricsPublisher)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').monitoringMetricsPublisher)]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), '2026-05-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+      "name": "[guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').logAnalyticsReader)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').logAnalyticsReader)]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), '2026-05-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+      "name": "[guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').privilegedMonitoringDataReader)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').privilegedMonitoringDataReader)]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), '2026-05-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), resourceId('Microsoft.Search/searchServices', variables('names').search), variables('roleIds').cognitiveServicesOpenAIUser)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').cognitiveServicesOpenAIUser)]",
+        "principalId": "[reference(resourceId('Microsoft.Search/searchServices', variables('names').search), '2025-05-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]",
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), variables('roleIds').foundryUser)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').foundryUser)]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('names').search), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), variables('roleIds').searchServiceContributor)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').searchServiceContributor)]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity)]",
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('names').search), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), variables('roleIds').searchIndexDataContributor)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').searchIndexDataContributor)]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity)]",
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), variables('roleIds').reader)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').reader)]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', variables('names').storage, 'default', 'workshop-files')]",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', variables('names').storage, 'default', 'workshop-files'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), variables('roleIds').storageBlobDataContributor)]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIds').storageBlobDataContributor)]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', variables('names').storage, 'default', 'workshop-files')]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity)]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2026-05-01",
+      "name": "[format('{0}/{1}/{2}', variables('names').foundry, variables('names').project, variables('connectionNames').search)]",
+      "properties": {
+        "category": "CognitiveSearch",
+        "target": "[format('https://{0}.search.windows.net', variables('names').search)]",
+        "authType": "AAD",
+        "isSharedToAll": false,
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+          "Location": "[parameters('location')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('names').foundry, 'embedding')]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]",
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2026-05-15-preview",
+      "name": "[format('{0}/{1}/{2}', variables('names').foundry, variables('names').project, variables('connectionNames').knowledgeMcp)]",
+      "properties": {
+        "category": "RemoteTool",
+        "target": "[format('https://{0}.search.windows.net/knowledgebases/contoso-travel-knowledge-lab/mcp?api-version=2026-08-01-preview', variables('names').search)]",
+        "authType": "ProjectManagedIdentity",
+        "useWorkspaceManagedIdentity": true,
+        "isSharedToAll": false,
+        "audience": "https://search.azure.com",
+        "metadata": {
+          "ApiType": "Azure"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('names').search), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('names').search), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').searchIndexDataContributor))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('names').search), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('names').search), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').searchServiceContributor))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('names').foundry, variables('names').project, variables('connectionNames').search)]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2026-05-15-preview",
+      "name": "[format('{0}/{1}/{2}', variables('names').foundry, variables('names').project, variables('connectionNames').appInsights)]",
+      "properties": {
+        "category": "AppInsights",
+        "target": "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+        "authType": "ProjectManagedIdentity",
+        "isSharedToAll": false,
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+          "ApplicationInsightsConnectionString": "[reference(resourceId('Microsoft.Insights/components', variables('names').appInsights), '2020-02-02').ConnectionString]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('names').foundry, variables('names').project, variables('connectionNames').knowledgeMcp)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]",
+        "[extensionResourceId(resourceId('Microsoft.Insights/components', variables('names').appInsights), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').logAnalyticsReader))]",
+        "[extensionResourceId(resourceId('Microsoft.Insights/components', variables('names').appInsights), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').privilegedMonitoringDataReader))]",
+        "[extensionResourceId(resourceId('Microsoft.Insights/components', variables('names').appInsights), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').monitoringMetricsPublisher))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "[variables('names').bootstrap]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "kind": "AzureCLI",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity))]": {}
+        }
+      },
+      "properties": {
+        "azCliVersion": "2.87.0",
+        "scriptContent": "[replace(variables('$fxv#0'), '\r\n', '\n')]",
+        "environmentVariables": [
+          {
+            "name": "WORKSHOP_SOURCE_REVISION",
+            "value": "[variables('validatedSourceRevision')]"
+          },
+          {
+            "name": "WORKSHOP_CONTEXT_JSON",
+            "value": "[string(createObject('schema_version', '1.0', 'provisioning_method', 'azure-custom-template', 'setup_status', 'infrastructure-ready', 'subscription_id', subscription().subscriptionId, 'resource_group_name', resourceGroup().name, 'location', parameters('location'), 'source_base', variables('sourceBase'), 'source_revision', variables('validatedSourceRevision'), 'participant_object_id', variables('participantObjectId'), 'resource_outputs', createObject('resource_group_name', createObject('value', resourceGroup().name), 'location', createObject('value', parameters('location')), 'ai_services_account_name', createObject('value', variables('names').foundry), 'ai_services_endpoint', createObject('value', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), '2026-05-01').endpoint), 'openai_endpoint', createObject('value', format('https://{0}.openai.azure.com/openai/v1/', variables('names').foundry)), 'foundry_project_name', createObject('value', variables('names').project), 'foundry_project_id', createObject('value', resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)), 'foundry_project_endpoint', createObject('value', format('https://{0}.services.ai.azure.com/api/projects/{1}', variables('names').foundry, variables('names').project)), 'primary_model_deployment_name', createObject('value', 'gpt-5.6-luna'), 'evaluation_model_deployment_name', createObject('value', 'gpt-5.5'), 'optimizer_model_deployment_name', createObject('value', 'gpt-5.5'), 'embedding_model_deployment_name', createObject('value', 'embedding'), 'search_service_name', createObject('value', variables('names').search), 'search_service_endpoint', createObject('value', format('https://{0}.search.windows.net', variables('names').search)), 'search_pricing_model', createObject('value', 'dedicated'), 'log_analytics_workspace_name', createObject('value', variables('names').logAnalytics), 'application_insights_name', createObject('value', variables('names').appInsights), 'application_insights_id', createObject('value', resourceId('Microsoft.Insights/components', variables('names').appInsights)), 'azureml_workspace_name', createObject('value', variables('names').azureml), 'azureml_workspace_id', createObject('value', resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml)), 'storage_account_name', createObject('value', variables('names').storage), 'storage_account_id', createObject('value', resourceId('Microsoft.Storage/storageAccounts', variables('names').storage)), 'key_vault_name', createObject('value', variables('names').keyVault), 'key_vault_id', createObject('value', resourceId('Microsoft.KeyVault/vaults', variables('names').keyVault)), 'search_connection_name', createObject('value', variables('connectionNames').search), 'knowledge_mcp_connection_name', createObject('value', variables('connectionNames').knowledgeMcp), 'application_insights_connection_name', createObject('value', variables('connectionNames').appInsights), 'travel_api_fqdn', createObject('value', reference(resourceId('Microsoft.App/containerApps', variables('names').travelApi), '2025-01-01').configuration.ingress.fqdn), 'travel_api_container_app_name', createObject('value', variables('names').travelApi), 'foundry_portal_url', createObject('value', 'https://ai.azure.com'))))]"
+          },
+          {
+            "name": "WORKSHOP_ARTIFACT_CONTAINER",
+            "value": "workshop-files"
+          }
+        ],
+        "timeout": "PT1H",
+        "cleanupPreference": "OnSuccess",
+        "retentionInterval": "P1D",
+        "forceUpdateTag": "[guid(variables('validatedSourceRevision'), parameters('bootstrapRunId'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('names').foundry, variables('names').project, variables('connectionNames').appInsights)]",
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', variables('names').storage, 'default', 'workshop-files')]",
+        "[resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml)]",
+        "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', variables('names').keyVault), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', variables('names').keyVault), resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml), variables('roleIds').keyVaultSecretsUser))]",
+        "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', variables('names').storage, 'default', 'workshop-files'), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', variables('names').storage, 'default', 'workshop-files'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), variables('roleIds').storageBlobDataContributor))]",
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), variables('roleIds').foundryUser))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity)]",
+        "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), variables('roleIds').reader))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('names').search), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('names').search), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), variables('roleIds').searchIndexDataContributor))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('names').search), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('names').search), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('names').bootstrapIdentity), variables('roleIds').searchServiceContributor))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('names').foundry, 'embedding')]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('names').foundry, 'gpt-5.5')]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry)]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('names').keyVault)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('names').foundry, variables('names').project, variables('connectionNames').knowledgeMcp)]",
+        "[extensionResourceId(resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml), variables('participantObjectId'), variables('roleIds').azuremlDataScientist))]",
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), variables('participantObjectId'), variables('roleIds').foundryUser))]",
+        "[extensionResourceId(resourceId('Microsoft.OperationalInsights/workspaces', variables('names').logAnalytics), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.OperationalInsights/workspaces', variables('names').logAnalytics), variables('participantObjectId'), variables('roleIds').logAnalyticsReader))]",
+        "[extensionResourceId(resourceId('Microsoft.Insights/components', variables('names').appInsights), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), variables('participantObjectId'), variables('roleIds').privilegedMonitoringDataReader))]",
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('participantObjectId'), variables('roleIds').foundryProjectManager))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('names').search), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('names').search), variables('participantObjectId'), variables('roleIds').searchIndexDataContributor))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('names').search), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('names').search), variables('participantObjectId'), variables('roleIds').searchServiceContributor))]",
+        "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', variables('names').storage), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts', variables('names').storage), variables('participantObjectId'), variables('roleIds').storageBlobDataContributor))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('names').foundry, 'gpt-5.6-luna')]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]",
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').foundryUser))]",
+        "[extensionResourceId(resourceId('Microsoft.Insights/components', variables('names').appInsights), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').logAnalyticsReader))]",
+        "[extensionResourceId(resourceId('Microsoft.Insights/components', variables('names').appInsights), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').privilegedMonitoringDataReader))]",
+        "[extensionResourceId(resourceId('Microsoft.Insights/components', variables('names').appInsights), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Insights/components', variables('names').appInsights), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').monitoringMetricsPublisher))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('names').search), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('names').search), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').searchIndexDataContributor))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('names').search), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('names').search), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project), variables('roleIds').searchServiceContributor))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('names').search)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('names').foundry, variables('names').project, variables('connectionNames').search)]",
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), resourceId('Microsoft.Search/searchServices', variables('names').search), variables('roleIds').cognitiveServicesOpenAIUser))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('names').storage)]",
+        "[resourceId('Microsoft.App/containerApps', variables('names').travelApi)]"
+      ]
+    }
+  ],
+  "outputs": {
+    "resourceOutputs": {
+      "type": "object",
+      "metadata": {
+        "description": "Canonical non-secret resource_outputs mapping. The handoff ZIP contains the complete initialized context."
+      },
+      "value": {
+        "resource_group_name": {
+          "value": "[resourceGroup().name]"
+        },
+        "location": {
+          "value": "[parameters('location')]"
+        },
+        "ai_services_account_name": {
+          "value": "[variables('names').foundry]"
+        },
+        "ai_services_endpoint": {
+          "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('names').foundry), '2026-05-01').endpoint]"
+        },
+        "openai_endpoint": {
+          "value": "[format('https://{0}.openai.azure.com/openai/v1/', variables('names').foundry)]"
+        },
+        "foundry_project_name": {
+          "value": "[variables('names').project]"
+        },
+        "foundry_project_id": {
+          "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('names').foundry, variables('names').project)]"
+        },
+        "foundry_project_endpoint": {
+          "value": "[format('https://{0}.services.ai.azure.com/api/projects/{1}', variables('names').foundry, variables('names').project)]"
+        },
+        "primary_model_deployment_name": {
+          "value": "gpt-5.6-luna"
+        },
+        "evaluation_model_deployment_name": {
+          "value": "gpt-5.5"
+        },
+        "optimizer_model_deployment_name": {
+          "value": "gpt-5.5"
+        },
+        "embedding_model_deployment_name": {
+          "value": "embedding"
+        },
+        "search_service_name": {
+          "value": "[variables('names').search]"
+        },
+        "search_service_endpoint": {
+          "value": "[format('https://{0}.search.windows.net', variables('names').search)]"
+        },
+        "search_pricing_model": {
+          "value": "dedicated"
+        },
+        "log_analytics_workspace_name": {
+          "value": "[variables('names').logAnalytics]"
+        },
+        "application_insights_name": {
+          "value": "[variables('names').appInsights]"
+        },
+        "application_insights_id": {
+          "value": "[resourceId('Microsoft.Insights/components', variables('names').appInsights)]"
+        },
+        "azureml_workspace_name": {
+          "value": "[variables('names').azureml]"
+        },
+        "azureml_workspace_id": {
+          "value": "[resourceId('Microsoft.MachineLearningServices/workspaces', variables('names').azureml)]"
+        },
+        "storage_account_name": {
+          "value": "[variables('names').storage]"
+        },
+        "storage_account_id": {
+          "value": "[resourceId('Microsoft.Storage/storageAccounts', variables('names').storage)]"
+        },
+        "key_vault_name": {
+          "value": "[variables('names').keyVault]"
+        },
+        "key_vault_id": {
+          "value": "[resourceId('Microsoft.KeyVault/vaults', variables('names').keyVault)]"
+        },
+        "search_connection_name": {
+          "value": "[variables('connectionNames').search]"
+        },
+        "knowledge_mcp_connection_name": {
+          "value": "[variables('connectionNames').knowledgeMcp]"
+        },
+        "application_insights_connection_name": {
+          "value": "[variables('connectionNames').appInsights]"
+        },
+        "travel_api_fqdn": {
+          "value": "[reference(resourceId('Microsoft.App/containerApps', variables('names').travelApi), '2025-01-01').configuration.ingress.fqdn]"
+        },
+        "travel_api_container_app_name": {
+          "value": "[variables('names').travelApi]"
+        },
+        "foundry_portal_url": {
+          "value": "https://ai.azure.com"
+        }
+      }
+    },
+    "participantDownload": {
+      "type": "object",
+      "metadata": {
+        "description": "Successful bootstrap artifact coordinates, source revision, and SHA-256. Use Storage browser > Microsoft Entra user account > Blob containers > workshop-files > Download."
+      },
+      "value": {
+        "status": "[reference(resourceId('Microsoft.Resources/deploymentScripts', variables('names').bootstrap), '2023-08-01').outputs.status]",
+        "storage_account_name": "[reference(resourceId('Microsoft.Resources/deploymentScripts', variables('names').bootstrap), '2023-08-01').outputs.storage_account_name]",
+        "container_name": "[reference(resourceId('Microsoft.Resources/deploymentScripts', variables('names').bootstrap), '2023-08-01').outputs.container_name]",
+        "blob_name": "[reference(resourceId('Microsoft.Resources/deploymentScripts', variables('names').bootstrap), '2023-08-01').outputs.blob_name]",
+        "sha256": "[reference(resourceId('Microsoft.Resources/deploymentScripts', variables('names').bootstrap), '2023-08-01').outputs.sha256]",
+        "source_revision": "[reference(resourceId('Microsoft.Resources/deploymentScripts', variables('names').bootstrap), '2023-08-01').outputs.source_revision]"
+      }
+    },
+    "storagePortalUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Open this Storage account in Azure Portal, then use Storage browser and Microsoft Entra user account to download the private handoff ZIP."
+      },
+      "value": "[format('https://portal.azure.com/#resource{0}/overview', resourceId('Microsoft.Storage/storageAccounts', variables('names').storage))]"
+    }
+  }
+}

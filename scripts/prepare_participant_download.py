@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the single Cloud Shell download used by Portal and Azure ML labs."""
+"""Build the private Storage download used by Portal and Azure ML labs."""
 
 from __future__ import annotations
 

@@ -7,6 +7,8 @@ workflow を **source-code remote build** で Hosted Agent としてデプロイ
 `scripts/deploy_hosted_agent.py` が使う唯一の経路であり、**本編の core はこれからも
 source deploy のままです**。このラボは、Lab 8 のコードとデプロイ結果をベースに、
 Hosted Agent の任意（optional）の拡張パターンを扱います。
+追加インフラは本編とは別の承認済み検証環境で扱います。Lab 1 の RG 手動作成、
+custom template、private ZIP 取得を置き換える setup ではありません。
 
 > [!IMPORTANT]
 > このラボの内容はどれも、`scripts/deploy_hosted_agent.py` や `src/hosted-agent/` の
@@ -37,7 +39,7 @@ Foundry がそのイメージを pull して実行する仕組みが基本形で
   （[azd 付録](azd-appendix.md)の「プロジェクトを初期化する」参照）。
 - `azd` の Foundry 拡張機能（`microsoft.foundry`）がインストール済み。
 - `azd auth login` で認証済みのセッション（**`az login` とは別の認証**です。本編の
-  core は `az login` のみで完結し、`azd auth login` は使いません — [azd 付録](azd-appendix.md)
+  Hosted execution は Azure ML の既存 Azure CLI 認証を使い、`azd auth login` は使いません — [azd 付録](azd-appendix.md)
   参照）。
 - 既存の ACR へのアクセスと、選んだビルド経路に必要な ACR ロール。
 
@@ -63,7 +65,7 @@ ACR connection をスキャンし、候補として提示します。ACR connect
 > [!NOTE]
 > ACR を「private」（`publicNetworkAccess: Disabled` などのネットワーク分離）にするかどうかは、
 > このレジストリ選択の話とは独立した論点です。本ハンズオンは
-> [architecture.md](../../docs/architecture.md) の「Network posture」のとおり VNet
+> [architecture.md](../../docs/architecture.md) の構成どおり VNet
 > インジェクション・private endpoint を扱わないため、private ACR の構成は本ラボの scope 外
 > です。
 
@@ -155,10 +157,9 @@ Skill の読み込みと API 呼び出しを別々に確認してください。
   作成した agent とその version は `./scripts/delete_hosted_agent.py` の既定の `--agent-name`
   では削除されません。別名で作成した agent は、その名前を明示して個別に削除してください。
 - ACR にコンテナイメージを push した場合、そのイメージ自体は ACR のリポジトリに残ります。
-  本編の Terraform 構成は ACR を管理しないため（[architecture.md](../../docs/architecture.md)
-  の「Do not add ... an Agent capability host to the core Basic Agent Setup」のとおり、
-  本編は ACR を作成しません）、bring-your-own の ACR を使った場合はイメージの削除も自分で
-  行う必要があります。
+  本編の custom template は ACR を作成・管理しません
+  （[architecture.md](../../docs/architecture.md)）。bring-your-own の ACR を使った場合は
+  イメージの所有者と削除を確認します。共有 registry 全体を削除しないでください。
 
 ## 公式参照
 

@@ -3,8 +3,9 @@
 ## ゴール
 
 Portal で検証済みの Hosted Agent source と evaluation assets を、GitHub Actions の
-review / deploy / evaluate gate に接続する設計を学びます。本編 resources は Terraform
-state が所有するため、workflow は state ownership と data-plane deployment を分離します。
+review / deploy / evaluate gate に接続する設計を学びます。本編 resources は手動作成済み RG への
+Bicep / ARM template が管理するため、workflow は infrastructure と data-plane deployment を分離します。
+この付録は参加者の RG 手動作成 / custom template / private ZIP 取得を置き換えません。
 
 ## Security baseline
 
@@ -24,7 +25,7 @@ state が所有するため、workflow は state ownership と data-plane deploy
 6. scoreだけでなく errors / reasons / traces を review
 7. approved version promotion
 
-Portal で手動作成した RBAC や resource settings を pipeline が勝手に拡張しないようにします。
+template が定義した scoped RBAC や resource settings を pipeline が勝手に拡張しないようにします。
 評価と deployment は課金対象です。同一 run の再送を避け、retention と concurrency を制限します。
 
 ## Cleanup

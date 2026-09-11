@@ -1,4 +1,4 @@
-.PHONY: install install-hosted format lint test test-hosted shell-validate terraform-validate validate
+.PHONY: install install-hosted format lint test test-hosted shell-validate bicep-build bicep-validate validate
 
 install:
 	python -m pip install --upgrade pip
@@ -11,7 +11,6 @@ install-hosted:
 
 format:
 	python -m ruff format .
-	terraform fmt -recursive
 
 lint:
 	python -m ruff check .
@@ -24,10 +23,12 @@ test-hosted:
 	src/hosted-agent/.venv/bin/python -m pytest tests/unit/hosted_agent tests/contract/hosted_agent -q
 
 shell-validate:
-	@for script in scripts/admin-preflight.sh scripts/preflight.sh scripts/request-quota-increase.sh scripts/setup.sh scripts/destroy.sh scripts/prepare_serverless_foundry_iq.sh scripts/cloud-shell-common.sh scripts/setup-cloud-shell.sh scripts/activate-cloud-shell.sh; do bash -n "$$script" || exit; done
+	@for script in scripts/admin-preflight.sh scripts/request-quota-increase.sh scripts/bootstrap-custom-template.sh; do bash -n "$$script" || exit; done
 
-terraform-validate:
-	terraform -chdir=infra init -backend=false
-	terraform -chdir=infra validate
+bicep-build:
+	az bicep build --file infra/main.bicep --outfile infra/azuredeploy.json
 
-validate: lint test test-hosted shell-validate terraform-validate
+bicep-validate:
+	python scripts/check_template_artifact.py
+
+validate: lint test test-hosted shell-validate bicep-validate

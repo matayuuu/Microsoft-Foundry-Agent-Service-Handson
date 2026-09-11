@@ -2,7 +2,7 @@
 
 ## ゴール
 
-Microsoft Foundry Portal で、Lab 1 の Cloud Shell setup が登録した合成 test data を使い
+Microsoft Foundry Portal で、Lab 1 の Deployment Scripts が登録した合成 test data を使い
 `contoso-travel-assistant` を end-to-end で評価します。Lab 本編では Python を使いません。
 
 Lab 4 までで作った Agent に同じ質問集を実行し、**回答と tool の使い方から改善点を見つけます。**
@@ -22,7 +22,8 @@ PC に展開した `.workshop/context.json` の
 `resource_outputs.evaluation_model_deployment_name.value` が `gpt-5.5` であることを
 text editor で確認します。Foundry IQ、Lab 5、Lab 6 は
 同じ必須の GPT-5.5 deployment を共有します。値が欠落している場合は Lab 1 の
-model deployment と Lab 1 validation を修復してから続行します。
+model deployment と Deployment Scripts の validation を管理者と修復してから続行します。
+リソース作成だけを成功とせず、bootstrap の `status = complete` を確認します。
 
 ## 1. Evaluation を作成する
 

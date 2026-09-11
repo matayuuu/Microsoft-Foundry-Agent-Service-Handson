@@ -2,7 +2,7 @@
 
 *.sh text eol=lf
 *.py text eol=lf
-*.tf text eol=lf
+*.bicep text eol=lf
 *.md text eol=lf
 *.json text eol=lf
 *.jsonl text eol=lf

@@ -33,6 +33,9 @@ deployment を確認します。
 
 ## 1. Notebook で通常 Agent と workflow を確認する
 
+Lab 1 の template / bootstrap が成功し、private ZIP を取得・展開済みであること、
+Lab 7 の Compute / folder upload / setup Notebook が完了していることを確認します。
+
 1. Azure ML Studio の **Notebooks > User files** で
    [`notebooks/08-hosted-agent.ipynb`](../notebooks/08-hosted-agent.ipynb) を開きます。
 2. kernel に **Python (Foundry Hosted Agent)** を選択します。
@@ -44,7 +47,7 @@ deployment を確認します。
 
 Notebook は次の順に進みます。
 
-1. `.workshop/context.json` から model、Search、Foundry IQ の接続先を読む
+1. `.workshop/context.json` の `resource_outputs.<key>.value` から model、Search、Foundry IQ の接続先を読む
 2. 3 つの通常 Agent を作る
 3. `SequentialBuilder` で実行順を固定する
 4. `WorkflowViz` と Graphviz で実際の graph を表示する
@@ -75,12 +78,13 @@ Notebook だけ `intermediate_output_from="all_other"` を使い、intake と po
 - 実際の予約・承認・精算を行っていないと明記されている
 
 Lab 7 の session、todo、memory、出力は引き継ぎません。Lab 3 の Foundry IQ が準備済みなら、
-Lab 7 を実行していなくても Lab 8 を開始できます。
+Lab 7 の Agent 実行を省略していても Lab 8 を開始できます。
+Lab 7 の環境準備（Compute / folder upload / `00-azureml-setup.ipynb`）は必須です。
 
 ## 2. Hosted Agent を deploy する
 
 Notebook と contract test を確認後、同じ Notebook の **Python (Foundry Hosted Agent)**
-kernel で deploy cell を実行します。Cloud Shell へ戻って deploy しません。
+kernel で deploy cell を実行します。Lab 1 の template を再実行する操作ではありません。
 
 Script は次を行います。
 

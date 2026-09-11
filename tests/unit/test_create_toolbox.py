@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import ssl
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -376,6 +377,61 @@ def test_fetch_openapi_spec_retries_transient_cold_start(
     }
     assert attempts == 2
     assert delays == [0.25]
+
+
+@pytest.mark.parametrize("status", [301, 400, 401, 403, 404, 409, 422, 501])
+def test_fetch_openapi_spec_does_not_retry_permanent_http_errors(
+    monkeypatch: pytest.MonkeyPatch, status: int
+) -> None:
+    attempts = 0
+    delays: list[float] = []
+
+    def fake_get(url: str, timeout: float) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(status, request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(create_toolbox.httpx, "get", fake_get)
+    monkeypatch.setattr(create_toolbox.time, "sleep", delays.append)
+    with pytest.raises(create_toolbox.WorkshopContextError, match="after 1 attempt"):
+        create_toolbox.fetch_openapi_spec("https://travel-api.example.io", "/openapi.json")
+    assert attempts == 1
+    assert delays == []
+
+
+@pytest.mark.parametrize("status", [408, 425, 429, 500, 502, 503, 504])
+def test_fetch_openapi_spec_retries_only_transient_http_statuses(
+    monkeypatch: pytest.MonkeyPatch, status: int
+) -> None:
+    attempts = 0
+    delays: list[float] = []
+
+    def fake_get(url: str, timeout: float) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(
+            status if attempts == 1 else 200,
+            json=SAMPLE_SPEC,
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(create_toolbox.httpx, "get", fake_get)
+    monkeypatch.setattr(create_toolbox.time, "sleep", delays.append)
+    create_toolbox.fetch_openapi_spec(
+        "https://travel-api.example.io", "/openapi.json", retry_delay=0.25
+    )
+    assert attempts == 2
+    assert delays == [0.25]
+
+
+def test_openapi_tls_certificate_failure_is_permanent() -> None:
+    error = httpx.ConnectError("TLS verification failed")
+    error.__cause__ = ssl.SSLCertVerificationError("certificate rejected")
+    assert not create_toolbox.retryable_openapi_error(error)
+    assert not create_toolbox.retryable_openapi_error(
+        httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED]")
+    )
+    assert not create_toolbox.retryable_openapi_error(httpx.UnsupportedProtocol("unsupported"))
 
 
 def test_fetch_openapi_spec_rejects_non_openapi_document(monkeypatch: pytest.MonkeyPatch) -> None:

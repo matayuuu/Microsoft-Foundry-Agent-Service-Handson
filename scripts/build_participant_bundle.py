@@ -27,16 +27,24 @@ INCLUDE_FILES = (
     "README.md",
     "README.en.md",
     "pyproject.toml",
+    "scripts/__init__.py",
+    "scripts/setup_azureml.py",
+    "scripts/create_toolbox.py",
+    "scripts/connect_toolbox.py",
+    "scripts/deploy_hosted_agent.py",
+    "scripts/delete_hosted_agent.py",
+    "scripts/run_evaluation.py",
 )
 INCLUDE_DIRECTORIES = (
     "labs",
     "docs",
     "notebooks",
     "data",
-    "scripts",
+    "scripts/lib",
     "src/hosted-agent",
     "src/travel-api",
-    "tests",
+    "tests/unit/hosted_agent",
+    "tests/contract/hosted_agent",
 )
 
 FORBIDDEN_PARTS = frozenset(
@@ -56,6 +64,7 @@ FORBIDDEN_PARTS = frozenset(
         "dist",
         "infra",
         "instructor",
+        "logs",
     }
 )
 FORBIDDEN_SUFFIXES = (
@@ -82,14 +91,24 @@ def _is_forbidden(path: Path) -> bool:
         or any(part.endswith(".egg-info") for part in path.parts)
         or path.name in FORBIDDEN_FILENAMES
         or path.name.endswith(FORBIDDEN_SUFFIXES)
+        or path.name.startswith(".env.")
+        or ".tfstate." in path.name
     )
 
 
 def collect_source_files(root: Path = REPO_ROOT) -> list[Path]:
     """Collect the explicit participant allowlist and reject unsafe paths."""
-    files = {root / name for name in INCLUDE_FILES if (root / name).is_file()}
+    files: set[Path] = set()
+    for name in INCLUDE_FILES:
+        path = root / name
+        if path.is_symlink():
+            raise BundleError(f"participant source must not be a symlink: {name}")
+        if path.is_file():
+            files.add(path)
     for directory in INCLUDE_DIRECTORIES:
         directory_path = root / directory
+        if directory_path.is_symlink():
+            raise BundleError(f"participant directory must not be a symlink: {directory}")
         if not directory_path.is_dir():
             continue
         for current, dirnames, filenames in os.walk(directory_path):
@@ -99,9 +118,19 @@ def collect_source_files(root: Path = REPO_ROOT) -> list[Path]:
                 for name in dirnames
                 if not _is_forbidden((current_path / name).relative_to(root))
             ]
+            for name in dirnames:
+                if (current_path / name).is_symlink():
+                    raise BundleError(
+                        f"participant directory must not be a symlink: "
+                        f"{(current_path / name).relative_to(root)}"
+                    )
             for filename in filenames:
                 path = current_path / filename
                 if not _is_forbidden(path.relative_to(root)):
+                    if path.is_symlink():
+                        raise BundleError(
+                            f"participant source must not be a symlink: {path.relative_to(root)}"
+                        )
                     files.add(path)
 
     selected = sorted(files, key=lambda path: path.relative_to(root).as_posix())
@@ -112,8 +141,13 @@ def collect_source_files(root: Path = REPO_ROOT) -> list[Path]:
         "notebooks/07-agent-framework-harness.ipynb",
         "notebooks/08-hosted-agent.ipynb",
         "scripts/setup_azureml.py",
+        "scripts/lib/workshop_context.py",
+        "scripts/deploy_hosted_agent.py",
+        "scripts/delete_hosted_agent.py",
         "src/hosted-agent/main.py",
         "data/manifest.json",
+        "tests/contract/hosted_agent/test_sequential_workflow.py",
+        "tests/contract/hosted_agent/test_telemetry.py",
     }
     present = {path.relative_to(root).as_posix() for path in selected}
     missing = sorted(required - present)
@@ -145,6 +179,15 @@ def _context_entry(context_path: Path) -> bytes:
     )
     if forbidden.search(serialized):
         raise BundleError("canonical context contains a forbidden secret-shaped field")
+    if (
+        context.get("schema_version") != "1.0"
+        or context.get("provisioning_method") != "azure-custom-template"
+        or context.get("setup_status") != "complete"
+    ):
+        raise BundleError("runtime bundle requires completed custom-template initialization")
+    revision = context.get("source_revision")
+    if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise BundleError("canonical context must contain the published source_revision SHA")
     return serialized.encode("utf-8")
 
 
@@ -162,6 +205,8 @@ def _generated_portal_entries(portal_assets_dir: Path) -> dict[str, bytes]:
             entries[f"portal-assets/{name}"] = path.read_bytes()
         except OSError as exc:
             raise BundleError(f"required Portal asset is missing: {path}") from exc
+        if not entries[f"portal-assets/{name}"]:
+            raise BundleError(f"required Portal asset is empty: {path}")
     return entries
 
 
@@ -172,14 +217,17 @@ def build_entries(
     context_path: Path | None = None,
     portal_assets_dir: Path | None = None,
 ) -> dict[str, bytes]:
+    context_bytes = _context_entry(context_path) if context_path is not None else None
+    if context_bytes is not None and portal_assets_dir is None:
+        raise BundleError("runtime bundle requires generated live Portal assets")
     entries = {path.relative_to(root).as_posix(): path.read_bytes() for path in files}
     entries.update(
         _generated_portal_entries(portal_assets_dir)
         if portal_assets_dir is not None
         else _skill_entries()
     )
-    if context_path is not None:
-        entries[".workshop/context.json"] = _context_entry(context_path)
+    if context_bytes is not None:
+        entries[".workshop/context.json"] = context_bytes
 
     manifest_files = {
         name: {
@@ -190,8 +238,10 @@ def build_entries(
     }
     manifest = {
         "schema_version": 1,
-        "bundle": "microsoft-foundry-agent-service-handson-hybrid",
-        "source_branch": "main",
+        "bundle": "microsoft-foundry-agent-service-handson-custom-template",
+        "source_revision": (
+            json.loads(context_bytes)["source_revision"] if context_bytes is not None else None
+        ),
         "files": manifest_files,
     }
     entries["bundle-manifest.json"] = (

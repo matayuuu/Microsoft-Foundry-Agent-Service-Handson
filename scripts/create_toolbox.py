@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import ssl
 import sys
 import time
 from pathlib import Path
@@ -76,6 +77,7 @@ CONNECTION_TIMEOUT_SECONDS = 60.0
 OPENAPI_FETCH_TIMEOUT_SECONDS = 15.0
 OPENAPI_FETCH_MAX_ATTEMPTS = 5
 OPENAPI_FETCH_RETRY_DELAY_SECONDS = 3.0
+OPENAPI_RETRY_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 
 def build_openapi_tool(
@@ -270,6 +272,26 @@ def set_live_server_url(spec: dict[str, Any], base_url: str) -> dict[str, Any]:
     return normalized
 
 
+def retryable_openapi_error(error: httpx.HTTPError) -> bool:
+    # This API is anonymous: authorization errors are not RBAC propagation.
+    if isinstance(error, httpx.HTTPStatusError):
+        return error.response.status_code in OPENAPI_RETRY_STATUS_CODES
+    if not isinstance(
+        error, (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError)
+    ):
+        return False
+    cause: BaseException | None = error
+    visited: set[int] = set()
+    while cause is not None and id(cause) not in visited:
+        visited.add(id(cause))
+        if isinstance(cause, ssl.SSLCertVerificationError) or "CERTIFICATE_VERIFY_FAILED" in str(
+            cause
+        ):
+            return False
+        cause = cause.__cause__ or cause.__context__
+    return cause is None
+
+
 def fetch_openapi_spec(
     base_url: str,
     openapi_path: str,
@@ -294,10 +316,9 @@ def fetch_openapi_spec(
             response.raise_for_status()
             break
         except httpx.HTTPError as exc:
-            if attempt >= max_attempts:
+            if not retryable_openapi_error(exc) or attempt >= max_attempts:
                 raise WorkshopContextError(
-                    f"could not fetch OpenAPI spec from {url} after "
-                    f"{max_attempts} attempt(s): {exc}"
+                    f"could not fetch OpenAPI spec from {url} after {attempt} attempt(s): {exc}"
                 ) from exc
             time.sleep(retry_delay)
 

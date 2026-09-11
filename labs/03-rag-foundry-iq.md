@@ -20,12 +20,13 @@ Lab 7 の plain / Harness Agent と Lab 8 の Hosted workflow も、同じ remot
 
 ## 使用する値
 
-PC に展開した `.workshop/context.json` の `resource_outputs` で
-`evaluation_model_deployment_name = gpt-5.5` を確認します。Search connection は
+PC に展開した `.workshop/context.json` の
+`resource_outputs.evaluation_model_deployment_name.value = gpt-5.5` を確認します。Search connection は
 `contoso-travel-search`、indexes は `contoso-travel-policy` と
 `contoso-travel-approval` です。Agent から knowledge base の MCP endpoint を keyless に
-呼ぶ `contoso-travel-knowledge-lab-mcp` connection も Lab 1 で作成済みです。
-Cloud Shell は使いません。
+呼ぶ `contoso-travel-knowledge-lab-mcp` connection も Lab 1 の template で作成済みです。
+Search は **Basic**、bootstrap / validation が完了した環境を使います。
+knowledge base 自体はこの Lab で作成します。
 
 ## 1. Foundry IQ knowledge base を作成する
 
@@ -90,7 +91,6 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
 ![直接検索の tool だけを Remove し、その後 Agent を Save する](../docs/images/lab03-remove-direct-search.png)
 
 Search service や index を削除する操作ではありません。接続方法だけを切り替えます。
-Serverless では Lab 2 で直接検索 tool を追加していないため、この Remove 操作は不要です。
 
 3. **Knowledge** の一覧から `contoso-travel-knowledge-lab` を開きます。
 4. **Use in an agent > contoso-travel-assistant** を選択します。

@@ -2,11 +2,10 @@
 `--participant-count` aggregate model and Search quota reporting.
 
 These tests never call real Azure. They install a tiny fake `az` shell shim
-on PATH (fixture: fake_az), reusing the same canned-JSON-fixture approach as
-tests/contract/test_preflight_quota_contract.py (model.skus[] entries carry
+on PATH (fixture: fake_az_bin). The model.skus[] entries carry
 both `name` -- the SKU/deployment-type -- and their own `usageName`; usage-
 list entries key on `name.value` matching that exact usageName string and
-report `limit`/`currentValue` in thousands of TPM).
+report `limit`/`currentValue` in thousands of TPM.
 
 They assert the behavior this hardening pass requires:
 
@@ -18,18 +17,17 @@ They assert the behavior this hardening pass requires:
 * Headroom that is sufficient for one environment but not for N
   participants is reported as insufficient (a "warn", matching this
   script's informational-report semantics -- it never itself fails/selects
-  a region, unlike scripts/preflight.sh).
+  a region or substitutes a different model).
 * The aggregate math (per-environment capacity * count = required) is
   visible in the check detail text, and `participant_count` is echoed back
   in the JSON report.
 * Azure AI Search Basic service-count headroom is compared with the same
-    participant count in both supported regions.
+  participant count in the explicitly selected region.
 * `--participant-count` rejects non-positive-integer values before any
   Azure call is made.
 
-Requires `bash` and `jq` on PATH; skipped automatically otherwise (this
-workshop's participant/admin scripts target a Linux devcontainer/Codespace
-where both are expected to be present).
+Requires `bash` and `jq` on PATH; skipped automatically otherwise. The
+administrator utility targets a Bash environment with both tools installed.
 """
 
 from __future__ import annotations
@@ -54,8 +52,7 @@ pytestmark = pytest.mark.skipif(
     reason="hermetic admin-preflight.sh contract tests require both 'bash' and 'jq' on PATH",
 )
 
-# Reuses the same fake-`az` shim shape as test_preflight_quota_contract.py,
-# trimmed to only the subcommands admin-preflight.sh actually invokes
+# The fake-az shim handles only the subcommands admin-preflight.sh invokes
 # (it never touches `group show` / `role assignment` / RG-scoped calls --
 # it is a subscription-scope-only report).
 FAKE_AZ_SCRIPT = r"""#!/usr/bin/env bash
@@ -100,6 +97,9 @@ case "${sub1} ${sub2}" in
            "{\"resourceType\": \"workspaces\", ${loc1}}, " \
            "{\"resourceType\": \"containerApps\", ${loc1}}, " \
            "{\"resourceType\": \"storageAccounts\", ${loc1}}, " \
+           "{\"resourceType\": \"userAssignedIdentities\", ${loc1}}, " \
+           "{\"resourceType\": \"containerGroups\", ${loc1}}, " \
+           "{\"resourceType\": \"deploymentScripts\", ${loc1}}, " \
            "{\"resourceType\": \"vaults\", ${loc1}}]}"
     else
       var="FAKE_PROVIDER_$(find_arg_value --namespace | tr '.' '_' | tr '[:lower:]' '[:upper:]')"
@@ -344,13 +344,23 @@ def test_defaults_participant_count_to_one_and_reports_it(
         EVALUATION_MODEL,
         "text-embedding-3-small",
     }
-    # Three deployments, each checked in two regions.
-    assert len(model_checks) == 6
+    assert len(model_checks) == 3
+    assert all(c["name"].endswith("/eastus2") for c in model_checks)
+    assert "fallback_location" not in report
     assert all(c["status"] == "pass" for c in model_checks)
     evaluation_check = next(
         c for c in model_checks if c["name"] == f"model-sku:{EVALUATION_MODEL}/eastus2"
     )
     assert "100K * 1 participant(s) = 100K" in evaluation_check["detail"]
+    for provider in (
+        "Microsoft.ManagedIdentity",
+        "Microsoft.ContainerInstance",
+        "Microsoft.Resources",
+    ):
+        assert any(
+            check["name"] == f"provider:{provider}" and check["status"] == "pass"
+            for check in report["checks"]
+        )
 
 
 def test_aggregate_capacity_scales_with_participant_count(
@@ -437,12 +447,24 @@ def test_search_basic_service_count_quota_scales_with_participant_count(
         )
     )
     eastus2 = next(c for c in report["checks"] if c["name"] == "search-service-quota:basic/eastus2")
-    swedencentral = next(
-        c for c in report["checks"] if c["name"] == "search-service-quota:basic/swedencentral"
-    )
     assert eastus2["status"] == "warn"
     assert "headroom=2 (limit=12, current=10)" in eastus2["detail"]
     assert "required 3 service(s)" in eastus2["detail"]
+    assert not any("swedencentral" in check["name"] for check in report["checks"])
+
+    selected_report = _report(
+        _run_admin_preflight(
+            fake_az_bin,
+            tmp_path,
+            ["--location", "swedencentral", "--participant-count", "3", "--format", "json"],
+            env,
+        )
+    )
+    swedencentral = next(
+        check
+        for check in selected_report["checks"]
+        if check["name"] == "search-service-quota:basic/swedencentral"
+    )
     assert swedencentral["status"] == "pass"
     assert "headroom=3 (limit=12, current=9)" in swedencentral["detail"]
     assert "does not guarantee live physical SKU capacity" in swedencentral["detail"]
@@ -491,8 +513,7 @@ def test_markdown_report_shows_participant_count(fake_az_bin: Path, tmp_path: Pa
 def test_resolves_the_sku_supporting_version_not_the_highest_overall_version(
     fake_az_bin: Path, tmp_path: Path
 ) -> None:
-    """Regression test for the version/SKU-mismatch bug (same as
-    scripts/preflight.sh): the primary model's HIGHEST version does not support the
+    """The primary model's HIGHEST version does not support the
     required 'GlobalStandard' SKU, only an older version does. The report
     must show the SKU-supporting version and its own usageName as evidence,
     never the highest version combined with a mismatched usageName."""

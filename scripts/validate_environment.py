@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
+import ssl
 import subprocess
 import sys
 import urllib.error
@@ -15,8 +17,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from azure.core.exceptions import AzureError
+from azure.core.exceptions import AzureError, ServiceRequestError, ServiceResponseError
 from azure.identity import AzureCliCredential
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lib.workshop_context import (
+    CUSTOM_TEMPLATE_RESOURCE_OUTPUTS,
+    WorkshopContextError,
+    participant_object_id,
+)
 
 Status = str
 
@@ -26,6 +36,7 @@ class CheckResult:
     name: str
     status: Status
     detail: str
+    retryable: bool = False
 
     def __post_init__(self) -> None:
         if self.status not in ("pass", "fail", "warn"):
@@ -54,7 +65,12 @@ class ValidationReport:
         return {
             "overall_status": self.overall_status,
             "checks": [
-                {"name": check.name, "status": check.status, "detail": check.detail}
+                {
+                    "name": check.name,
+                    "status": check.status,
+                    "detail": check.detail,
+                    "retryable": check.retryable,
+                }
                 for check in self.checks
             ],
         }
@@ -79,41 +95,26 @@ def run_checks(specs: Sequence[CheckSpec]) -> ValidationReport:
     for spec in specs:
         try:
             results.append(spec.run())
-        except (RuntimeError, OSError, ValueError, KeyError, AzureError) as exc:
+        except (
+            RuntimeError,
+            OSError,
+            ValueError,
+            KeyError,
+            AzureError,
+            subprocess.TimeoutExpired,
+        ) as exc:
             results.append(
                 CheckResult(
                     name=spec.name,
                     status="fail",
-                    detail=f"check raised {type(exc).__name__}: {exc}",
+                    detail=redact_diagnostic(f"check raised {type(exc).__name__}: {exc}"),
+                    retryable=is_transient_exception(exc),
                 )
             )
     return ValidationReport(checks=results)
 
 
-REQUIRED_RESOURCE_OUTPUTS = (
-    "resource_group_name",
-    "location",
-    "ai_services_account_name",
-    "ai_services_endpoint",
-    "openai_endpoint",
-    "foundry_project_name",
-    "foundry_project_id",
-    "foundry_project_endpoint",
-    "primary_model_deployment_name",
-    "evaluation_model_deployment_name",
-    "embedding_model_deployment_name",
-    "search_service_name",
-    "search_service_endpoint",
-    "knowledge_mcp_connection_name",
-    "travel_api_fqdn",
-    "travel_api_container_app_name",
-    "azureml_workspace_name",
-    "azureml_workspace_id",
-    "storage_account_name",
-    "storage_account_id",
-    "key_vault_name",
-    "key_vault_id",
-)
+REQUIRED_RESOURCE_OUTPUTS = CUSTOM_TEMPLATE_RESOURCE_OUTPUTS
 DEFAULT_INDEX_NAMES = ("contoso-travel-policy", "contoso-travel-approval")
 EXPECTED_INDEX_FIELDS = (
     "id",
@@ -132,10 +133,124 @@ EXPECTED_INDEX_FIELDS = (
     "content_vector",
 )
 FOUNDRY_USER_ROLE_ID = "53ca6127-db72-4b80-b1b0-d745d6d5456d"
+TRANSIENT_HTTP_STATUS = frozenset({403, 408, 425, 429, 500, 502, 503, 504})
+_PERMANENT_FAILURES = (
+    "invalidparameter",
+    "invalidrequest",
+    "badrequest",
+    "insufficientquota",
+    "insufficient_quota",
+    "quotaexceeded",
+    "quota_exceeded",
+    "insufficientcapacity",
+    "skunotavailable",
+    "modelnotsupported",
+    "requestdisallowedbypolicy",
+    "publicnetworkaccessdisabled",
+    "public access is disabled",
+    "certificate_verify_failed",
+    "certificate verify failed",
+)
+_TRANSIENT_FAILURES = (
+    "authorizationfailed",
+    "authorizationpermissionmismatch",
+    "forbidden",
+    "toomanyrequests",
+    "too many requests",
+    "ratelimiterror",
+    "ratelimitreached",
+    "deploymentnotfound",
+    "serviceunavailable",
+    "gatewaytimeout",
+    "internalservererror",
+    "connectionerror",
+    "connection reset",
+    "connection refused",
+    "connecttimeout",
+    "readtimeout",
+    "timeouterror",
+    "servicerequesterror",
+    "serviceresponseerror",
+    "temporary failure in name resolution",
+)
+_RESOURCE_API_VERSIONS = {
+    "microsoft.cognitiveservices/accounts": "2026-05-01",
+    "microsoft.search/searchservices": "2025-05-01",
+    "microsoft.app/containerapps": "2025-01-01",
+    "microsoft.machinelearningservices/workspaces": "2025-06-01",
+}
+
+
+def redact_diagnostic(detail: str) -> str:
+    """Keep stage/service diagnostics without echoing auth headers or signed URLs."""
+    detail = re.sub(r"(https?://)[^/\s:@]+:[^@\s/]+@", r"\1[redacted]@", detail)
+    detail = re.sub(r"(https?://[^\s?'\"<>]+)\?[^\s'\"<>]*", r"\1?[redacted]", detail)
+    detail = re.sub(r"(?i)\bBearer\s+[^\s'\"<>]+", "Bearer [redacted]", detail)
+    detail = re.sub(
+        r"""(?i)(["']?(?:access[_-]?token|refresh[_-]?token|client[_-]?secret|password|"""
+        r"""account[_-]?key|api[_-]?key|sig)["']?\s*[:=]\s*["']?)[^\s"',}]+""",
+        r"\1[redacted]",
+        detail,
+    )
+    return re.sub(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b", "[redacted]", detail)
+
+
+def is_transient_failure(detail: str) -> bool:
+    """Classify known readiness failures; unrecognized and hard errors fail closed."""
+    normalized = detail.casefold()
+    if any(code in normalized for code in _PERMANENT_FAILURES):
+        return False
+    statuses = {
+        int(value)
+        for value in re.findall(
+            r"(?i)(?:\bHTTP(?:/\d(?:\.\d)?)?\s*|\bstatus(?:[ _]code)?\s*[:=]?\s*|"
+            r"\berror code\s*:\s*)(\d{3})\b",
+            detail,
+        )
+    }
+    allowed_statuses = TRANSIENT_HTTP_STATUS | (
+        {404} if "deploymentnotfound" in normalized else set()
+    )
+    if statuses and not statuses <= allowed_statuses:
+        return False
+    return bool(statuses) or any(code in normalized for code in _TRANSIENT_FAILURES)
+
+
+def is_transient_exception(exc: Exception) -> bool:
+    if isinstance(exc, ssl.SSLCertVerificationError):
+        return False
+    detail = str(exc)
+    if any(code in detail.casefold() for code in _PERMANENT_FAILURES):
+        return False
+    status_code = (
+        exc.code if isinstance(exc, urllib.error.HTTPError) else getattr(exc, "status_code", None)
+    )
+    if status_code is not None:
+        return status_code in TRANSIENT_HTTP_STATUS | {404}
+    if isinstance(
+        exc,
+        (
+            TimeoutError,
+            ConnectionError,
+            ServiceRequestError,
+            ServiceResponseError,
+            subprocess.TimeoutExpired,
+        ),
+    ):
+        return True
+    if isinstance(exc, urllib.error.URLError):
+        return not isinstance(exc.reason, ssl.SSLCertVerificationError)
+    return is_transient_failure(detail)
 
 
 def validate_context_metadata(context: dict[str, Any]) -> CheckResult:
-    required = ("subscription_id", "resource_group_name", "location", "resource_outputs")
+    required = (
+        "subscription_id",
+        "resource_group_name",
+        "location",
+        "participant_object_id",
+        "resource_outputs",
+    )
     missing = [key for key in required if not context.get(key)]
     if missing:
         return CheckResult(
@@ -143,8 +258,21 @@ def validate_context_metadata(context: dict[str, Any]) -> CheckResult:
             "fail",
             f"context is missing required field(s): {', '.join(missing)}",
         )
-    if context.get("setup_status") not in {"infrastructure-ready", "complete"}:
+    if context.get("setup_status") not in ("infrastructure-ready", "complete"):
         return CheckResult("context-metadata", "fail", "context setup_status is not ready.")
+    if (
+        context.get("schema_version") != "1.0"
+        or context.get("provisioning_method") != "azure-custom-template"
+    ):
+        return CheckResult(
+            "context-metadata",
+            "fail",
+            "context must describe the Azure custom-template deployment.",
+        )
+    try:
+        participant_object_id(context)
+    except WorkshopContextError as exc:
+        return CheckResult("context-metadata", "fail", str(exc))
     return CheckResult("context-metadata", "pass", "Canonical provisioning context is ready.")
 
 
@@ -176,12 +304,15 @@ def validate_role_assignment_present(
     label: str,
 ) -> CheckResult:
     if any(
-        assignment.get("principalId") == principal_id
-        and str(assignment.get("roleDefinitionId", "")).endswith(role_definition_id_suffix)
+        str(assignment.get("principalId", "")).casefold() == principal_id.casefold()
+        and str(assignment.get("roleDefinitionId", "")).rsplit("/", 1)[-1].casefold()
+        == role_definition_id_suffix.casefold()
         for assignment in assignments
     ):
         return CheckResult(label, "pass", "Role assignment found.")
-    return CheckResult(label, "fail", "Required role assignment was not found.")
+    return CheckResult(
+        label, "fail", "Required participant role assignment was not found.", retryable=True
+    )
 
 
 def validate_search_index(
@@ -195,48 +326,76 @@ def validate_search_index(
 
 def validate_search_document_count(count: int, minimum: int, label: str) -> CheckResult:
     if count < minimum:
-        return CheckResult(label, "fail", f"index contains {count} documents; expected {minimum}.")
+        return CheckResult(
+            label, "fail", f"index contains {count} documents; expected {minimum}.", retryable=True
+        )
     return CheckResult(label, "pass", f"index contains {count} document(s).")
 
 
 def validate_resource_exists(resource_json: Any, label: str) -> CheckResult:
     if not isinstance(resource_json, dict) or not resource_json.get("id"):
-        return CheckResult(label, "fail", "resource was not found.")
+        return CheckResult(label, "fail", "resource was not found.", retryable=True)
     state = resource_json.get("properties", {}).get("provisioningState")
     if state and str(state).casefold() not in {"succeeded", "ready"}:
-        return CheckResult(label, "fail", f"resource provisioning state is {state}.")
+        return CheckResult(
+            label,
+            "fail",
+            f"resource provisioning state is {state}.",
+            retryable=str(state).casefold() in {"accepted", "creating", "updating", "running"},
+        )
     return CheckResult(label, "pass", f"resource exists: {resource_json['id']}")
 
 
 def validate_travel_api_health(status_code: int, label: str) -> CheckResult:
     if status_code != 200:
-        return CheckResult(label, "fail", f"Travel Ops API returned HTTP {status_code}.")
+        return CheckResult(
+            label,
+            "fail",
+            f"Travel Ops API returned HTTP {status_code}.",
+            retryable=status_code in TRANSIENT_HTTP_STATUS - {403},
+        )
     return CheckResult(label, "pass", "Travel Ops API /health returned HTTP 200.")
 
 
 def az_cli_json(args: Sequence[str]) -> Any:
     executable = shutil.which("az") or "az"
     completed = subprocess.run(
-        [executable, *args, "-o", "json"],
+        [executable, *args, "--only-show-errors", "-o", "json"],
         capture_output=True,
         encoding="utf-8",
         errors="replace",
         check=False,
+        timeout=90,
     )
     if completed.returncode:
-        raise RuntimeError(f"'az {' '.join(args)}' failed: {completed.stderr.strip()}")
+        raise RuntimeError(
+            redact_diagnostic(f"'az {' '.join(args)}' failed: {completed.stderr.strip()}")
+        )
     return json.loads(completed.stdout) if completed.stdout.strip() else None
 
 
 def fetch_role_assignments(resource_id: str) -> list[dict[str, Any]]:
     result = az_cli_json(
-        ["role", "assignment", "list", "--scope", resource_id, "--include-inherited"]
+        [
+            "role",
+            "assignment",
+            "list",
+            "--scope",
+            resource_id,
+            "--include-inherited",
+            "--fill-principal-name",
+            "false",
+            "--fill-role-definition-name",
+            "false",
+        ]
     )
     return result if isinstance(result, list) else []
 
 
 def fetch_resource_by_id(resource_id: str) -> Any:
-    return az_cli_json(["resource", "show", "--ids", resource_id])
+    resource_type = "/".join(resource_id.casefold().split("/providers/")[-1].split("/")[:2])
+    api_version = _RESOURCE_API_VERSIONS[resource_type]
+    return az_cli_json(["resource", "show", "--ids", resource_id, "--api-version", api_version])
 
 
 def fetch_search_index_fields(search_endpoint: str, index_name: str, credential: Any) -> list[str]:
@@ -265,28 +424,43 @@ def build_credential() -> AzureCliCredential:
     return AzureCliCredential()
 
 
-_signed_in_principal_id_cache: str | None = None
-
-
-def _signed_in_principal_id() -> str:
-    global _signed_in_principal_id_cache
-    if _signed_in_principal_id_cache is None:
-        result = az_cli_json(["ad", "signed-in-user", "show"])
-        if not isinstance(result, dict) or not result.get("id"):
-            raise RuntimeError("could not resolve signed-in Microsoft Entra object id")
-        _signed_in_principal_id_cache = str(result["id"])
-    return _signed_in_principal_id_cache
-
-
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--context", type=Path, required=True)
+    parser.add_argument(
+        "--participant-object-id",
+        help="Participant Entra object ID (overrides context; never inferred from login).",
+    )
     parser.add_argument("--index-name", dest="index_names", action="append")
     parser.add_argument("--min-documents", type=int, default=1)
+    parser.add_argument(
+        "--index-min-documents",
+        action="append",
+        default=[],
+        metavar="NAME=COUNT",
+        help="Per-index minimum, normally the manifest partition's source document count.",
+    )
     parser.add_argument("--skip-search-checks", action="store_true")
     parser.add_argument("--format", choices=("json", "markdown"), default="markdown")
     parser.add_argument("--output", type=Path)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.min_documents < 1:
+        parser.error("--min-documents must be at least 1")
+    minimums: dict[str, int] = {}
+    for specification in args.index_min_documents:
+        name, separator, value = specification.partition("=")
+        if (
+            not separator
+            or not value.isascii()
+            or not value.isdecimal()
+            or int(value) < 1
+            or name not in (args.index_names or DEFAULT_INDEX_NAMES)
+            or name in minimums
+        ):
+            parser.error("--index-min-documents must specify a selected index once as NAME=COUNT")
+        minimums[name] = int(value)
+    args.index_min_documents = minimums
+    return args
 
 
 def _output_value(outputs: dict[str, Any], name: str) -> str:
@@ -300,7 +474,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         context = json.loads(args.context.read_text(encoding="utf-8"))
         if not isinstance(context, dict):
             raise ValueError("context root must be an object")
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        participant_id = participant_object_id(context, args.participant_object_id)
+        context = {**context, "participant_object_id": participant_id}
+    except (OSError, ValueError, WorkshopContextError) as exc:
         print(f"validate_environment.py: could not read {args.context}: {exc}", file=sys.stderr)
         return 2
 
@@ -317,6 +493,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             lambda: validate_resource_outputs_present(outputs, REQUIRED_RESOURCE_OUTPUTS),
         ),
     ]
+    initial_report = run_checks(specs)
+    if initial_report.overall_status == "fail":
+        return write_report(initial_report, args)
 
     account_name = _output_value(outputs, "ai_services_account_name")
     search_name = _output_value(outputs, "search_service_name")
@@ -360,7 +539,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "rbac-foundry-user-present",
                 lambda: validate_role_assignment_present(
                     fetch_role_assignments(account_id),
-                    _signed_in_principal_id(),
+                    participant_id,
                     FOUNDRY_USER_ROLE_ID,
                     "rbac-foundry-user-present",
                 ),
@@ -397,7 +576,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         count_label,
                         lambda name=index_name, label=count_label: validate_search_document_count(
                             fetch_search_document_count(search_endpoint, name, credential),
-                            args.min_documents,
+                            args.index_min_documents.get(name, args.min_documents),
                             label,
                         ),
                     ),
@@ -410,6 +589,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         if credential is not None:
             credential.close()
 
+    return write_report(report, args)
+
+
+def write_report(report: ValidationReport, args: argparse.Namespace) -> int:
     rendered = (
         json.dumps(report.to_dict(), indent=2) if args.format == "json" else report.to_markdown()
     )

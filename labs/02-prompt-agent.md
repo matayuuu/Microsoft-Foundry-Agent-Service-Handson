@@ -25,7 +25,8 @@ Lab 4 では費用を計算する機能を追加します。
 
 ## 始める前に
 
-Lab 1 の Terraform setup と validation が完了し、自分の Foundry project を開いていることを確認します。
+Lab 1 の custom template / Deployment Scripts / validation が成功し、
+private ZIP を Entra ID で取得・展開したことを確認して、自分の Foundry project を開きます。
 以後、同じ `contoso-travel-assistant` を編集して機能を追加します。
 Lab ごとに別の Agent を作る必要はありません。
 Labs 2〜6 ではこの 1 つの Prompt Agent を育てます。Lab 7 / 8 は別の Agent を
@@ -34,9 +35,9 @@ Labs 2〜6 ではこの 1 つの Prompt Agent を育てます。Lab 7 / 8 は別
 ## 使用する値
 
 PC に展開した `.workshop/context.json` を text editor で開き、
-`resource_outputs` の `foundry_project_name`、`primary_model_deployment_name`、
+`resource_outputs.<key>.value` の `foundry_project_name`、`primary_model_deployment_name`、
 `search_service_name` を確認します。direct search index は
-`contoso-travel-policy` です。Cloud Shell を再度開く必要はありません。
+`contoso-travel-policy` です。Azure ML Compute はまだ作成しません。
 
 ## 1. Prompt Agent を作成する
 
@@ -61,7 +62,8 @@ PC に展開した `.workshop/context.json` を text editor で開き、
 すでに選ばれていれば変更不要です。下側の **Models** は新しいモデルを選ぶための
 一覧なので、この演習では使いません。`gpt-5.5` は Lab 3 の Foundry IQ、
 Lab 5 の評価、Lab 6 の Optimizer で使います。Agent 本体には Luna を使います。
-Luna が見つからない場合は、対象 project と Lab 1 の Terraform setup を確認してください。
+Luna が見つからない場合は、対象 project と Lab 1 の deployment / validation を確認してください。
+別モデルを追加せず、管理者へ連絡します。
 
 ## 3. 自動追加された Web search を外す
 
@@ -97,10 +99,8 @@ Travel Ops tool の都市名には、Tokyo、Osaka、New York のような英語
 
 ## 5. Azure AI Search tool を接続する
 
-`.workshop/context.json` の `search_pricing_model` が `serverless` の場合は、この手順と
-「6. Direct search」をスキップして [Lab 3](03-rag-foundry-iq.md) へ進みます。
-Serverless Developer preview は現在の Agent tool picker が要求する pagination に
-未対応のため、setup が準備した Foundry IQ knowledge base を Lab 3 で接続します。
+このハンズオンの Search は **Basic** です。Lab 1 が seed した index を選択します。
+Search SKU を変更したり、直接検索の手順を別経路に置き換えたりしません。
 
 1. **Tools > Add > Add tools** を選択します。
 
@@ -116,8 +116,9 @@ Serverless Developer preview は現在の Agent tool picker が要求する pagi
 ![接続欄で自分の Search service を選択する](../docs/images/lab03-search-connection.png)
 
 `contoso-travel-search` は project connection 名です。この選択欄では
-service 名が表示されるため、`search_service_name` と見比べてください。connection name は
-`contoso-travel-search`、Auth Type は **Project Managed Identity** です。
+service 名が表示されるため、`search_service_name` と見比べてください。
+`contoso-travel-search` は AAD Search resource connection です。
+Foundry IQ MCP と App Insights の **Project Managed Identity** connections とは区別します。
 
 4. `contoso-travel-policy` の行の丸い選択ボタンを選び、**Add** を押します。
   `contoso-travel-approval` はまだ選びません。
@@ -174,8 +175,8 @@ Search service のトップ URL が開く場合は
 
 - Agents の一覧に `contoso-travel-assistant` が表示される
 - Agent の model と instructions が保存されている
-- Dedicated の場合は Tools に `contoso-travel-policy` を使う Azure AI Search が接続されている
-- Dedicated の場合は食事日当の回答に金額と番号付きの citation があり、内部表現が本文に露出していない
+- Tools に `contoso-travel-policy` を使う Azure AI Search が接続されている
+- 食事日当の回答に金額と番号付きの citation があり、内部表現が本文に露出していない
 - 比較用質問の 4 項目について、根拠の有無を記録している
 
 Direct search では原則として、フライト規程にある 1 項目だけを根拠付きで回答できます。

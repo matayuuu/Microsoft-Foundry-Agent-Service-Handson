@@ -38,8 +38,10 @@ Tool Search を有効にすると、最初から全 tool 定義をモデルへ�
 ## 1. 貼り付け・アップロード用ファイルを用意する
 
 PC に展開した workshop folder の `portal-assets/` を開きます。これらは Lab 1 の
-Cloud Shell setup が実際の Travel Ops API と canonical context から生成し、download ZIP
-へ格納したものです。この時点では Toolbox、Skill、Agent は作成・更新しません。
+Deployment Scripts が実際の Travel Ops API と canonical
+`resource_outputs.<key>.value` context から生成し、private container `workshop-files` の
+download ZIP へ格納したものです。Entra ID で取得済みの同じ bundle を使います。
+このファイル確認では Toolbox、Skill、Agent はまだ作成・更新しません。
 
 | ファイル | 用途 |
 |---|---|
