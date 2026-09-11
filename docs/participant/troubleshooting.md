@@ -3,14 +3,15 @@
 ## Cloud Shell storage validation が失敗
 
 > [!CAUTION]
-> **provisioning を開始しません。** Azure Files mount failure、ephemeral HOME、
-> backing image 未検出、read-only mount は安全な stop condition です。現在の rehearsal
-> でも mount failure を検出し、script が Azure 変更前に拒否しました。
+> **provisioning を開始しません。** Azure Files mount failure、ephemeral session、
+> `clouddrive` の read-only/non-CIFS mount は安全な stop condition です。
 
 - 初回起動なら標準 UI の **Mount storage account** による自動作成が完了したか確認。
+- `findmnt --target "$HOME/clouddrive" --output TARGET,FSTYPE,OPTIONS` で `cifs` と `rw` を確認。
+- ephemeral を選んだ場合は **Settings > Reset user settings** 後、Storage を mount して再接続。
 - Cloud Shell storage settings と Azure Files share の状態を管理者に確認。
 - Storage `publicNetworkAccess` / `allowSharedKeyAccess` を組織 policy と照合。
-- repository は persisted HOME 配下、`clouddrive` 直下ではないことを確認。
+- repository は `~/clouddrive` 配下にあることを確認。
 - 一時 folder、別 shell、symlink で check を回避しない。
 - `.workshop` / Terraform state を削除して再試行しない。
 
@@ -18,10 +19,10 @@
 
 - Azure Cloud Shell **Bash** であることを確認。
 - built-in Python 3.12、Terraform 1.10+、`az`、`jq`、`curl`、`git` が必要。
-- 各新規 terminal で repository に移動し
-  `source scripts/activate-cloud-shell.sh`。
-- readiness marker が stale の場合は persistent HOME の同じ repository で
-  `bash scripts/setup-cloud-shell.sh` を再実行。
+- 各新規 Cloud Shell session で `clouddrive` の repository に移動し、
+  `bash scripts/setup-cloud-shell.sh`、`source scripts/activate-cloud-shell.sh` の順で実行。
+- readiness marker が stale の場合も、同じ `clouddrive` repository で setup を再実行。
+- `setup-cloud-shell.sh` が失敗した場合、activation と `setup.sh` は実行しない。
 
 Jupyter、Graphviz、Hosted Agent dependencies、web preview を追加しません。
 
@@ -72,8 +73,9 @@ PC に展開した `portal-assets/travel-estimation.zip` と
 1. Azure ML から必要な Notebook を Export。
 2. Hosted Agent / data-plane children を削除。
 3. Compute instance を Stop、次に Delete。
-4. 同じ persistent Cloud Shell HOME / repository / state を開く。
-5. `source scripts/activate-cloud-shell.sh`、`./scripts/destroy.sh`。
+4. 同じ persistent `clouddrive` repository / state を開く。
+5. `bash scripts/setup-cloud-shell.sh`、`source scripts/activate-cloud-shell.sh`、
+   `./scripts/destroy.sh`。
 6. workload resource group が空であることを確認し、Azure Portal で Delete。
 7. `exit`。
 
@@ -81,5 +83,5 @@ PC に展開した `portal-assets/travel-estimation.zip` と
 あります。これは Azure が Application Insights とともに自動作成した resource で、正常な
 cleanup の一部です。
 
-state や persistent HOME が見つからない場合は、推測で parent resources を先に消さず
+state や persistent `clouddrive` が見つからない場合は、推測で parent resources を先に消さず
 管理者へ連絡します。Cloud Shell storage は別 lifecycle です。

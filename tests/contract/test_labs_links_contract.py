@@ -177,7 +177,9 @@ def test_lab_one_covers_cloud_shell_provisioning_and_manual_azureml_handoff() ->
     lab = (LABS_DIR / "01-setup.md").read_text(encoding="utf-8")
     for required in (
         "Azure Cloud Shell Bash",
-        "persistent HOME",
+        "persistent `clouddrive`",
+        "cd ~/clouddrive",
+        "bash scripts/setup-cloud-shell.sh &&",
         "scripts/setup-cloud-shell.sh",
         "scripts/activate-cloud-shell.sh",
         "scripts/setup.sh",
@@ -194,6 +196,11 @@ def test_lab_one_covers_cloud_shell_provisioning_and_manual_azureml_handoff() ->
         "Lab 7",
     ):
         assert required in lab
+    assert (
+        '--query "{resourceGroup:name,location:location,state:properties.provisioningState}"'
+        in lab
+    )
+    assert "cd ~\ngit clone" not in lab
     assert "100K TPM" in lab
     assert "40K TPM" in lab
 

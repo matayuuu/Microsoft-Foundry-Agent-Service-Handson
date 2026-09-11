@@ -4,10 +4,11 @@
 
 This ten-lab workshop uses a hybrid participant path:
 
-1. Create one dedicated workload resource group in Azure Portal.
-2. Open Azure Cloud Shell Bash, let its standard first-run UI create persistent
-   storage, verify the Azure Files-backed HOME, and use it only for provisioning
-   and one download.
+1. Open Azure Cloud Shell Bash, let its standard first-run UI create persistent
+   storage, and verify the Azure Files-backed `~/clouddrive` mount.
+2. In the same Bash session, verify the subscription and create exactly one dedicated
+   workload resource group with Azure CLI; clone the repository under `~/clouddrive`,
+   then use Cloud Shell only for provisioning and one download.
 3. Terraform creates Foundry, models, Search, monitoring, the Container Apps API,
    scoped RBAC/connections, and an Azure ML workspace with backing resources.
 4. Download `.workshop/download/foundry-workshop-files.zip` once and immediately
@@ -15,9 +16,9 @@ This ten-lab workshop uses a hybrid participant path:
 5. Complete Labs 2–6 in Microsoft Foundry Portal.
 6. For Labs 7–8, create an Azure ML `Standard_DS3_v2` Compute instance with idle
    shutdown, upload the extracted folder, and run `notebooks/00-azureml-setup.ipynb`.
-7. Export wanted notebooks, stop/delete compute, reopen the same persistent Cloud
-   Shell repository and state, destroy resources, delete the workload resource group,
-   and verify removal.
+7. Export wanted notebooks, stop/delete compute, reopen the same persistent
+   `clouddrive` repository and state, recreate the session-local setup, destroy
+   resources, delete the workload resource group, and verify removal.
 
 [Start with Lab 0](labs/00-overview.md) ·
 [Prerequisites](docs/participant/prerequisites.md) ·

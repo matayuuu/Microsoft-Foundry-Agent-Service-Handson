@@ -31,7 +31,8 @@ fi
 # The first read-only check locates the verified persistent state directory.
 STATE_DIR="$(python3 "${SCRIPT_DIR}/cloud_shell_environment.py" storage \
   --repo-root "${REPO_ROOT}" --minimum-free-mib 512)"
-if [[ -f "${STATE_DIR}/ready.json" && -x "${REPO_ROOT}/.venv/bin/python" ]]; then
+VENV_DIR="$(cloud_shell_venv_directory "${REPO_ROOT}")"
+if [[ -f "${STATE_DIR}/ready.json" && -x "${VENV_DIR}/bin/python" ]]; then
   REQUIRED_FREE_MIB=512
 else
   REQUIRED_FREE_MIB=1024
@@ -40,25 +41,26 @@ python3 "${SCRIPT_DIR}/cloud_shell_environment.py" storage \
   --repo-root "${REPO_ROOT}" --minimum-free-mib "${REQUIRED_FREE_MIB}" >/dev/null
 
 mkdir -p "${STATE_DIR}"
-chmod 700 "${STATE_DIR}"
 
-if [[ -e "${REPO_ROOT}/.venv" && ! -d "${REPO_ROOT}/.venv" ]]; then
-  echo "setup-cloud-shell.sh: refusing non-directory .venv." >&2
+if [[ -e "${VENV_DIR}" && ! -d "${VENV_DIR}" ]]; then
+  echo "setup-cloud-shell.sh: refusing non-directory session-local environment." >&2
   exit 1
 fi
-if [[ ! -x "${REPO_ROOT}/.venv/bin/python" ]] \
-  || ! cloud_shell_python_is_supported "${REPO_ROOT}/.venv/bin/python"; then
-  rm -rf "${REPO_ROOT}/.venv"
-  python3 -m venv "${REPO_ROOT}/.venv"
+if [[ ! -x "${VENV_DIR}/bin/python" ]] \
+  || ! cloud_shell_python_is_supported "${VENV_DIR}/bin/python"; then
+  rm -rf "${VENV_DIR}"
+  mkdir -p "$(dirname "${VENV_DIR}")"
+  chmod 700 "$(dirname "${VENV_DIR}")"
+  python3 -m venv "${VENV_DIR}"
 fi
 
-"${REPO_ROOT}/.venv/bin/python" -m pip install \
+"${VENV_DIR}/bin/python" -m pip install \
   --disable-pip-version-check \
   --only-binary=:all: \
   -e "${REPO_ROOT}"
-"${REPO_ROOT}/.venv/bin/python" -m pip check
+"${VENV_DIR}/bin/python" -m pip check
 
-DIGEST="$("${REPO_ROOT}/.venv/bin/python" "${SCRIPT_DIR}/cloud_shell_environment.py" \
+DIGEST="$("${VENV_DIR}/bin/python" "${SCRIPT_DIR}/cloud_shell_environment.py" \
   digest --repo-root "${REPO_ROOT}")"
 READY_PART="${STATE_DIR}/ready.json.part"
 if [[ -L "${READY_PART}" || -L "${STATE_DIR}/ready.json" ]]; then
@@ -67,21 +69,21 @@ if [[ -L "${READY_PART}" || -L "${STATE_DIR}/ready.json" ]]; then
 fi
 jq -n \
   --arg repo "${REPO_ROOT}" \
-  --arg python "${REPO_ROOT}/.venv/bin/python" \
+  --arg python "${VENV_DIR}/bin/python" \
   --arg dependency_digest "${DIGEST}" \
-  --arg python_version "$("${REPO_ROOT}/.venv/bin/python" --version 2>&1)" \
+  --arg python_version "$("${VENV_DIR}/bin/python" --version 2>&1)" \
   '{repo: $repo, python: $python, dependency_digest: $dependency_digest,
     python_version: $python_version}' >"${READY_PART}"
-chmod 600 "${READY_PART}"
 mv -f "${READY_PART}" "${STATE_DIR}/ready.json"
 
-"${REPO_ROOT}/.venv/bin/python" "${SCRIPT_DIR}/cloud_shell_environment.py" ready \
+"${VENV_DIR}/bin/python" "${SCRIPT_DIR}/cloud_shell_environment.py" ready \
   --repo-root "${REPO_ROOT}"
 
 cat <<'EOF'
 Cloud Shell provisioning setup is ready.
 Activate this terminal before provisioning:
   source scripts/activate-cloud-shell.sh
+The Python environment is session-local; repository and Terraform state remain on clouddrive.
 No Jupyter, notebook kernels, Hosted Agent environment, Graphviz, or web preview was installed.
 EOF
 printf 'Provisioning-only environment preparation: %ss\n' "$((SECONDS - START_SECONDS))"

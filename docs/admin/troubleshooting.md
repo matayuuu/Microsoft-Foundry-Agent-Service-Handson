@@ -3,9 +3,9 @@
 ## Cloud Shell mount failure
 
 ephemeral refusal を解除しません。初回起動なら標準 UI の Storage 自動作成が完了したかを
-確認し、Azure Files share、Cloud Shell storage settings、HOME image backing、CIFS mount、
-Storage firewall/shared-key policy を確認します。修復後、再接続して persistent HOME の
-書込みと再読込みを検証します。participant の workload provisioning はそれまで停止します。
+確認し、Azure Files share、Cloud Shell storage settings、`clouddrive` の CIFS/read-write
+mount、Storage firewall/shared-key policy を確認します。修復後、再接続して `clouddrive`
+の書込みと再読込みを検証します。participant の workload provisioning はそれまで停止します。
 
 ## Provider / quota / Policy
 
@@ -20,7 +20,7 @@ principal object ID、scope、role definition ID を確認します。legacy rol
 
 ## Terraform recovery
 
-participant の persistent HOME にある repository、`.workshop/terraform-inputs.json`、state を
+participant の persistent `clouddrive` にある repository、`.workshop/terraform-inputs.json`、state を
 保持します。partial failure の resource inventory と state recovery output を確認して setup
 または destroy を再実行します。state を失ったまま Portal で parent resource を先に削除しません。
 

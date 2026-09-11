@@ -11,7 +11,7 @@ Azure ML Studio の hybrid participant path です。
 ## Responsibilities
 
 - participant ごとの alias、subscription、workload resource group naming を決める
-- Cloud Shell persistent HOME mount / reconnect / free space を事前検証
+- Cloud Shell persistent `clouddrive` mount / reconnect / free space を事前検証
 - providers、model/Search/Compute capacity、Policy、network を rehearsal
 - lightweight Cloud Shell setup、Terraform/bootstrap、single ZIP download、immediate exit を確認
 - Foundry Portal Labs 2〜6 と PC `portal-assets` handoff を確認

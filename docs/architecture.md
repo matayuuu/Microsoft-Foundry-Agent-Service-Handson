@@ -4,8 +4,8 @@
 
 | Owner | Objects / responsibility |
 |---|---|
-| Azure Portal | workload resource group; Lab 7 Compute creation/deletion |
-| Azure Cloud Shell Bash | first-run persistent Storage creation; persisted repository/state; setup/destroy; one ZIP download |
+| Azure Portal | workload resource group deletion; Lab 7 Compute creation/deletion |
+| Azure Cloud Shell Bash | workload resource group creation; first-run persistent Storage creation; repository/state on `clouddrive`; session-local setup; destroy; one ZIP download |
 | Terraform | Foundry/project/models, Search, monitoring, Container Apps API, Search/Foundry IQ/trace connections, RBAC, Azure ML workspace/backing resources |
 | Python setup adapters | Search documents, evaluation assets, validation, live Portal assets, handoff ZIP |
 | Foundry Portal | Prompt Agent, Foundry IQ, Toolbox, evaluation, optimizer, traces |
@@ -27,10 +27,11 @@ Terraform state, `.env`, tokens, credentials, infrastructure source, and local e
 
 ```mermaid
 flowchart LR
-  AP[Azure Portal<br/>workload RG] --> CS[Cloud Shell Bash<br/>persistent HOME]
+  CS[Cloud Shell Bash<br/>create workload RG + persistent clouddrive]
   CS -->|Terraform + bootstrap| AZ[Azure resources]
   CS -->|one ZIP download| PC[Participant PC]
   AZ --> FP[Foundry Portal<br/>Labs 2-6]
+  AP[Azure Portal<br/>Compute + cleanup] --> ML
   PC -->|upload extracted folder| ML[Azure ML Studio<br/>Labs 7-8]
   ML --> HA[Hosted Agent]
 ```
@@ -51,12 +52,12 @@ only synthetic data is permitted.
 
 ## Lifecycle
 
-1. Portal creates workload RG.
-2. Cloud Shell first-run UI creates persistent Storage; mount verification completes before timing.
-3. Cloud Shell setup provisions, bootstraps, validates, packages, downloads, exits.
+1. Cloud Shell first-run UI creates persistent Storage; `clouddrive` mount verification completes before timing.
+2. Azure CLI creates the workload RG and the repository is cloned under `clouddrive`.
+3. Cloud Shell session-local setup provisions, bootstraps, validates, packages, downloads, exits.
 4. Foundry Portal runs Labs 2–6.
 5. Azure ML Compute is created, bundle uploaded, kernels prepared, Labs 7–8 executed.
 6. Export notebooks; remove Hosted/data-plane objects; stop/delete Compute.
-7. Same persistent Cloud Shell repository/state runs destroy.
+7. Same persistent `clouddrive` repository/state recreates session-local setup and runs destroy.
 8. Verify RG empty; Portal deletes workload RG; Cloud Shell exits.
 9. Cloud Shell storage is handled separately only when dedicated and policy permits.

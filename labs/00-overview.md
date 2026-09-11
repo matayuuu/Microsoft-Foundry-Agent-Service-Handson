@@ -9,8 +9,8 @@
 
 | 場所 | 用途 |
 |---|---|
-| Azure Portal | workload resource group の作成・削除、Lab 7 の Compute |
-| Azure Cloud Shell Bash | Lab 1 の provisioning、1 回の ZIP download、Lab 9 cleanup |
+| Azure Portal | workload resource group の削除、Lab 7 の Compute |
+| Azure Cloud Shell Bash | workload resource group の作成、Lab 1 provisioning、1 回の ZIP download、Lab 9 cleanup |
 | Microsoft Foundry Portal | Labs 2〜6、Hosted Agent、trace |
 | 手元の PC | ZIP 展開、Lab 4 `portal-assets` |
 | Azure ML Studio | Labs 7〜8 の Notebook |

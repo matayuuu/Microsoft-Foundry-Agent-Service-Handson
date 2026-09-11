@@ -2,9 +2,9 @@
 
 | Area | Core workshop |
 |---|---|
-| Workload RG | participant creates/deletes one via Azure Portal |
+| Workload RG | participant creates one via Azure CLI and deletes it via Azure Portal |
 | Provisioning | Terraform from Azure Cloud Shell Bash |
-| Cloud Shell | first-run Storage auto-creation; verified persistent HOME; provisioning/download/destroy only |
+| Cloud Shell | first-run Storage auto-creation; verified persistent `clouddrive`; provisioning/download/destroy only |
 | Handoff | one `.workshop/download/foundry-workshop-files.zip` |
 | Portal labs | Foundry Portal Labs 2–6 |
 | Azure ML | Terraform-created workspace; participant-created Compute for Labs 7/8 |

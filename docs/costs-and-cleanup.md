@@ -26,9 +26,9 @@ Cloud Shell compute は利用料金の対象外でも、persistent storage と w
 1. Azure ML User files から必要な Notebook / result を Export。
 2. Hosted Agent versions / agent と data-plane children を削除。
 3. Compute instance を Stop、次に Delete。
-4. 同じ persistent Cloud Shell HOME / repository / Terraform state を再開。
-5. `source scripts/activate-cloud-shell.sh`。
-6. `./scripts/destroy.sh`。
+4. 同じ persistent `clouddrive` repository / Terraform state を再開。
+5. `bash scripts/setup-cloud-shell.sh` で session-local environment を再作成。
+6. `source scripts/activate-cloud-shell.sh`、`./scripts/destroy.sh`。
 7. workload RG が空であることを確認。
 8. Azure Portal で workload RG を Delete。
 9. Cloud Shell で `exit`。
@@ -38,5 +38,5 @@ Cloud Shell compute は利用料金の対象外でも、persistent storage と w
 > cleanup 完了は workload RG の削除確認までです。
 
 Cloud Shell storage は別 lifecycle です。dedicated storage で、workload cleanup が成功し、
-組織 policy が許可する場合だけ別途削除します。shared/existing storage や他用途の HOME は
-削除しません。
+組織 policy が許可する場合だけ別途削除します。shared/existing storage や他用途の file share
+は削除しません。

@@ -19,9 +19,10 @@ trace、cleanup を扱います。すべて合成データで、実際の予約�
 
 ## 承認済み hybrid flow
 
-1. Azure Portal で workshop 専用 resource group を 1 個だけ作成。
-2. Azure Cloud Shell Bash を開き、初回は標準 UI に永続 Storage を自動作成させ、
-   Azure Files-backed HOME を確認してから repository を shallow clone。
+1. Azure Cloud Shell Bash を開き、初回は標準 UI に永続 Storage を自動作成させ、
+   Azure Files-backed `~/clouddrive` mount を確認。
+2. 同じ Bash で subscription を確認し、Azure CLI で workshop 専用 resource group を
+   1 個だけ作成してから repository を `~/clouddrive` へ shallow clone。
 3. 軽量 provisioning environment を準備し、`scripts/setup.sh` を実行。
 4. Terraform が Foundry、3 models、Search、monitoring、Container Apps API、RBAC、
    connections、Azure ML workspace と backing resources を作成。
@@ -51,7 +52,7 @@ web preview、Hosted Agent environment を Cloud Shell で実行しません。
 | [Lab 8](labs/08-hosted-multi-agent.md) | Hosted sequential workflow | 30分 |
 | [Lab 9](labs/09-observability-cleanup.md) | Trace と cleanup | 20分 |
 
-Lab 1 の参加者目標は **10〜15分**です。**8〜10分**は persistent HOME、quota、provider、
+Lab 1 の参加者目標は **10〜15分**です。**8〜10分**は persistent storage、quota、provider、
 package cache が準備済みの warm best case です。初回 Cloud Shell の標準 UI による
 persistent storage 作成と mount 確認は、Lab 1 に手順を記載しますが計測時間に含みません。
 

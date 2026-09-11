@@ -46,19 +46,21 @@ Azure ML Studio の **Compute > Compute instances** で対象 instance を選び
 > Terraform destroy より先に Compute を削除します。必要な Notebook を Export せずに
 > Compute/workspace を削除しません。
 
-## 4. 同じ persistent Cloud Shell に戻る
+## 4. 同じ persistent clouddrive に戻る
 
-Azure Portal から Azure Cloud Shell **Bash** を開き、Lab 1 と同じ persistent HOME、
-repository、`.workshop`、Terraform state であることを確認します。
+Azure Portal から Azure Cloud Shell **Bash** を開き、Lab 1 と同じ `clouddrive` repository、
+`.workshop`、Terraform state であることを確認します。Python environment は session-local
+なので再作成します。
 
 ```bash
-cd ~/Microsoft-Foundry-Agent-Service-Handson
-source scripts/activate-cloud-shell.sh
-./scripts/destroy.sh
+cd ~/clouddrive/Microsoft-Foundry-Agent-Service-Handson
+bash scripts/setup-cloud-shell.sh &&
+  source scripts/activate-cloud-shell.sh &&
+  ./scripts/destroy.sh
 ```
 
 storage validation / activation / state recovery が失敗した場合は destroy を推測で続けません。
-一時 HOME に clone し直した repository から実行せず、講師へ連絡します。
+`clouddrive` の外側に clone し直した repository から実行せず、講師へ連絡します。
 
 ## 5. workload resource group を確認・削除
 
@@ -86,7 +88,7 @@ exit
 
 Cloud Shell storage は workload resource group と別です。dedicated storage であり、workload
 cleanup が成功し、組織 policy が許可する場合だけ別途削除します。shared/existing storage、
-他用途の HOME、別 participant の storage は削除しません。
+他用途の file share、別 participant の storage は削除しません。
 
 ## 完了チェック
 

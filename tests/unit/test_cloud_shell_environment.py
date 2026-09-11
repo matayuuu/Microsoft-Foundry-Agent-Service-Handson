@@ -11,21 +11,12 @@ import pytest
 from scripts import cloud_shell_environment as environment
 
 
-def test_validate_mounts_accepts_verified_azure_files_backed_home(tmp_path: Path) -> None:
+def test_validate_mounts_accepts_repository_on_azure_files_clouddrive(tmp_path: Path) -> None:
     home = tmp_path / "home"
-    repo = home / "repo"
     share = home / "clouddrive"
-    backing = share / ".cloudconsole" / "acc.img"
+    repo = share / "repo"
     repo.mkdir(parents=True)
-    backing.parent.mkdir(parents=True)
-    backing.write_bytes(b"image")
 
-    native = {
-        "source": "/dev/loop0",
-        "fstype": "ext4",
-        "options": "rw,relatime",
-        "maj:min": "7:0",
-    }
     azure_files = {
         "source": "//account.file.core.windows.net/share",
         "fstype": "cifs",
@@ -33,17 +24,30 @@ def test_validate_mounts_accepts_verified_azure_files_backed_home(tmp_path: Path
         "maj:min": "0:50",
     }
 
-    environment.validate_mounts(home, repo, share, native, native, azure_files, backing)
+    environment.validate_mounts(repo, share, azure_files, azure_files)
 
 
-def test_validate_mounts_rejects_overlay_or_unverified_backing(tmp_path: Path) -> None:
+def test_validate_mounts_rejects_repository_outside_clouddrive(tmp_path: Path) -> None:
     home = tmp_path / "home"
     repo = home / "repo"
     share = home / "clouddrive"
-    backing = share / ".cloudconsole" / "acc.img"
     repo.mkdir(parents=True)
-    backing.parent.mkdir(parents=True)
-    backing.write_bytes(b"image")
+    share.mkdir()
+    azure_files = {
+        "source": "//account.file.core.windows.net/share",
+        "fstype": "cifs",
+        "options": "rw,relatime",
+        "maj:min": "0:50",
+    }
+
+    with pytest.raises(environment.EnvironmentError, match="Persistent Cloud Shell storage"):
+        environment.validate_mounts(repo, share, azure_files, azure_files)
+
+
+def test_validate_mounts_rejects_ephemeral_overlay(tmp_path: Path) -> None:
+    share = tmp_path / "home" / "clouddrive"
+    repo = share / "repo"
+    repo.mkdir(parents=True)
     overlay = {
         "source": "overlay",
         "fstype": "overlay",
@@ -52,7 +56,16 @@ def test_validate_mounts_rejects_overlay_or_unverified_backing(tmp_path: Path) -
     }
 
     with pytest.raises(environment.EnvironmentError, match="Persistent Cloud Shell storage"):
-        environment.validate_mounts(home, repo, share, overlay, overlay, overlay, backing)
+        environment.validate_mounts(repo, share, overlay, overlay)
+
+
+def test_runtime_is_session_local_and_state_is_persistent(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    repo = home / "clouddrive" / "repo"
+
+    assert environment.venv_directory(repo, home).is_relative_to(home)
+    assert not environment.venv_directory(repo, home).is_relative_to(home / "clouddrive")
+    assert environment.state_directory(repo) == repo / ".workshop" / "cloud-shell"
 
 
 def test_ready_requires_current_digest_and_single_repo_venv(
@@ -60,7 +73,7 @@ def test_ready_requires_current_digest_and_single_repo_venv(
 ) -> None:
     repo = tmp_path / "repo"
     state = tmp_path / "state"
-    python = repo / ".venv" / "bin" / "python"
+    python = tmp_path / "runtime" / "venv" / "bin" / "python"
     python.parent.mkdir(parents=True)
     python.write_text("", encoding="utf-8")
     state.mkdir()
@@ -73,6 +86,7 @@ def test_ready_requires_current_digest_and_single_repo_venv(
     (state / "ready.json").write_text(json.dumps(marker), encoding="utf-8")
 
     monkeypatch.setattr(environment, "validate_storage", lambda *_args, **_kwargs: state)
+    monkeypatch.setattr(environment, "venv_directory", lambda _: python.parents[1])
     monkeypatch.setattr(environment, "validate_python", lambda _: None)
     monkeypatch.setattr(environment, "dependency_digest", lambda _: "digest")
     monkeypatch.setattr(environment, "run_local", lambda *_args, **_kwargs: "")

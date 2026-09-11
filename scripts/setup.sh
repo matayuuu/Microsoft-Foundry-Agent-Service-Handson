@@ -543,7 +543,7 @@ if [[ "${SKIP_BOOTSTRAP}" == "true" ]]; then
 elif [[ ! -f "${MANIFEST_PATH}" ]]; then
   echo "==> [3/5] WARNING: ${MANIFEST_PATH} does not exist yet (owned by the data workstream)." >&2
   echo "    Skipping RAG data bootstrap. Re-run this script (or just:" >&2
-  echo "    .venv/bin/python scripts/bootstrap_data.py ...) once data/manifest.json is available." >&2
+  echo "    \"${PYTHON_BIN}\" scripts/bootstrap_data.py ...) once data/manifest.json is available." >&2
 else
   echo "==> [3/5] Running bootstrap_data.py..." >&2
   SEARCH_ENDPOINT="$(jq -r '.search_service_endpoint.value' <<<"${TF_OUTPUTS_JSON}")"

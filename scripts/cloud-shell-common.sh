@@ -4,27 +4,34 @@ cloud_shell_is_azure_cloud_shell() {
   [[ -n "${ACC_VERSION:-}" || "${AZUREPS_HOST_ENVIRONMENT:-}" == cloud-shell* ]]
 }
 
+cloud_shell_venv_directory() {
+  local repo="$1"
+  python3 "$repo/scripts/cloud_shell_environment.py" venv --repo-root "$repo"
+}
+
 cloud_shell_guard() {
   local repo="$1"
+  local venv_python
   shift
   if ! cloud_shell_is_azure_cloud_shell; then
     printf '%s\n' "Cloud Shell: provisioning must run in Azure Cloud Shell Bash. No Azure changes were made." >&2
     return 1
   fi
+  venv_python="$(cloud_shell_venv_directory "$repo")/bin/python" || return 1
   if [[ "${WORKSHOP_CLOUD_SHELL_REPO:-}" != "$repo" \
     || "${AZURE_TOKEN_CREDENTIALS:-}" != AzureCliCredential \
-    || "${WORKSHOP_PYTHON:-}" != "$repo/.venv/bin/python" ]]; then
+    || "${WORKSHOP_PYTHON:-}" != "$venv_python" ]]; then
     printf '%s\n' "Cloud Shell: run bash scripts/setup-cloud-shell.sh, then source scripts/activate-cloud-shell.sh in THIS terminal. No Azure changes were made." >&2
     return 1
   fi
-  if [[ ! -x "$repo/.venv/bin/python" ]]; then
-    printf '%s\n' "Cloud Shell: .venv is missing. Re-run setup-cloud-shell.sh; keep .workshop and Terraform state." >&2
+  if [[ ! -x "$venv_python" ]]; then
+    printf '%s\n' "Cloud Shell: the session-local environment is missing. Re-run setup-cloud-shell.sh; keep the clouddrive repository, .workshop, and Terraform state." >&2
     return 1
   fi
-  "$repo/.venv/bin/python" "$repo/scripts/cloud_shell_environment.py" ready \
+  "$venv_python" "$repo/scripts/cloud_shell_environment.py" ready \
     --repo-root "$repo" || return 1
   if [[ "$#" -gt 0 ]]; then
-    "$repo/.venv/bin/python" "$repo/scripts/cloud_shell_environment.py" tokens \
+    "$venv_python" "$repo/scripts/cloud_shell_environment.py" tokens \
       --repo-root "$repo" "$@" || return 1
   fi
 }

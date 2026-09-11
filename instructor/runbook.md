@@ -13,8 +13,8 @@ Cloud Shell start 35.5秒、shallow clone 1.55秒、provisioning-only venv initi
 ## Before the event
 
 1. 初回 participant は標準 UI に Cloud Shell Storage を自動作成させ、全 participant の
-   Azure Files-backed HOME を mount/reconnect test。
-2. repository/state が persisted Unix HOME にあり、`clouddrive` 直下でないことを確認。
+   Azure Files-backed `clouddrive` を mount/reconnect test。
+2. repository/state が `clouddrive` 配下にあり、session-local `$HOME` のみにないことを確認。
 3. current rehearsal の mount failure と safe ephemeral refusal を再現し、Azure resources が
    作成されないことを確認。
 4. required providers、Storage shared-key/public access policy、Key Vault RBAC を確認。
@@ -25,8 +25,8 @@ Cloud Shell start 35.5秒、shallow clone 1.55秒、provisioning-only venv initi
 
 ## Lab 1 rehearsal
 
-- Portal で workload RG を 1 個だけ作成。
-- shallow clone → `setup-cloud-shell.sh` → source activation → `setup.sh`。
+- Azure CLI で workload RG を 1 個だけ作成。
+- `clouddrive` へ shallow clone → `setup-cloud-shell.sh` → source activation → `setup.sh`。
 - Terraform creates Foundry/models/Search/monitoring/API/RBAC/connections/Azure ML workspace,
   but no Compute.
 - bootstrap seeds two indexes/evaluation assets and validates resources.
@@ -68,8 +68,8 @@ participant ごとに:
 1. Notebook Export。
 2. Hosted Agent / versions delete。
 3. Compute Stop、Delete。
-4. same persistent Cloud Shell HOME/repository/state。
-5. source activation、`./scripts/destroy.sh`。
+4. same persistent `clouddrive` repository/state。
+5. setup rerun、source activation、`./scripts/destroy.sh`。
 6. workload RG empty を確認。
 7. Portal **Delete resource group**、Cloud Shell `exit`。
 8. Cloud Shell storage は dedicated + policy permitted の場合だけ別 lifecycle で処理。

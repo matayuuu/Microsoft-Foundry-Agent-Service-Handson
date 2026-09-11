@@ -22,12 +22,11 @@ storage 作成は participant Lab 1 に記載しますが、timed Lab 1 は moun
 
 初回 participant は Cloud Shell の標準 UI に Storage account と Azure Files share を
 自動作成させ、既存 participant は現在の storage を再利用します。provisioning 開始前に
-各 participant の Azure Files-backed HOME が healthy であることを検証します。current
-rehearsal では Azure Files mount failure を検出し、script が ephemeral provisioning を
-安全に拒否しました。この refusal は必須の protection です。
+各 participant の Azure Files-backed `~/clouddrive` が healthy であることを検証します。
+script による ephemeral provisioning の refusal は必須の protection です。
 
-- HOME image backing、CIFS share、read-write mount、再接続後の persistence
-- repository/state を HOME 配下に保持できる容量
+- `clouddrive` の CIFS/read-write mount、再接続後の persistence
+- repository/state を `clouddrive` 配下に保持できる容量
 - Storage policy の `publicNetworkAccess` / `allowSharedKeyAccess`
 - GitHub、GHCR、package sources、Azure endpoints への HTTPS
 

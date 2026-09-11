@@ -3,7 +3,8 @@
 ## Azure account
 
 - workshop subscription と Azure account
-- Azure Portal で workload resource group を 1 個作成・削除できる権限
+- Azure Cloud Shell の Azure CLI で workload resource group を 1 個作成し、Azure Portal で
+  削除できる権限
 - その resource group 内で Terraform resources と scoped role assignments を管理できる
   Owner 相当権限
 - [Azure Portal](https://portal.azure.com)、[Microsoft Foundry Portal](https://ai.azure.com)、
@@ -15,17 +16,16 @@ production subscription、共有 workload resource group、共有 account は使
 
 Azure Cloud Shell Bash の初回起動時は標準 UI の **Mount storage account** と
 **We will create a storage account for you** を使い、persistent Storage を自動作成させます。
-既存 storage がある場合は再利用します。どちらも Azure Files-backed persistent HOME が
-正常に mount されたことを確認してから provisioning を始めます。作成と mount の手順は
+既存 storage がある場合は再利用します。どちらも Azure Files-backed `~/clouddrive` が
+read-write で正常に mount されたことを確認してから provisioning を始めます。作成と mount の手順は
 Lab 1 に含めますが、10〜15分の計測はその完了後に開始します。
 
 > [!CAUTION]
-> Azure Files mount failure、HOME backing image を確認できない、ephemeral session、
-> read-only mount の場合は Lab 1 を開始しません。安全な refusal を回避せず、管理者へ
-> 連絡してください。`clouddrive` の存在だけでは永続 HOME の証明になりません。
+> Azure Files mount failure、ephemeral session、`clouddrive` の read-only/non-CIFS mount の
+> 場合は Lab 1 を開始しません。安全な refusal を回避せず、管理者へ連絡してください。
 
-repository、`.workshop`、Terraform state を保持できる空き容量と、GitHub / package sources /
-GHCR への HTTPS access が必要です。
+`clouddrive` に repository、`.workshop`、Terraform state を保持できる空き容量と、GitHub /
+package sources / GHCR への HTTPS access が必要です。
 
 ## Quota / policy
 
