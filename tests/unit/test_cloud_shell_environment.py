@@ -103,6 +103,8 @@ def test_cloud_shell_scripts_are_lightweight_and_provisioning_only() -> None:
     folded_setup = setup.casefold().replace("\\\n", " ")
 
     assert environment.REQUIRED_PYTHON == (3, 12)
+    assert "--minimum-free-mib 512" in setup
+    assert "REQUIRED_FREE_MIB" not in setup
     assert re.search(
         r'pip\s+install\s+(?:--\S+\s+)*-e\s+"\$\{repo_root\}"',
         folded_setup,

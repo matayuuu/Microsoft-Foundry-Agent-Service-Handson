@@ -28,17 +28,10 @@ if ! cloud_shell_terraform_is_supported "$(command -v terraform)"; then
   exit 1
 fi
 
-# The first read-only check locates the verified persistent state directory.
+# Verify the persistent mount/free space and locate its readiness state directory.
 STATE_DIR="$(python3 "${SCRIPT_DIR}/cloud_shell_environment.py" storage \
   --repo-root "${REPO_ROOT}" --minimum-free-mib 512)"
 VENV_DIR="$(cloud_shell_venv_directory "${REPO_ROOT}")"
-if [[ -f "${STATE_DIR}/ready.json" && -x "${VENV_DIR}/bin/python" ]]; then
-  REQUIRED_FREE_MIB=512
-else
-  REQUIRED_FREE_MIB=1024
-fi
-python3 "${SCRIPT_DIR}/cloud_shell_environment.py" storage \
-  --repo-root "${REPO_ROOT}" --minimum-free-mib "${REQUIRED_FREE_MIB}" >/dev/null
 
 mkdir -p "${STATE_DIR}"
 
