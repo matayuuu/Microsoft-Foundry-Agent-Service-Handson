@@ -52,7 +52,9 @@ def test_command_builders_pin_python_and_dependency_boundaries() -> None:
     assert any(item.endswith("[dev]") and "travel-api" not in item for item in workshop)
     assert any(item.endswith("travel-api[dev]") for item in workshop)
     assert hosted[3] == "foundry-hosted-agent"
-    assert any(item.endswith("src\\hosted-agent\\requirements.txt") for item in hosted)
+    assert any(
+        item.replace("\\", "/").endswith("src/hosted-agent/requirements.txt") for item in hosted
+    )
     assert {"pytest", "ruff", "ipykernel"} <= set(hosted)
     assert graphviz[-1] == "graphviz"
     assert "sudo" not in graphviz
