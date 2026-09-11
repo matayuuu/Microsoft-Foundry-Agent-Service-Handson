@@ -7,7 +7,7 @@ name = "travel-ops-api"
 version = "1.0.0"
 description = "Deterministic mock Travel Ops API for the Contoso travel/expense workshop scenario"
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi==0.118.0",
   "pydantic==2.11.7",

@@ -3,7 +3,7 @@
 # Service workshop. Designed to scale to zero on Azure Container Apps: no
 # persistence, fast cold start, minimal image.
 
-FROM python:3.13-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 

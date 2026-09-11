@@ -32,7 +32,7 @@ The interactive OpenAPI docs are served at `/docs` (Swagger UI) and
 
 ## Local run
 
-Requires Python 3.13. From this directory (`src/travel-api`):
+Requires Python 3.12. From this directory (`src/travel-api`):
 
 ```bash
 python -m venv .venv
