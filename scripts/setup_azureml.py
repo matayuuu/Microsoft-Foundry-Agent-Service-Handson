@@ -22,6 +22,7 @@ from typing import Any, Protocol
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MARKER_NAME = ".foundry-workshop-environment.json"
 PYTHON_VERSION = "3.10"
+CONDA_CHANNEL = "conda-forge"
 
 
 class AzureMLSetupError(RuntimeError):
@@ -87,6 +88,9 @@ def conda_create_command(conda: str, spec: EnvironmentSpec) -> list[str]:
         conda,
         "create",
         "--yes",
+        "--override-channels",
+        "--channel",
+        CONDA_CHANNEL,
         "--name",
         spec.name,
         f"python={PYTHON_VERSION}",
@@ -137,8 +141,9 @@ def graphviz_install_command(conda: str) -> list[str]:
         "--yes",
         "--name",
         HOSTED_ENVIRONMENT.name,
+        "--override-channels",
         "--channel",
-        "conda-forge",
+        CONDA_CHANNEL,
         "graphviz",
     ]
 
@@ -177,6 +182,7 @@ def _marker_payload(spec: EnvironmentSpec) -> dict[str, str]:
         "name": spec.name,
         "purpose": spec.purpose,
         "python": PYTHON_VERSION,
+        "channel": CONDA_CHANNEL,
     }
 
 
@@ -198,8 +204,8 @@ def _verify_or_mark_new_environment(
         ) from exc
     if actual != expected:
         raise AzureMLSetupError(
-            f"Conda environment {spec.name!r} has an unrelated ownership marker; "
-            "refusing to modify it."
+            f"Conda environment {spec.name!r} has an incompatible ownership or channel marker; "
+            "refusing to mix environments. Use a clean Azure ML Compute instance."
         )
 
 
@@ -229,6 +235,7 @@ def ensure_environments(
     conda: str,
     jupyter: str,
 ) -> None:
+    print(f"Preparing isolated workshop kernels using only the {CONDA_CHANNEL} Conda channel.")
     paths = _env_paths(runner.json([conda, "env", "list", "--json"]))
     for spec in ENVIRONMENTS:
         newly_created = spec.name not in paths

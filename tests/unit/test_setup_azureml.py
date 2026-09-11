@@ -58,6 +58,11 @@ def test_command_builders_pin_python_and_dependency_boundaries() -> None:
     assert {"pytest", "ruff", "ipykernel"} <= set(hosted)
     assert graphviz[-1] == "graphviz"
     assert "sudo" not in graphviz
+    for command in (create, graphviz):
+        assert "--override-channels" in command
+        assert command[command.index("--channel") + 1] == "conda-forge"
+        assert "defaults" not in command
+        assert "tos" not in command
 
 
 def test_setup_creates_marks_and_reuses_two_environments(tmp_path: Path) -> None:
@@ -104,3 +109,18 @@ def test_setup_refuses_kernel_pointing_elsewhere(tmp_path: Path) -> None:
 
     with pytest.raises(setup_azureml.AzureMLSetupError, match="unrelated environment"):
         setup_azureml.ensure_environments(runner, conda="conda", jupyter="jupyter")
+
+
+def test_setup_refuses_unknown_channel_in_existing_owned_environment(tmp_path: Path) -> None:
+    runner = FakeRunner(tmp_path)
+    spec = setup_azureml.WORKSHOP_ENVIRONMENT
+    path = tmp_path / "envs" / spec.name
+    path.mkdir(parents=True)
+    marker = setup_azureml._marker_payload(spec)
+    marker.pop("channel")
+    (path / setup_azureml.MARKER_NAME).write_text(json.dumps(marker), encoding="utf-8")
+    runner.envs[spec.name] = path
+
+    with pytest.raises(setup_azureml.AzureMLSetupError, match="channel marker"):
+        setup_azureml.ensure_environments(runner, conda="conda", jupyter="jupyter")
+    assert runner.commands == []
