@@ -28,9 +28,17 @@ if ! cloud_shell_terraform_is_supported "$(command -v terraform)"; then
   exit 1
 fi
 
+# A fresh Terraform provider install needs more room than later resume/cleanup sessions.
+if [[ -d "${REPO_ROOT}/infra/.terraform/providers/registry.terraform.io/azure/azapi" \
+  && -d "${REPO_ROOT}/infra/.terraform/providers/registry.terraform.io/hashicorp/azurerm" ]]; then
+  REQUIRED_FREE_MIB=128
+else
+  REQUIRED_FREE_MIB=512
+fi
+
 # Verify the persistent mount/free space and locate its readiness state directory.
 STATE_DIR="$(python3 "${SCRIPT_DIR}/cloud_shell_environment.py" storage \
-  --repo-root "${REPO_ROOT}" --minimum-free-mib 512)"
+  --repo-root "${REPO_ROOT}" --minimum-free-mib "${REQUIRED_FREE_MIB}")"
 VENV_DIR="$(cloud_shell_venv_directory "${REPO_ROOT}")"
 
 mkdir -p "${STATE_DIR}"

@@ -21,6 +21,7 @@ STORAGE_GUIDANCE = (
     "Cloud Shell user settings and attach storage; never provision from an ephemeral session."
 )
 REQUIRED_PYTHON = (3, 12)
+READY_MINIMUM_FREE_MIB = 128
 
 
 class EnvironmentError(RuntimeError):
@@ -208,7 +209,7 @@ def dependency_digest(repo: Path) -> str:
 
 
 def validate_ready(repo: Path) -> dict[str, str]:
-    state = validate_storage(repo, minimum_mib=512)
+    state = validate_storage(repo, minimum_mib=READY_MINIMUM_FREE_MIB)
     venv_python = venv_directory(repo) / "bin" / "python"
     validate_python(venv_python)
     try:

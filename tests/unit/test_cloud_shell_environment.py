@@ -85,7 +85,11 @@ def test_ready_requires_current_digest_and_single_repo_venv(
     }
     (state / "ready.json").write_text(json.dumps(marker), encoding="utf-8")
 
-    monkeypatch.setattr(environment, "validate_storage", lambda *_args, **_kwargs: state)
+    def validate_storage(_repo: Path, *, minimum_mib: int) -> Path:
+        assert minimum_mib == environment.READY_MINIMUM_FREE_MIB
+        return state
+
+    monkeypatch.setattr(environment, "validate_storage", validate_storage)
     monkeypatch.setattr(environment, "venv_directory", lambda _: python.parents[1])
     monkeypatch.setattr(environment, "validate_python", lambda _: None)
     monkeypatch.setattr(environment, "dependency_digest", lambda _: "digest")
@@ -103,8 +107,11 @@ def test_cloud_shell_scripts_are_lightweight_and_provisioning_only() -> None:
     folded_setup = setup.casefold().replace("\\\n", " ")
 
     assert environment.REQUIRED_PYTHON == (3, 12)
-    assert "--minimum-free-mib 512" in setup
-    assert "REQUIRED_FREE_MIB" not in setup
+    assert environment.READY_MINIMUM_FREE_MIB == 128
+    assert "REQUIRED_FREE_MIB=128" in setup
+    assert "REQUIRED_FREE_MIB=512" in setup
+    assert "registry.terraform.io/azure/azapi" in setup
+    assert "registry.terraform.io/hashicorp/azurerm" in setup
     assert re.search(
         r'pip\s+install\s+(?:--\S+\s+)*-e\s+"\$\{repo_root\}"',
         folded_setup,
