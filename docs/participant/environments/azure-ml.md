@@ -1,69 +1,41 @@
-# Azure Machine Learning Studio — Labs 7 / 8
+# Azure ML — Labs 7〜8 の準備
 
-Azure ML Studio は Labs 7/8 の Notebook execution environment です。Lab 1 の custom template が
-workspace、Storage、Key Vault、Application Insights を作成済みですが、Compute instance は作りません。
+**Lab 7 の開始時にだけ**実施します。Lab 1 で作成されたワークスペースと、PC に展開した教材を使います。
 
-## 1. bundle を確認
+## 1. Compute を作る
 
-Lab 1 で private container `workshop-files` から **Microsoft Entra user account** で
-download・展開した最上位 `Microsoft-Foundry-Agent-Service-Handson` folder を使います。
-`.workshop/context.json`、`notebooks/`、`src/` が揃っていることを確認します。
-canonical context は non-secret で、値は `resource_outputs.<key>.value` です。
-`setup_status = complete` と管理者指定の `source_revision` も確認します。
+1. [Azure ML Studio](https://ml.azure.com) で自分のワークスペースを開きます。
+2. **Compute > Compute instances > New** を選びます。
+3. **Virtual machine type = CPU**、サイズ **Standard_DS3_v2** を選びます。
+4. **Idle shutdown** を有効にし、**30 minutes** に設定して作成します。
 
-## 2. Compute instance
+## 2. 教材フォルダーをアップロードする
 
-1. **Lab 7 の開始時に** [Azure ML Studio](https://ml.azure.com) で template が作成した workspace を開く。
-2. **Compute > Compute instances > New**。
-3. **Virtual machine type = CPU**、size **Standard_DS3_v2**。
-4. **Idle shutdown** を有効化し、**30 minutes** に設定して作成。
+**Notebooks > User files > Upload folder** で、展開済みの最上位フォルダー
+`Microsoft-Foundry-Agent-Service-Handson` を選びます。
+ZIP のままではなく、隠しフォルダー `.workshop` を含む全体をアップロードしてください。
+`notebooks/`、`src/`、`scripts/`、`tests/` の配置は変えません。
 
-![Compute instance の VM size を選択する実画面](../../images/lab01-azureml-compute.png)
+## 3. カーネルを準備する
 
-![Compute instance の idle shutdown を有効化する実画面](../../images/lab01-azureml-idle-shutdown.png)
+1. `notebooks/00-azureml-setup.ipynb` を **Python 3.10 - SDK v2** で開き、セルを上から実行します。
+2. 画面を更新し、次の 2 つが選べることを確認します。
+   - **Python (Foundry Workshop)**
+   - **Python (Foundry Hosted Agent)**
+3. **Labs 7〜8 は Python (Foundry Hosted Agent)** を選びます。
 
-Compute は Lab 7 直前に作り、不要時は Stop します。workspace や Compute を共有せず、
-production data を upload しません。
+エラーのセルを飛ばさないでください。再起動後は、必要なセルを上から実行し直します。
 
-## 3. User files upload
+## 4. 認証が必要な場合
 
-**Notebooks > User files > Upload folder** で、PC に展開した最上位 folder を folder ごと upload します。
-ZIP のまま upload せず、個別ファイルもばらばらにしません。
-隠し folder の `.workshop/context.json` を含め、`portal-assets/`、`scripts/`、
-`notebooks/`、`src/hosted-agent/`、必要な `tests/` の相対位置を保ちます。
-
-![Notebooks の Upload folder を選択する実画面](../../images/lab01-azureml-upload.png)
-
-## 4. 2 kernels を作る
-
-1. `notebooks/00-azureml-setup.ipynb` を開く。
-2. built-in **Python 3.10 - SDK v2** kernel を選ぶ。
-3. cell を上から実行し、**Python (Foundry Workshop)** と
-   **Python (Foundry Hosted Agent)** の 2 kernels を作る。
-4. page を refresh し、両方を選択できることを確認。
-
-![Python (Foundry Hosted Agent) kernel を選択した実画面](../../images/lab07-hosted-kernel.png)
-
-setup Notebook は environment preparation 専用です。Labs 7/8 は
-**Python (Foundry Hosted Agent)** を選びます。Notebook 保存は kernel memory の保存では
-ありません。Compute 再起動後は必要な cell を上から再実行します。
-
-## 5. Authentication
-
-必要な場合は Azure ML **Terminal** で次を実行し、同じ subscription を選びます。
+Azure ML の **Terminal** で実行し、管理者指定のサブスクリプションを選びます。
 
 ```bash
 az login --use-device-code
 az account set --subscription "<subscription-id>"
 ```
 
-device code、token、credential を Notebook、チャット、ログ、スクリーンショットへ
-貼り付けません。長期共有 secret へ切り替えません。
+認証コードやトークンは、ノートブックに保存したり他の人へ共有したりしません。
 
-## 6. Export / Stop / Delete
-
-Lab 9 で必要な Notebook と安全な結果を PC へ **Export** します。
-**Python (Foundry Hosted Agent)** の cleanup cell で Hosted Agent / versions を削除してから、
-Compute instance を **Stop**、続けて **Delete** します。その後 Azure Portal で専用 RG の
-**Delete resource group** を実行し、workspace / backing resources ごと削除されたことを確認します。
-deployment history の削除だけでは resources は消えません。
+準備ができたら [Lab 7](../../../labs/07-agent-framework-harness.md) へ進みます。
+終了時の保存・削除は [Lab 9](../../../labs/09-observability-cleanup.md) に従ってください。

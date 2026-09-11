@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 LABS_DIR = REPO_ROOT / "labs"
 AZUREML_GUIDE = REPO_ROOT / "docs" / "participant" / "environments" / "azure-ml.md"
 TEMPLATE_GUIDE = REPO_ROOT / "docs" / "participant" / "environments" / "custom-template.md"
+ADMIN_GUIDE = REPO_ROOT / "docs" / "admin" / "prerequisites.md"
 CORE_LABS = [
     LABS_DIR / "00-overview.md",
     LABS_DIR / "01-setup.md",
@@ -78,6 +79,15 @@ def normalized(text: str) -> str:
     return " ".join(text.split())
 
 
+def assert_in_order(text: str, steps: tuple[str, ...]) -> None:
+    text = normalized(text.replace("**", "").replace("`", ""))
+    position = 0
+    for step in steps:
+        index = text.find(step, position)
+        assert index >= 0, f"missing or out-of-order step: {step}"
+        position = index + len(step)
+
+
 @pytest.mark.parametrize("source_file", OWNED_FILES, ids=lambda path: path.name)
 def test_owned_participant_file_exists(source_file: Path) -> None:
     assert source_file.is_file(), f"expected owned file to exist: {source_file}"
@@ -125,11 +135,8 @@ def test_bundled_markdown_links_resolve_inside_the_participant_allowlist() -> No
 
 def test_template_download_links_use_public_development_source_not_absent_main() -> None:
     for source_file in (
-        REPO_ROOT / "README.md",
-        REPO_ROOT / "README.en.md",
         LABS_DIR / "01-setup.md",
-        TEMPLATE_GUIDE,
-        REPO_ROOT / "docs" / "admin" / "prerequisites.md",
+        ADMIN_GUIDE,
     ):
         targets = [
             target
@@ -182,8 +189,7 @@ def test_primary_path_uses_portal_template_private_download_and_azureml() -> Non
         "workshop-files",
         "Download",
         "Microsoft Foundry",
-        "Azure Machine Learning",
-        HANDOFF_ZIP,
+        "Azure ML",
         "resource_outputs.<key>.value",
     ):
         assert required in combined
@@ -191,18 +197,13 @@ def test_primary_path_uses_portal_template_private_download_and_azureml() -> Non
     assert "terraform_outputs" not in combined
 
 
-def test_readmes_point_to_current_guides_and_immutable_handoff() -> None:
+def test_readmes_point_to_current_guides_and_all_labs() -> None:
     readmes = (REPO_ROOT / "README.md", REPO_ROOT / "README.en.md")
     for readme_path in readmes:
         readme = readme_path.read_text(encoding="utf-8")
-        assert HANDOFF_ZIP in readme
-        assert BUNDLE_ROOT in readme
         assert "docs/participant/environments/custom-template.md" in readme
         assert "docs/participant/environments/azure-ml.md" in readme
-        assert "Resource groups > Create" in readme
-        assert "Deploy a custom template" in readme
-        assert "Microsoft Entra user account" in readme
-        assert "Delete resource group" in readme
+        assert "docs/admin/prerequisites.md" in readme
         for lab_number, lab in enumerate(CORE_LABS):
             assert f"[Lab {lab_number}](labs/{lab.name})" in readme
 
@@ -246,29 +247,73 @@ def test_lab_one_covers_template_initialization_and_private_azureml_handoff() ->
         "Succeeded",
         "status = complete",
         "Deployment Scripts",
-        "private",
+        "非公開",
         "Microsoft Entra user account",
         "workshop-files",
+        "foundry-workshop-files.zip",
         "resource_outputs.<key>.value",
-        "setup_status = complete",
-        "provisioning_method = azure-custom-template",
-        "Foundry resource / project",
-        "Azure AI Search",
-        "Container App",
-        "Luna 40K TPM",
-        "GPT-5.5 100K TPM",
-        "embedding 40K TPM",
-        "Project Managed Identity",
-        HANDOFF_ZIP,
-        "Azure ML Compute instance は作成しません",
+        BUNDLE_ROOT,
+        ".workshop/context.json",
+        "portal-assets/",
+        "notebooks/",
+        "src/",
+        "scripts/",
+        "tests/",
         "Lab 7",
-        "OnSuccess",
-        "P1D",
-        "Shared Key",
-        "allowBlobPublicAccess: false",
-        "defaultToOAuthAuthentication: true",
     ):
         assert required in lab
+    assert "初期化を含む全体" in lab
+    assert "失敗した場合は次へ進まず" in lab
+    assert "公開リンク、SAS、アカウントキーは使いません" in lab
+    assert "ZIP に認証情報は含まれません" in lab
+    assert "Compute はまだ作りません" in lab
+    assert "隠しフォルダー" in lab
+    assert "../docs/admin/prerequisites.md" in lab
+    assert "推測して入力しません" in lab
+
+
+def test_handoff_generation_contract_is_documented_in_the_architecture_reference() -> None:
+    architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+    for required in (
+        HANDOFF_ZIP,
+        BUNDLE_ROOT,
+        "resource_outputs.<key>.value",
+        "bundle-manifest.json",
+        "source_revision",
+    ):
+        assert required in architecture
+
+
+def test_lab_one_manually_creates_rg_before_opening_template() -> None:
+    lab = (LABS_DIR / "01-setup.md").read_text(encoding="utf-8")
+    assert re.search(r"RG.*1\s*個.*手動作成", lab)
+    assert "**Create new** は使いません" in lab
+    assert_in_order(
+        lab,
+        (
+            "Resource groups > Create",
+            "Review + create > Create",
+            "作成完了後",
+            "Deploy a custom template",
+            "Build your own template in the editor > Load file",
+            "Save",
+            "作成済み RG を選びます",
+            "Review + create > Create",
+            "Deployment Scripts",
+            "Succeeded",
+            "status = complete",
+            "Storage browser > Blob containers > workshop-files",
+            "Microsoft Entra user account",
+            "foundry-workshop-files.zip",
+            "Download",
+            "1 回だけ",
+            "PC で展開",
+        ),
+    )
+
+
+def test_admin_guidance_preserves_published_inputs_identity_and_cleanup_boundaries() -> None:
+    admin = ADMIN_GUIDE.read_text(encoding="utf-8")
     for parameter in (
         "location",
         "primaryModelVersion",
@@ -279,68 +324,38 @@ def test_lab_one_covers_template_initialization_and_private_azureml_handoff() ->
         "participantObjectIdOverride",
         "bootstrapRunId",
     ):
-        assert f"`{parameter}`" in lab
-    assert "@sha256:" in lab
-    assert "40 桁" in lab
-    assert "公開済み" in lab
-    assert "予約ではありません" in lab
-    assert "代理" in lab
-    assert "Entra object ID" in lab
-
-
-def test_lab_one_manually_creates_rg_before_opening_template() -> None:
-    lab = (LABS_DIR / "01-setup.md").read_text(encoding="utf-8")
-    sections = [lab.index(f"## {number}.") for number in range(1, 7)]
-    assert sections == sorted(sections)
-    create_rg, load_template, parameters, bootstrap, download, extract = (
-        lab[start:end] for start, end in pairwise([*sections, lab.index("## 完了チェック")])
-    )
-    assert "手動作成" in create_rg
-    assert "**Resource groups > Create**" in create_rg
-    assert "作成完了後" in create_rg
-    assert "**Deploy a custom template**" in load_template
-    assert "作成した RG を選びます" in load_template
-    assert "**Create new** は使いません" in load_template
-    assert "**Review + create**" in parameters
-    assert "**Create**" in parameters
-    assert "status = complete" in bootstrap
-    assert "Microsoft Entra user account" in download
-    assert "**Download**" in download
-    assert BUNDLE_ROOT in extract
-    assert "notebooks/00-azureml-setup.ipynb" in extract
-    assert "src/hosted-agent/" in extract
-    assert "tests/" in extract
-    assert "bundle-manifest.json" in extract
-
-
-def test_admin_guidance_preserves_published_inputs_identity_and_cleanup_boundaries() -> None:
-    admin = (REPO_ROOT / "docs" / "admin" / "prerequisites.md").read_text(encoding="utf-8")
+        assert f"`{parameter}`" in admin
     for required in (
         "Owner 相当",
-        "participantObjectIdOverride",
-        "Entra User object ID",
-        "bootstrapRunId",
-        "sourceRevision",
+        "Japan East",
+        "japaneast",
         "GlobalStandard",
         "@sha256:",
-        "Microsoft.ManagedIdentity",
-        "Microsoft.ContainerInstance",
-        "OnSuccess",
-        "P1D",
-        "Shared Key",
-        "allowBlobPublicAccess: false",
-        "defaultToOAuthAuthentication: true",
-        "contoso-travel-search",
-        "contoso-travel-knowledge-lab-mcp",
-        "contoso-travel-appinsights",
-        "Project Managed Identity",
-        "Playwright",
+        "公開済み",
+        "小文字 40 桁",
+        "空欄可",
+        "実行者 ID",
+        "代理実行",
+        "別の人による再デプロイ",
+        "Entra オブジェクト ID",
+        "意図的に再実行",
+        "Standard_DS3_v2",
+        "Search **Basic**",
+        "infra/README.md",
     ):
         assert required in admin
-    assert "capacity の証明や予約ではありません" in normalized(admin)
-    assert "runtime MI に Owner や subscription-scope roles は与えません" in admin
-    assert "参加者の provisioning 手順でも" in admin
-    assert "実施結果と未実施項目を区別" in admin
+    for model, capacity in (
+        ("gpt-5.6-luna", 40),
+        ("gpt-5.5", 100),
+        ("text-embedding-3-small", 40),
+    ):
+        model_row = next(line for line in admin.splitlines() if f"`{model}`" in line)
+        assert f"{capacity}K TPM" in model_row
+    assert "容量の予約ではありません" in admin
+    assert "リージョン・モデルを変更せず" in admin
+    assert "サブスクリプション全体の権限は付与しません" in admin
+    assert "推測せず" in admin
+    assert "../../labs/09-observability-cleanup.md" in admin
 
 
 def test_new_preparation_does_not_reuse_old_timing_claims() -> None:
@@ -368,19 +383,31 @@ def test_azureml_guide_preserves_security_persistence_and_cost_boundaries() -> N
         "Python (Foundry Workshop)",
         "Python (Foundry Hosted Agent)",
         "az login --use-device-code",
-        "device code",
         "Idle shutdown",
-        "Export",
-        "Stop",
-        "Delete",
         "Upload folder",
-        "resource_outputs.<key>.value",
-        "Microsoft Entra user account",
-        "workshop-files",
         BUNDLE_ROOT,
+        ".workshop",
+        "notebooks/00-azureml-setup.ipynb",
     ):
         assert required in guide
-    assert "Compute instance は作りません" in guide
+    assert "Lab 7 の開始時にだけ" in guide
+    assert "Labs 7〜8 は Python (Foundry Hosted Agent)" in guide
+    assert "認証コードやトークン" in guide
+    assert "保存したり他の人へ共有したりしません" in guide
+    assert "../../../labs/09-observability-cleanup.md" in guide
+    assert_in_order(
+        guide,
+        (
+            "Compute > Compute instances > New",
+            "Standard_DS3_v2",
+            "Idle shutdown",
+            "Notebooks > User files > Upload folder",
+            "notebooks/00-azureml-setup.ipynb",
+            "Python 3.10 - SDK v2",
+            "Python (Foundry Workshop)",
+            "Python (Foundry Hosted Agent)",
+        ),
+    )
     for forbidden in ("API key", "client secret", "No storage account required"):
         assert forbidden not in guide
 
@@ -439,16 +466,24 @@ def test_hosted_labs_use_azureml_kernel_and_portal_context() -> None:
 
 def test_cleanup_orders_export_hosted_compute_and_portal_resource_group_deletion() -> None:
     cleanup = (LABS_DIR / "09-observability-cleanup.md").read_text(encoding="utf-8")
-    export = cleanup.index("**Export**", cleanup.index("## 2."))
-    delete_agent = cleanup.index("delete_hosted_agent.py")
-    stop_compute = cleanup.index("**Stop**", cleanup.index("## 3."))
-    delete_compute = cleanup.index("**Delete**", stop_compute)
-    delete_group = cleanup.index("**Delete resource group**", delete_compute)
-    verify_deleted = cleanup.index("## 5. 削除完了を確認", delete_group)
-    assert export < delete_agent < stop_compute < delete_compute < delete_group < verify_deleted
+    assert_in_order(
+        cleanup,
+        (
+            "Export",
+            "Python (Foundry Hosted Agent)",
+            "削除セル",
+            "全 versions",
+            "Compute > Compute instances",
+            "Stop",
+            "Stopped",
+            "Delete",
+            "Delete resource group",
+            "RG が消えたことを確認",
+        ),
+    )
     assert "RG とまとめて削除" in cleanup
-    assert "deployment history / deployment record" in cleanup
-    assert "resources は削除されません" in normalized(cleanup)
+    assert "自分の専用 RG だけ" in cleanup
+    assert "デプロイ履歴の削除では、リソースは消えません" in cleanup
     for forbidden in (
         "destroy.sh",
         "resource inventory が空",

@@ -1,92 +1,39 @@
-# Lab 9 — Observability と cleanup（20分）
+# Lab 9 — トレースの比較と片付け（20分）
 
-## ゴール
+## 1. トレースを比較する
 
-Prompt / Hosted Agent traces を比較し、**Export → Hosted Agent / versions 削除 →
-Azure ML Compute Stop / Delete → Azure Portal で専用 RG 削除 → 削除完了確認**の順に
-完全に cleanup します。ブラウザーを閉じるだけでは resources は残ります。
+Foundry Portal の **Build > Agents > Traces** で、Lab 4 と Lab 8 の実行を開きます。
 
-## 1. Trace を比較
+- Prompt Agent：`tool_search` → `call_tool` → 実際のツール呼び出しを確認。
+- Hosted Agent：`intake_agent` → `policy_agent` → `reviewer_agent` と、
+  `policy_agent` の `knowledge_base_retrieve` を確認。
+- 応答、所要時間、トークン使用量を比較します。
 
-Foundry Portal の **Build > Agents > Traces** で Lab 4 と Lab 8 の実行を開きます。
+## 2. 成果物を保存し、Hosted Agent を削除する
 
-- Prompt Agent: Foundry IQ、`tool_search`、`call_tool`、選択された実 tool
-- Hosted Agent: `intake_agent` → `policy_agent` → `reviewer_agent`
-- `policy_agent` だけの `knowledge_base_retrieve`
-- latency、status、token usage、reviewer output
+1. Azure ML の **User files** から、必要なノートブックと結果を PC へ **Export** します。
+2. Lab 8 のノートブックを **Python (Foundry Hosted Agent)** で開き、削除セルを実行します。
+3. Hosted Agent と全 versions が削除済み、または存在しないことを確認します。
 
-trace には prompt、response、tool arguments が残ります。secret や実データを入力していない
-ことを再確認します。
+## 3. Compute を停止・削除する
 
-## 2. Export と Hosted Agent cleanup
+Azure ML Studio の **Compute > Compute instances** で、自分の対象を選びます。
 
-Azure ML **User files** から必要な Notebook / safe result を PC へ **Export** します。
-token、credential、個人の環境識別情報を含む context や認証出力は共有しません。
+1. **Stop** を選び、**Stopped** まで待ちます。
+2. **Delete** を選び、一覧から消えたことを確認します。
 
-**Python (Foundry Hosted Agent)** で Lab 8 Notebook の cleanup cell を実行します。
-同じ環境の Azure ML Terminal を使う場合は、同梱の `delete_hosted_agent.py` を実行できます。
+Compute を作成していない場合は、この手順は不要です。
 
-```bash
-conda run --name foundry-hosted-agent python scripts/delete_hosted_agent.py \
-  --subscription "<subscription-id>" \
-  --resource-group "<resource-group>" \
-  --output json
-```
+## 4. 専用 RG を削除する
 
-自分が作成した全 Hosted Agent versions と agent が deleted / not found になったことを確認します。
-成功前に parent Foundry resource を削除しません。Lab 8 を行っていない場合も、対象の
-Hosted Agent が存在しないことを確認して次へ進みます。
+1. Azure Portal の **Resource groups** で、Lab 1 で作成した自分の RG を開きます。
+2. サブスクリプションと RG 名を確認し、**Delete resource group** を選びます。
+3. 確認欄に RG 名を入力し、**Delete** で確定します。残るリソースも RG とまとめて削除します。
+4. **Resource groups** の一覧を更新し、RG が消えたことを確認して完了です。
 
-## 3. Compute を Stop / Delete
-
-Azure ML Studio の **Compute > Compute instances** で対象 instance を選びます。
-
-1. **Stop** を選び、status **Stopped** まで待つ。
-2. **Delete** を選び、Compute が一覧から消えるまで待つ。
-
-必要な成果物を Export せずに Compute / workspace を削除しません。
-Compute を作成していない場合は、対象 workspace の一覧に存在しないことを確認します。
-Stop だけでは Storage や他の Azure resources は削除されません。
-
-## 4. Azure Portal で専用 resource group を削除
-
-1. Azure Portal の **Resource groups** から、Lab 1 で手動作成した **自分の専用 RG** を開く。
-2. subscription と RG 名を照合し、表示される resources が今回の workshop 用だけであることを確認。
-3. **Delete resource group** を選ぶ。
-4. 確認欄へその RG 名を入力し、**Delete** で確定する。
-
-Foundry、Search、Container Apps、monitoring、AML backing Storage / Key Vault、
-bootstrap identity と scoped grants は **RG とまとめて削除**します。
-初期化失敗後に一時 ACI / Azure Files Storage が残っている場合も対象 RG 内を確認します。
-resources が表示されていること自体は、RG 削除を妨げる条件ではありません。
-共有 resource や他人の resource が見つかった場合だけ、削除前に管理者へ確認します。
-
-![Delete resource group を選択する Microsoft Learn の画面例](../docs/images/lab09-delete-resource-group.png)
-
-この画像は一般的な UI の参考であり、今回の deployment や削除を実行した証拠ではありません。
+**デプロイ履歴の削除では、リソースは消えません。**
+削除に失敗したら **Activity log** を確認し、管理者へ連絡してください。
 
 > [!IMPORTANT]
-> **Deployments の履歴（deployment history / deployment record）を削除しても、
-> deploy された resources は削除されません。**
-> cleanup は必ず **Delete resource group** と、その削除完了確認まで行います。
-
-## 5. 削除完了を確認
-
-- **Resource groups** 一覧を更新し、対象 RG が消えたことを確認します。
-- 削除通知と **Activity log** を確認し、失敗・進行中を完了とみなしません。
-- 削除失敗の場合は lock、deny assignment、未削除の Compute / Hosted version を
-  管理者と確認。既存の保護設定を勝手に外したり、別の RG を削除したりしません。
-- 講師へ、自分の workload RG の削除完了を報告します。追加演習の resources がある場合は
-  その所有者と別途 cleanup を確認します。
-
-Deployment Scripts の `OnSuccess` は一時 supporting resources の cleanup であり、
-Foundry や Search の削除ではありません。bootstrap identity / grants はここで RG と削除します。
-
-## 完了チェック
-
-- Prompt / Hosted traces を比較した
-- 必要な Notebook / safe result を Export した
-- Hosted Agent / versions が削除済み、または存在しない
-- Compute が Stop / Delete 済み、または存在しない
-- Azure Portal の Delete resource group で専用 RG を削除した
-- RG が一覧から消え、削除失敗がないことを確認した
+> 削除するのは **自分の専用 RG だけ**です。必要な成果物の Export と、
+> Hosted Agent・Compute の削除を済ませてから RG を削除してください。
