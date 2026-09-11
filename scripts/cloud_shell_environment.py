@@ -79,8 +79,7 @@ def validate_mounts(
         or repo_mount.get("source") != share_mount.get("source")
         or repo_mount.get("fstype") != share_mount.get("fstype")
         or any(
-            "rw" not in mount.get("options", "").split(",")
-            for mount in (repo_mount, share_mount)
+            "rw" not in mount.get("options", "").split(",") for mount in (repo_mount, share_mount)
         )
     ):
         raise EnvironmentError(STORAGE_GUIDANCE)

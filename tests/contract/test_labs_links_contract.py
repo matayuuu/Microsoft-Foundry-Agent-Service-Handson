@@ -197,8 +197,7 @@ def test_lab_one_covers_cloud_shell_provisioning_and_manual_azureml_handoff() ->
     ):
         assert required in lab
     assert (
-        '--query "{resourceGroup:name,location:location,state:properties.provisioningState}"'
-        in lab
+        '--query "{resourceGroup:name,location:location,state:properties.provisioningState}"' in lab
     )
     assert "cd ~\ngit clone" not in lab
     assert "100K TPM" in lab
