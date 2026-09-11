@@ -18,6 +18,18 @@ The source repositories are
 
 The Azure ML images apply to Lab 7 environment preparation despite their historical `lab01-`
 filenames. The resource-group deletion image is a general Microsoft Learn example, not evidence
-of this workshop's cleanup. The custom-template instructions currently use text, not fabricated
-Portal screenshots. `workshop-architecture.svg` and `workshop-learning-flow.svg` are original
-explanatory diagrams with editable `.excalidraw` sources, not product UI captures.
+of this workshop's cleanup. `workshop-architecture.svg` and `workshop-learning-flow.svg` are
+original explanatory diagrams with editable `.excalidraw` sources, not product UI captures.
+
+## Workshop Portal captures
+
+These screenshots were captured with Playwright during the actual successful custom-template
+deployment and authenticated private-Blob download. They are not generated UI or simulated
+results. Account banners and individual resource identifiers were cropped or masked; blue
+outlines highlight the relevant controls. Microsoft product names and UI remain Microsoft's.
+
+| Workshop image | Actual screen | Modification |
+|---|---|---|
+| `lab01-template-succeeded.png` | Azure Portal deployment Overview: Your deployment is complete | Cropped; deployment, subscription, RG, timestamp and correlation values masked; completion highlighted |
+| `lab01-bootstrap-outputs.png` | Deployment Script Outputs: complete and private ZIP coordinates | Cropped; storage-account name masked; status highlighted |
+| `lab01-private-zip-download.png` | Storage browser: Microsoft Entra user account and Download | Account/resource header cropped out; authentication method and Download highlighted |

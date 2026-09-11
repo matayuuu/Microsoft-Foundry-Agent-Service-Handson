@@ -40,6 +40,10 @@ Azure Portal と PC のファイル操作で準備します。ローカル CLI �
 2. **Outputs** の `participantDownload` を開き、`status = complete` を確認します。
    リソースが作られただけでは準備完了ではありません。
 
+![デプロイの Overview に Your deployment is complete と表示された実画面](../docs/images/lab01-template-succeeded.png)
+
+[初期化スクリプトの出力画面例](../docs/images/lab01-bootstrap-outputs.png)でも `status` と保存先を確認できます。画像の個別リソース名はマスクしています。
+
 失敗した場合は次へ進まず、[トラブルシューティング](../docs/participant/troubleshooting.md)を確認します。
 実行中の処理を重複送信したり、別のリージョン・モデルへ変更したりしません。
 
@@ -50,6 +54,8 @@ Azure Portal と PC のファイル操作で準備します。ローカル CLI �
 3. 認証方式を **Microsoft Entra user account** にします。
    必要なら **Switch to Microsoft Entra user account** を選びます。
 4. 非公開コンテナーの `foundry-workshop-files.zip` を選び、**Download** で PC に **1 回だけ**取得します。
+
+![Microsoft Entra user account と、選択した ZIP の Download メニューを示す実画面](../docs/images/lab01-private-zip-download.png)
 
 公開リンク、SAS、アカウントキーは使いません。教材 ZIP に認証情報は含まれません。
 
