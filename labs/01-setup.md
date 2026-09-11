@@ -34,7 +34,9 @@ advanced settings で既存 storage を手入力しません。作成と mount �
 > 連絡します。`clouddrive` folder が見えるだけでは HOME 永続化の証明になりません。
 > `.workshop` と Terraform state を ephemeral storage に置かないでください。
 
-![Cloud Shell の persistent storage が接続済みであることを確認する](../docs/images/lab01-cloud-shell-storage.svg)
+![Mount storage account と subscription を選択する実画面](../docs/images/lab01-cloud-shell-storage.png)
+
+![Cloud Shell が Storage account を作成する実画面](../docs/images/lab01-cloud-shell-create-storage.png)
 
 ## 1. workload resource group を 1 個作る
 
@@ -125,7 +127,9 @@ Terraform が作る scoped RBAC:
 setup は 2 Search indexes を seed し、evaluation assets を準備し、resources を検証し、
 live OpenAPI / Skill assets と canonical `resource_outputs` context を作成します。
 
-![setup validation の resource、RBAC、Search、API check を確認する](../docs/images/lab01-validation-report.svg)
+成功時は terminal の **Environment validation report** が **Overall status: pass** となり、
+resource、RBAC、Travel Ops API、2 Search indexes の全 check が `pass` になります。画像では
+なく、実行した terminal の結果を確認してください。
 
 成功時は次のファイルが 1 個だけ download 対象として表示されます。
 
@@ -148,7 +152,7 @@ Terraform state、token、`.env`、credential は含まれません。
 exit
 ```
 
-![Manage files から生成済み ZIP を 1 回 download する](../docs/images/lab01-cloud-shell-download.svg)
+![Manage files から Download を選択する実画面](../docs/images/lab01-cloud-shell-download.png)
 
 Cloud Shell で ZIP を展開したり、Notebook、Jupyter、Graphviz、web preview、Hosted
 environment を起動したりしません。`exit` により tenant slot を解放します。

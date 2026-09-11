@@ -71,7 +71,10 @@ destroy 成功後、Azure Portal の workload resource group を開き、resourc
 2. workload resource group name を入力して確定。
 3. **Resource groups** list から消えるまで待つ。
 
-![workload resource group を削除する](../docs/images/lab09-delete-resource-group.svg)
+![Delete resource group を選択する実画面](../docs/images/lab09-delete-resource-group.png)
+
+画面例には sample resources が表示されていますが、このハンズオンでは必ず resource inventory
+が空であることを確認してから **Delete resource group** を選択します。
 
 Cloud Shell terminal で:
 

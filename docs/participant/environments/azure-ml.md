@@ -14,9 +14,11 @@ canonical context は non-secret で、key は `resource_outputs` です。
 1. [Azure ML Studio](https://ml.azure.com) で Terraform-created workspace を開く。
 2. **Compute > Compute instances > New**。
 3. **Virtual machine type = CPU**、size **Standard_DS3_v2**。
-4. **Idle shutdown** を有効化して作成。
+4. **Idle shutdown** を有効化し、**30 minutes** に設定して作成。
 
-![Standard_DS3_v2 と idle shutdown を設定する](../../images/lab01-azureml-compute.svg)
+![Compute instance の VM size を選択する実画面](../../images/lab01-azureml-compute.png)
+
+![Compute instance の idle shutdown を有効化する実画面](../../images/lab01-azureml-idle-shutdown.png)
 
 Compute は Lab 7 直前に作り、不要時は Stop します。workspace や Compute を共有せず、
 production data を upload しません。
@@ -26,7 +28,7 @@ production data を upload しません。
 **Notebooks > User files** で、PC に展開した最上位 folder を folder ごと upload します。
 ZIP のまま upload せず、個別ファイルもばらばらにしません。
 
-![展開した bundle の最上位 folder を User files へ upload する](../../images/lab01-azureml-upload.svg)
+![Notebooks の Upload folder を選択する実画面](../../images/lab01-azureml-upload.png)
 
 ## 4. 2 kernels を作る
 
@@ -36,7 +38,7 @@ ZIP のまま upload せず、個別ファイルもばらばらにしません�
    **Python (Foundry Hosted Agent)** の 2 kernels を作る。
 4. page を refresh し、両方を選択できることを確認。
 
-![built-in kernel で setup 後、2 workshop kernels を確認する](../../images/lab01-azureml-kernel.svg)
+![Python (Foundry Hosted Agent) kernel を選択した実画面](../../images/lab07-hosted-kernel.png)
 
 setup Notebook は environment preparation 専用です。Labs 7/8 は
 **Python (Foundry Hosted Agent)** を選びます。Notebook 保存は kernel memory の保存では
