@@ -75,7 +75,7 @@ Options:
                                 variable.
   --travel-api-image-tag <tag> Tag to resolve to an immutable digest when
                                 --travel-api-image-ref is not given. Defaults
-                                to v1.0.3 (the latest validated workshop
+                                to v1.0.4 (the latest validated workshop
                                 release). May also be supplied via the
                                 TRAVEL_API_IMAGE_TAG environment variable.
   --location <region>   Preferred region: japaneast (default), australiaeast,
@@ -108,7 +108,8 @@ PREFERRED_LOCATION="japaneast"
 SEARCH_PRICING_MODEL="dedicated"
 TRAVEL_API_IMAGE_REF="${TRAVEL_API_IMAGE_REF:-}"
 TRAVEL_API_IMAGE_REPO="${TRAVEL_API_IMAGE_REPO:-}"
-TRAVEL_API_IMAGE_TAG="${TRAVEL_API_IMAGE_TAG:-v1.0.3}"
+DEFAULT_TRAVEL_API_IMAGE_TAG="v1.0.4"
+TRAVEL_API_IMAGE_TAG="${TRAVEL_API_IMAGE_TAG:-${DEFAULT_TRAVEL_API_IMAGE_TAG}}"
 SOURCE_BASE=""
 AUTO_APPROVE="false"
 SKIP_BOOTSTRAP="false"
@@ -147,7 +148,7 @@ fi
 source "${SCRIPT_DIR}/cloud-shell-common.sh"
 cloud_shell_guard "${REPO_ROOT}" --subscription "${SUBSCRIPTION_ID}"
 
-if [[ -n "${TRAVEL_API_IMAGE_REF}" && ( -n "${TRAVEL_API_IMAGE_REPO}" || "${TRAVEL_API_IMAGE_TAG}" != "v1.0.3" ) ]]; then
+if [[ -n "${TRAVEL_API_IMAGE_REF}" && ( -n "${TRAVEL_API_IMAGE_REPO}" || "${TRAVEL_API_IMAGE_TAG}" != "${DEFAULT_TRAVEL_API_IMAGE_TAG}" ) ]]; then
   echo "${SCRIPT_NAME}: --travel-api-image-repo/--travel-api-image-tag are ignored because --travel-api-image-ref was given explicitly" >&2
 fi
 

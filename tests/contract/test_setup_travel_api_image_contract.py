@@ -24,7 +24,7 @@ GHCR-digest hardening pass:
 
 * `--travel-api-image-ref` is optional; when given explicitly, resolution
   is skipped entirely (no curl/ghcr.io calls happen).
-* When omitted, the default `ghcr.io/<owner>/travel-ops-api:v1.0.3` (or an
+* When omitted, the default `ghcr.io/<owner>/travel-ops-api:v1.0.4` (or an
   explicit `--travel-api-image-repo`/`--travel-api-image-tag` override) is
   resolved to an immutable `@sha256:<digest>` reference via curl+jq.
 * Both distinct "not anonymously pullable yet" GHCR failure modes --  a
@@ -220,6 +220,7 @@ def test_auto_resolves_default_repo_tag_when_ref_omitted(
         {"FAKE_CURL_TOKEN_MODE": "success", "FAKE_CURL_MANIFEST_MODE": "found"},
     )
     assert result.returncode == 0, result.stderr
+    assert "travel-ops-api:v1.0.4" in result.stderr
     assert f"Resolved: ghcr.io/matayuuu/travel-ops-api@{FAKE_DIGEST}" in result.stderr, (
         result.stderr
     )
