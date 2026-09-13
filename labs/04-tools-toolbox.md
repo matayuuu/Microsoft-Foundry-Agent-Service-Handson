@@ -74,8 +74,7 @@ Contoso Travel Ops API、数値比較用 Code Interpreter、明示された現�
 費用見積もり・事前承認シミュレーションの手順を記載した 2 Skills。
 ```
 
-**Included** に `web_search` と `code_interpreter` が最初から入っている場合は残します。
-同じ種類を重複追加しません。`FoundryMCPServerpreview` が自動追加されている場合は、
+`FoundryMCPServerpreview` が自動追加されている場合は、
 この演習の対象外で管理操作を Tool Search の候補に混ぜないため、右端の **Actions > Remove**
 で外します。組織が追加したほかの tool は、管理者へ確認せず削除しないでください。
 この演習では **Guardrail** は既定のままにします。組織で必須の設定がある場合は従い、
@@ -99,29 +98,38 @@ Contoso Travel Ops API、数値比較用 Code Interpreter、明示された現�
 ![OpenAPI の入力画面](../docs/images/lab04-openapi-form.png)
 
 **Create tool** を選択し、Included に追加されたことを確認します。
-`OpenAPI 3.0+` という UI ラベルですが、貼り付ける教材の定義は **3.1.0** です。
-`servers[0].url` が自分の Travel Ops API になっていることも確認してください。
 
-追加後は **Tool search** を **On** にします。OpenAPI は Included 上では 1 項目ですが、
-schema の `operationId` により、次の 4 つが個別に発見・実行できる callable operation です。
+追加後は **Tool search** を **On** にします。
 
-- `getHealth`
-- `getPerDiem`
-- `createTripEstimate`
-- `createPreapproval`
+Included には `travel_ops_api` という 1 つの tool として表示されますが、その中には
+4 つの操作が定義されています。Tool Search は各操作を個別の tool として扱い、
+Code Interpreter と Web Search を合わせた次の 6 つを検索対象にします。
 
-Tool Search 自体は `tool_search` と `call_tool` という 2 つの meta-tool を公開します。
-これらは上の 4 operation の代替ではなく、発見と実行を包む layer です。
+| 種類 | 公式形式での候補名 | 用途 |
+|---|---|---|
+| OpenAPI | `travel_ops_api.getHealth` | API が利用可能か確認する |
+| OpenAPI | `travel_ops_api.getPerDiem` | 都市ごとの日当と宿泊費上限を照会する |
+| OpenAPI | `travel_ops_api.createTripEstimate` | 出張費用を見積もる |
+| OpenAPI | `travel_ops_api.createPreapproval` | 事前承認をシミュレーションする |
+| Built-in | `code_interpreter` | 数値を比較・集計し、表に整形する |
+| Built-in | `web_search` | 現在の公開旅行情報を検索する |
+
+Agent は `tool_search` でこの中から必要な tool を探し、`call_tool` で選んだ tool を
+実行します。`tool_search` と `call_tool` は検索と実行のための meta-tool なので、上の
+6 つには含めません。2 つの Skills も tool ではなく MCP Resources のため、検索対象には
+含まれません。
 
 > [!NOTE]
 > `Anonymous` は公開された合成データ専用 mock API の認証方式です。
 > **Agent から Foundry Toolbox への認証まで Anonymous にする、という意味ではありません。**
 > Toolbox 側は Microsoft Entra ID/RBAC を使います。
 
-## 3.1 Code Interpreter と Web Search を確認する
+## 3.1 Code Interpreter と Web Search を確認・追加する
 
-1. Included に **Code Interpreter** がなければ **+ Add > Add tool** から追加します。
-2. Included に **Web Search** がなければ同様に追加します。外部 connection は作成しません。
+1. Included に **Code Interpreter** があればそのまま残し、なければ
+   **+ Add > Add tool** から追加します。
+2. **Web Search** も同様に確認して追加します。外部 connection は作成しません。
+   同じ種類の tool は重複して追加しません。
 3. Tool Search が **On** のままであることを確認します。
 
 Code Interpreter は Travel Ops が返した数値の比較・集計・表整形に限定します。
@@ -167,7 +175,7 @@ Web Search は「現在の公開情報を調べて」と明示された場合だ
 
 3. 公開後に Toolbox を開き直し、5 つの項目、Tool search On、公開済み version を確認します。
 
-## 6. Prompt Agent に keyless 接続する
+## 6. Prompt Agent に Microsoft Entra で接続する
 
 Toolbox は MCP という共通の接続方式で Agent から呼び出します。
 **Lab 3 の Knowledge は削除しません。**
@@ -214,15 +222,19 @@ Agent の既存 instructions（Lab 3 の規程検索指示）を残したまま�
   合成の事前承認シミュレーションを行い、実際の承認・予約ではないと明示する。
 ```
 
-keyless 選択肢が表示されない場合は connection を作成せず、Lab 1 の project connection、
-managed identity、RBAC が validation 済みか確認して講師へ共有します。API key や bearer
-token へ切り替えません。
+**Authentication** に **Microsoft Entra**、または **Type** に
+**Project Managed Identity** が表示されない場合は connection を作成せず、Lab 1 の
+managed identity と RBAC が validation 済みか確認して講師へ共有します。
+API key や手動の bearer token には切り替えません。
 
 ## 7. ハンズオン用 MCP の tool を自動承認する
 
-この後の API 実行と Lab 5 / 6 の自動評価が操作承認で止まらないように設定します。
-対象は **このハンズオン専用の合成データ API を含む MCP 接続だけ**です。
-一般の業務 API や、初期追加の管理用 tool にこの設定を適用しません。
+この後、Agent が Toolbox の tool を呼ぶたびに確認画面が表示されないよう、
+`contoso-travel-toolbox-mcp` の tool を自動承認します。これにより、この Lab の動作確認と
+Lab 5 / 6 の自動評価を途中で止めずに実行できます。
+
+自動承認するのは、合成データだけを扱うこのハンズオン専用の MCP 接続です。
+一般の業務 API や、最初から追加されていた管理用 tool には設定しないでください。
 
 1. Agent の Tools で **contoso-travel-toolbox-mcp** の **Actions > Configure** を開きます。
 2. **Approval setting for tools in this MCP server for this agent** で
@@ -254,109 +266,82 @@ Playground の **New chat** で新しい会話を作り、次を入力して **S
    から開きます。
 2. 質問を送信した時刻に対応する `conv_...`（Conversation）を開きます。
    ID は実行ごとに異なります。
-3. **Trajectories** で `invoke_agent contoso-travel-assistant` を展開し、まず
-   `tool_search`、次に `call_tool` があることを確認します。
-4. `call_tool` が選んだ実 tool が `travel_ops_api___createTripEstimate` であることを
-   Input / Output または、その配下の Toolbox Trace で確認します。Portal の版によって
-   downstream call は同じ階層に flatten されず、`call_tool` の内側に表示されます。
-5. 右側の **Input + Output** で、入力の都市、日程、座席クラス、人数と、
+3. **Trajectories** で `invoke_agent contoso-travel-assistant` を展開し、次の順序を確認します。
+   - `tool_search` が見積もり用の tool を発見する
+   - `call_tool` がその tool を選択する
+   - Toolbox が `travel_ops_api___createTripEstimate` を実行する
+4. 実行された tool の **Input + Output** で、入力の都市、日程、座席クラス、人数と、
    出力の `total_estimate` を確認します。`total_estimate` は Playground の回答の合計と
    一致する必要があります。
-6. `getHealth`、`getPerDiem`、`createPreapproval`、Code Interpreter、Web Search が
+5. `getHealth`、`getPerDiem`、`createPreapproval`、Code Interpreter、Web Search が
    実行されていないことを確認します。Tool Search の候補に現れただけでは「実行」ではありません。
 
-Portal の表示によっては、Agent 側の `call_tool` と Toolbox 側の
-`tools/call travel_ops_api___createTripEstimate` が別階層です。順序は
-**`tool_search` → `call_tool` → 選択された実 tool** として読み、候補一覧と実行済み call を
-混同しないでください。Trace UI の版によっては各 call が `execute_tool` span として表示される
-ため、span 名だけでなく Input / Output の tool 名も確認します。
+Portal の版によっては、実 tool が `call_tool` の内側や別階層に表示されるほか、
+`execute_tool` と表示されることもあります。表示名だけで判断せず、**Input + Output** の
+tool 名を確認してください。
 
-### 用途を変えて routing を確認する
+### 任意: 用途ごとの tool 選択を確認する
 
-新しい chat を使い、1 回ずつ実行します。
+次の 2 ケースでは、依頼に応じて異なる機能を使い分けられることを確認します。
+
+#### 見積もり結果を集計する
+
+Playground に戻り、Section 8 の見積もりが表示されている同じ chat で次を送ります。
 
 ```text
-Travel Ops APIで大阪の2026-05-11の日当を確認してください。見積もりや承認は不要です。
+直前の見積もり結果について、Code Interpreterを使って航空券・宿泊・日当の比率を計算し、
+表に整形してください。新しい規程値や旅程は仮定しないでください。
 ```
 
-`tool_search → call_tool → travel_ops_api___getPerDiem` だけが実行され、
-`createTripEstimate` / `createPreapproval` / Code Interpreter / Web Search が呼ばれないことを
+Trace で `code_interpreter` が実行され、API が返した金額だけを使って計算していることを
 確認します。
 
-```text
-現在のニューヨークの公開交通情報をWeb Searchで調べ、参照URLと取得日時を示してください。
-社内情報・顧客情報は検索語に含めないでください。
-```
+#### 費用と承認手続きをまとめて確認する
 
-この明示依頼だけで `tool_search → call_tool → Web Search` が実行され、出典と取得日時が
-回答に含まれることを確認します。固定の正解値とは比較しません。
+**New chat** で次を送ります。
 
 ```text
-見積もり結果の航空券・宿泊・日当の比率を計算し、表に整形してください。
-新しい規程値や旅程は仮定しないでください。
+東京からニューヨークへ2026-07-10〜2026-07-15に、1名、ビジネスクラスで出張します。
+費用を見積もり、ビジネスクラスの承認者と承認順序、申請に使う機能名、
+申請から承認完了までの標準最大営業日数を規程の根拠とともにまとめてください。
+予約や承認シミュレーションは実行しないでください。
 ```
 
-既に同じ chat に見積もり結果がある場合だけ Code Interpreter を使い、数値比較・表整形を
-行うことを確認します。Travel Ops の値そのものを置き換えてはいけません。
+この質問では利用する機能を指定しません。Agent が内容に応じて機能を使い分け、
+Trace に次の両方が記録されていることを確認します。
 
-`createPreapproval` は次のように、シミュレーションであることを理解した上で実行を明示した
-場合だけ呼び出します。
+- Toolbox: `travel_ops_api___createTripEstimate`
+- Foundry IQ: `knowledge_base_retrieve`
 
-```text
-この見積もりについて、実際の承認ではないことを理解しました。
-事前承認シミュレーションを実行してください。
-```
-
-Trace で初めて `tool_search → call_tool → travel_ops_api___createPreapproval` が現れ、
-回答が実承認・予約ではなく simulated result と明記されることを確認します。
-
-**Skill の登録成功と、Agent がその Skill を読み込んだことは別です。**
-2026-09-09 時点では、Portal で作る Prompt Agent の MCP 接続は Toolbox の callable tool を
-実行できますが、MCP Resources として公開された Skill を自動発見・読み込みしません。
-Python の `AIProjectClient` は Skill の作成・管理と Toolbox への参照追加に対応していますが、
-`PromptAgentDefinition` に Toolbox Skill の runtime reference はありません。Portal の代わりに
-同じ Prompt Agent を SDK から呼び出しても、この制約は変わりません。
-
-したがって、Trace に `load_skill` または MCP `resources/read` がなければ、Skill 利用は
-**この実行では未証明（利用は未確認）** と記録します。
-Skill 本文を Agent instructions へ複製して、Toolbox Skill を使ったものとは扱いません。
-本編の到達点は、Skills の登録・公開と Agent からの API 呼び出しです。
-
-<details>
-<summary>Skill の読み込みをさらに確認する場合</summary>
-
-Skills は MCP の `resources/list` / `resources/read` で公開され、MCP Resources protocol に
-対応するクライアントまたは Skill provider が必要です。対応クライアントでは `load_skill`
-または resource read の記録を確認します。
-対応実装の例は公式の [Agent Framework Toolbox Skills sample](https://github.com/microsoft-foundry/foundry-samples/tree/main/samples/csharp/hosted-agents/agent-framework/foundry-toolbox-mcp-skills)
-を参照してください。2 つの Skills は Lab 7 の Harness factory が提供する
-Skill provider で読み込むため、登録・公開状態を維持します。Lab 7 では `load_skill` と
-`resources/read` の実行記録を確認し、Toolbox への登録だけでなく実際の利用を証明します。
-Lab 8 は token 消費を抑えた通常 Agent workflow のため、Skills を使用しません。
-公式の [Skills の Python 手順](https://learn.microsoft.com/ja-jp/azure/foundry/agents/how-to/tools/skills?pivots=python)
-では、`ToolboxSkillReference` による公開と、MCP Resources 対応クライアントによる利用を
-区別しています。
-
-</details>
 
 ## 完了チェック
 
 - OpenAPI、Code Interpreter、Web Search と 2 Skills を含み、Tool Search On の Toolbox を公開した
 - Trace で `tool_search → call_tool → createTripEstimate` を確認した
 - 見積もり依頼で無関係な tool と `createPreapproval` が呼ばれないことを確認した
-- Skill は登録・公開済みであり、`load_skill` / `resources/read` なしには利用済みと主張しない
+- 2 つの Skills が Toolbox に登録・公開されている
 
-## 任意: Lab 7 後に Notebook で同じ構成を扱う
+> [!NOTE]
+> この Lab で確認するのは、2 つの Skills が Toolbox に登録・公開されていることまでです。
+> Portal の Prompt Agent では、MCP Resources として公開された Skills の読み込みを確認できません。
+> 登録済みであることを利用済みとはみなさず、実際の読み込みは Lab 7 で
+> `load_skill` / `resources/read` の記録を使って確認します。
 
-[`notebooks/04-create-toolbox.ipynb`](../notebooks/04-create-toolbox.ipynb) は SDK 学習用の補助です。
-Lab 7 の [共通環境の準備](../docs/participant/environments/codespaces.md)と
-`notebooks/00-setup.ipynb` の完了後に **Python (Foundry Workshop)** kernel を選びます。
-この Notebook は本編では使いません。
-OpenAPI の更新時に既存 Skills・他の tools・guardrail・Tool Search を保持し、不足する
-Lab 4 の built-in tool と Tool Search だけを SDK が対応する正式な model で追加しますが、
-Skill 自体のアップロードは上の Portal 手順で行います。
-Prompt Agent の呼び出し、回答の検証、Conversation に記録された Tool の入出力確認も行います。
-UI の作成操作を体験する前に Notebook で Toolbox を作る必要はありません。
+
+## 任意: SDK から Toolbox を確認する
+
+[`notebooks/04-create-toolbox.ipynb`](../notebooks/04-create-toolbox.ipynb) は、Portal で作成した
+Toolbox を SDK から確認・更新するための補助教材です。本編の完了には必要ありません。
+
+実行する場合は、Lab 7 の [共通環境の準備](../docs/participant/environments/codespaces.md)と
+`notebooks/00-setup.ipynb` を完了し、**Python (Foundry Workshop)** kernel を選びます。
+Notebook では次を確認できます。
+
+- 既存の Skills、tools、guardrail、Tool Search を保持した OpenAPI の更新
+- 不足している built-in tool と Tool Search の追加
+- Prompt Agent の呼び出しと、Tool の Input / Output の確認
+
+Skill のアップロードには、この Lab の Portal 手順を使います。
 
 公式仕様: [Toolbox](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/toolbox) /
 [Skills](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/skills)。

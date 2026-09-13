@@ -2,31 +2,23 @@
 
 ## ゴール
 
-Lab 2 では、Azure AI Search tool から利用条件をまとめた 1 つの index を直接検索しました。
-この Lab では **Foundry IQ knowledge base** を作成して Prompt Agent に接続し、質問を
-分解しながら利用条件と承認手続きの 2 つの検索先（source）を横断検索します。
+Lab 2 では、Azure AI Search tool を使って、利用条件をまとめた 1 つの index を
+直接検索しました。この Lab では **Foundry IQ knowledge base** を作成し、次の 2 つの
+index を検索先（source）として登録します。
 
-たとえば「ビジネスクラスに乗れるか」と「誰にどの順番で承認してもらうか」は、
-別の規程に書かれています。Lab 2 と同じ質問を送り、Direct search と比べて
-**回答の根拠が増えること**を確認します。文書を検索して回答の根拠にする仕組みを
-RAG と呼びます。
+- 利用条件をまとめた `contoso-travel-policy`
+- 承認手続きをまとめた `contoso-travel-approval`
 
-ここで作る `contoso-travel-knowledge-lab` は Prompt Agent だけの一時状態ではありません。
-Lab 7 の plain / Harness Agent と Lab 8 の Hosted workflow も、同じ remote knowledge base
-をコードから参照します。
+Foundry IQ は質問を分解し、複数の source から必要な根拠を検索します。たとえば、
+「ビジネスクラスに乗れるか」と「誰にどの順番で承認してもらうか」が別の規程に
+書かれていても、両方を参照できます。この仕組みを Prompt Agent に接続し、Lab 2 と
+同じ質問を送って、Direct search より**回答の根拠が増えること**を確認します。
+
+ここで作る `contoso-travel-knowledge-lab` は、Lab 7 の plain / Harness Agent と Lab 8 の Hosted
+workflow からも参照する共通の remote knowledge base です。
 
 > [!WARNING]
 > 検索とモデルの呼び出しには料金が発生します。教材の合成データと質問例を使います。
-
-## 使用する値
-
-Lab 1 のデプロイの **Outputs > resourceOutputs** で
-`evaluation_model_deployment_name.value = gpt-5.5` を確認します。Search connection は
-`contoso-travel-search`、indexes は `contoso-travel-policy` と
-`contoso-travel-approval` です。Agent から knowledge base の MCP endpoint を keyless に
-呼ぶ `contoso-travel-knowledge-lab-mcp` connection も Lab 1 の template で作成済みです。
-Search は **Basic**、bootstrap / validation が完了した環境を使います。
-knowledge base 自体はこの Lab で作成します。
 
 ## 1. Foundry IQ knowledge base を作成する
 
@@ -73,7 +65,6 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
    | Description | `事前承認の申請機能、承認者と順序、標準処理日数を確認するための規程。` |
    | Select search index | `contoso-travel-approval` |
 
-両方の source で **Advanced (optional)** は変更しません。
 
 8. 2 つの source が一覧にあることを確認して、**Save knowledge base** を選択します。
 

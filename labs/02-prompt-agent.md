@@ -54,16 +54,9 @@ Lab 1 のデプロイの **Outputs > resourceOutputs** で、
 ## 2. 作成済みのモデルを選択する
 
 1. 設定欄の **Model** を開きます。
-2. **Deployments** の中から、`primary_model_deployment_name` の値を選択します。
+2. **Deployments** の中から、`primary_model_deployment_name` （通常は `gpt-5.6-luna`）の値を選択します。
 
 ![Deployments にある gpt-5.6-luna を選択する](../docs/images/lab02-model-deployment.png)
-
-通常、Model に選ぶ deployment 名は **`gpt-5.6-luna`** です。
-すでに選ばれていれば変更不要です。下側の **Models** は新しいモデルを選ぶための
-一覧なので、この演習では使いません。`gpt-5.5` は Lab 3 の Foundry IQ、
-Lab 5 の評価、Lab 6 の Optimizer で使います。Agent 本体には Luna を使います。
-Luna が見つからない場合は、対象 project と Lab 1 の deployment / validation を確認してください。
-別モデルを追加せず、管理者へ連絡します。
 
 ## 3. 自動追加された Web search を外す
 
@@ -76,9 +69,9 @@ Luna が見つからない場合は、対象 project と Lab 1 の deployment / 
 ![Web search の Actions から Remove を選択する](../docs/images/lab02-remove-web-search.png)
 
 Tools に Web search がなければ操作は不要です。**Guardrail** など、ほかの設定は
-変更しません。最後の Save で、この変更もまとめて保存します。
+変更しません。
 
-## 4. Instructions を設定して保存する
+## 4. Instructions を設定する
 
 **Instructions** に次を貼り付けます。
 
@@ -93,9 +86,6 @@ Travel Ops tool の都市名には、Tokyo、Osaka、New York のような英語
 予約や承認を実行したとは表現せず、シミュレーションであることを明示してください。
 ```
 
-モデル・Web search の削除・Instructions を確認し、**Save** でまとめて保存します。
-
-![Instructions を入力し、設定をまとめて Save](../docs/images/lab02-instructions-save.png)
 
 ## 5. Azure AI Search tool を接続する
 
@@ -115,21 +105,15 @@ Search SKU を変更したり、直接検索の手順を別経路に置き換え
 
 ![接続欄で自分の Search service を選択する](../docs/images/lab03-search-connection.png)
 
-`contoso-travel-search` は project connection 名です。この選択欄では
-service 名が表示されるため、`search_service_name` と見比べてください。
-`contoso-travel-search` は AAD Search resource connection です。
-Foundry IQ MCP と App Insights の **Project Managed Identity** connections とは区別します。
 
-4. `contoso-travel-policy` の行の丸い選択ボタンを選び、**Add** を押します。
-  `contoso-travel-approval` はまだ選びません。
+4. `contoso-travel-policy` を選択し、**Add** します。
 
 ![policy index を選択する](../docs/images/lab03-ai-search-picker.png)
 
 5. Agent に戻ったら **Select a search index** が `contoso-travel-policy` であることを
   確認します。
 6. Azure AI Search の **Actions > Parameters** で **Search type = Semantic**、
-  **Retrieved documents = 5** にします。設定欄を閉じ、**Save** を選択します。
-  既定の Simple のままにせず、作成済み index の semantic configuration を使います。
+  **Retrieved documents = 5** にします。設定欄を閉じ、**Save** でまとめて保存します。
 
 ![接続した index を確認して保存する](../docs/images/lab03-search-attached.png)
 
