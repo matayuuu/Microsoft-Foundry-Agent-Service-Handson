@@ -100,6 +100,8 @@ Search SKU を変更したり、直接検索の手順を別経路に置き換え
 
 ![Azure AI search を選んで追加する](../docs/images/lab03-select-ai-search.png)
 
+これは Lab 1 が作成した **AAD Search resource connection** を使う設定です。
+
 3. **Azure AI Search connection** を開き、`search_service_name` の値
   （`srch-fdyws-...`）を選択します。**Connect to new resource** は使いません。
 

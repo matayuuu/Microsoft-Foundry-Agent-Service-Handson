@@ -30,7 +30,9 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
 
 ![Knowledge で Search 接続を選び、knowledge base を作成する](../docs/images/lab03-knowledge-home.png)
 
-4. **Basic configuration** を次のように設定します。
+4. Lab 1 のデプロイの **Outputs > resourceOutputs** で
+   `evaluation_model_deployment_name.value` を確認します。
+5. **Basic configuration** を次のように設定します。
 
    | 項目 | 値 |
    |---|---|
@@ -45,9 +47,9 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
 **Retrieval reasoning effort** は初期値の Minimal から **Medium** に変更します。
 **Description** と **Retrieval instructions** は、この演習では空のままで構いません。
 
-5. **Knowledge sources (Foundry IQ) > Add sources > Azure AI Search Index** を選択します。
+6. **Knowledge sources (Foundry IQ) > Add sources > Azure AI Search Index** を選択します。
 
-6. ダイアログを次のように設定し、**Create** を選択します。
+7. ダイアログを次のように設定し、**Create** を選択します。
 
    | 項目 | 値 |
    |---|---|
@@ -57,7 +59,7 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
 
    ![Azure AI Search Index を knowledge source にする](../docs/images/lab03-knowledge-source.png)
 
-7. もう一度 **Add sources > Azure AI Search Index** を選び、次を追加します。
+8. もう一度 **Add sources > Azure AI Search Index** を選び、次を追加します。
 
    | 項目 | 値 |
    |---|---|
@@ -66,11 +68,11 @@ Agent に接続する前に、**Build > Knowledge** で knowledge base を作成
    | Select search index | `contoso-travel-approval` |
 
 
-8. 2 つの source が一覧にあることを確認して、**Save knowledge base** を選択します。
+9. 2 つの source が一覧にあることを確認して、**Save knowledge base** を選択します。
 
 ![2つの source を確認して knowledge base を保存する](../docs/images/lab03-save-knowledge-base.png)
 
-9. 一覧で `contoso-travel-knowledge-lab` の Status が **Active** になるまで待ちます。
+10. 一覧で `contoso-travel-knowledge-lab` の Status が **Active** になるまで待ちます。
 
 
 ## 2. Knowledge base を agent に接続する

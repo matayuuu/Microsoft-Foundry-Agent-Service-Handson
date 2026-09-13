@@ -48,10 +48,12 @@ Lab 4 の MCP 自動承認設定まで保存した Agent を使います。
 **Field mapping** では、dataset の列を表す `item.*` と、Evaluation 実行時に Agent から
 取得する `sample.*` を evaluator の標準フィールドへ割り当てます。
 
-1. **Judge model** で **Deployments > gpt-5.5** を選択します。
+1. Lab 1 のデプロイの **Outputs > resourceOutputs** で
+   `evaluation_model_deployment_name.value` が `gpt-5.5` であることを確認します。
+2. **Judge model** で **Deployments > gpt-5.5** を選択します。
    初期選択が `gpt-5.6-luna` なら変更してください。`gpt-5.5` が表示されない場合は、
    Lab 1 の model deployment を管理者に確認してから続行します。
-2. 各フィールドが次の値になっていることを確認します。
+3. 各フィールドが次の値になっていることを確認します。
 
 | Field | Mapping | 内容 |
 |---|---|---|
@@ -63,7 +65,7 @@ Lab 4 の MCP 自動承認設定まで保存した Agent を使います。
 | **Tool definitions** | `{{sample.tool_definitions}}` | Agent が利用できる tool の定義 |
 
 
-3. **Next** を選択します。
+4. **Next** を選択します。
 
 ## 4. Agent の入力を確認する
 
