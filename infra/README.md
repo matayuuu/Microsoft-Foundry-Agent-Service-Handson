@@ -43,7 +43,7 @@ file participants must load.
 | `evaluationModelVersion` | `2026-04-24` for `gpt-5.5` / GlobalStandard in Japan East. |
 | `embeddingModelVersion` | `1` for `text-embedding-3-small` / GlobalStandard in Japan East. |
 | `travelApiImageRef` | `ghcr.io/matayuuu/travel-ops-api@sha256:173f7e954cd284057bf2a2fe10d53efae83547a060ec2ac23172dd5458816dcf`. Overrides must be public GHCR digest references; no tags, private registry secrets, or fallback image. |
-| `sourceRevision` | `223a74f219078ededb21a27258501182da7a6432`. Overrides must be published lowercase 40-character commit SHAs in `matayuuu/Microsoft-Foundry-Agent-Service-Handson`, not branch names or alternate repositories. |
+| `sourceRevision` | `2895a0125288d0c4dd84dfbb2387cc0e132b16ea`. Overrides must be published lowercase 40-character commit SHAs in `matayuuu/Microsoft-Foundry-Agent-Service-Handson`, not branch names or alternate repositories. |
 | `participantObjectIdOverride` | Default empty: root `deployer().objectId` is the participant. For administrator/automation deployment or redeployment, supply the intended participant's Entra **User** object ID. |
 | `bootstrapRunId` | Default `1`. Keep stable for ordinary redeployment; change deliberately to rerun initialization. |
 
@@ -51,7 +51,7 @@ The model defaults are the latest versions available for these three models in
 Japan East / GlobalStandard as of **2026-09-12**, pinned as concrete values rather
 than dynamically resolving `latest`. The public Travel API image is the digest
 published for `v1.0.4`; the source default is the
-[published workshop revision](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/commit/223a74f219078ededb21a27258501182da7a6432).
+[published workshop revision](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/commit/2895a0125288d0c4dd84dfbb2387cc0e132b16ea).
 
 For a new release, administrators verify current model availability / quota and
 publish the compatible source and public image first. Update `main.bicep`, the
