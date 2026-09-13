@@ -6,11 +6,11 @@
 完結し、`azd` は一切使いません。この付録は、`azd` の Foundry 拡張機能を使った代替デプロイ
 経路を、**本編とは別の認証と承認済み検証環境が必要になる**ことを明示したうえで説明します。
 本編 [Lab 8](../08-hosted-multi-agent.md) の履修にも、Lab 1 の RG 手動作成 / custom template /
-private ZIP 取得にも不要です。本編の source directory と固定インフラを変更しません。
+GitHub 共通教材・Codespaces の利用にも不要です。本編の source directory と固定インフラを変更しません。
 
 > [!IMPORTANT]
 > **`azd auth login` は `az login` とは別の認証です。** 本編の Hosted execution は
-> Azure ML の既存 Azure CLI 認証で動作します。この付録の手順を試す場合、`az login` に
+> Dev Container 内で本人が行った Azure CLI 認証で動作します。この付録の手順を試す場合、`az login` に
 > 加えて **`azd auth login` を別途実行する必要があります**。これは本編の設計方針を変更する
 > ものではなく、azd という別のツールを使う場合にのみ必要な追加手順です。
 
@@ -75,7 +75,7 @@ agent 用 Microsoft Entra identity の作成・必要な RBAC 割り当てまで
 
 | 観点 | 本編 core（`scripts/deploy_hosted_agent.py`） | この付録（`azd ai agent`） |
 |---|---|---|
-| 認証 | Azure ML の既存 Azure CLI 認証 | `az login` + `azd auth login` |
+| 認証 | Dev Container 内の本人の Azure CLI 認証 | `az login` + `azd auth login` |
 | デプロイ方式 | source zip + `REMOTE_BUILD`（Foundry がサーバー側でビルド） | ローカルでコンテナビルド → ACR へ push |
 | 追加インフラ | 不要（本編 custom template resources の範囲内） | 別環境の ACR（既存のものを使うか、`azd provision` が新規作成） |
 | 対象読者 | 全参加者（本編必須） | azd に慣れた参加者向けの任意経路 |

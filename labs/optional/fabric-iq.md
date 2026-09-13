@@ -105,9 +105,8 @@ Fabric IQ への接続には、item の種類ごとに次の認証方式があ�
 [Foundry Toolkit for Visual Studio Code](https://code.visualstudio.com/docs/intelligentapps/overview#_install-and-setup)
 をインストールしておくと、Toolbox 経由で Fabric IQ ツールを追加する UI フローが使えます
 （後述）。
-これは任意の Toolkit 経路です。Azure ML Studio は VS Code 拡張機能の実行環境ではありません。
-本編の Azure ML 準備に Toolkit のインストールを追加せず、必要な場合は管理者と
-承認済みの VS Code 環境を用意してください。
+これは任意の Toolkit 経路で、本編の Dev Container の必須要件ではありません。
+必要な場合は、拡張機能が対応する承認済みの VS Code 環境を管理者と確認してください。
 
 ## 3. Contoso シナリオでの適用イメージ（架空・本リポジトリでは構築しません）
 

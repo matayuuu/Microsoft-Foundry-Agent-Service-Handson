@@ -39,8 +39,8 @@ preview 機能の不安定さやネットワーク・quota の事情で当日時
 あること、`disclaimer_ja` が空でないこと、秘密情報らしき文字列（`sk-`、`AccountKey=` など）
 や実在しそうな GUID 形式の ID を含まないことを検証します。
 
-これらを custom template / Deployment Scripts の成功、private ZIP の取得、
-Notebook UI、cleanup、Playwright の実 Portal E2E の証拠として使用しません。
+これらを custom template / Deployment Scripts の成功、GitHub assets の取得、
+Codespaces / Notebook UI、cleanup、実 Portal E2E の証拠として使用しません。
 live 実行の阻害事項と未実施範囲は、そのまま記録します。
 
 ## 使い方（講師向け）

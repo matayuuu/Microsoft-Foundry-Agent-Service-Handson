@@ -1,4 +1,4 @@
-"""Participant contracts for manual RG, custom template, private ZIP, and Azure ML."""
+"""Documentation contracts for Portal bootstrap, GitHub assets and Dev Containers."""
 
 from __future__ import annotations
 
@@ -7,80 +7,81 @@ import re
 import xml.etree.ElementTree as ET
 from itertools import pairwise
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 import pytest
 
-from scripts.build_participant_bundle import collect_source_files
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LABS_DIR = REPO_ROOT / "labs"
-AZUREML_GUIDE = REPO_ROOT / "docs" / "participant" / "environments" / "azure-ml.md"
-TEMPLATE_GUIDE = REPO_ROOT / "docs" / "participant" / "environments" / "custom-template.md"
+ENVIRONMENTS = REPO_ROOT / "docs" / "participant" / "environments"
+CODESPACES_GUIDE = ENVIRONMENTS / "codespaces.md"
+LOCAL_GUIDE = ENVIRONMENTS / "local-dev-container.md"
 ADMIN_GUIDE = REPO_ROOT / "docs" / "admin" / "prerequisites.md"
 CORE_LABS = [
-    LABS_DIR / "00-overview.md",
-    LABS_DIR / "01-setup.md",
-    LABS_DIR / "02-prompt-agent.md",
-    LABS_DIR / "03-rag-foundry-iq.md",
-    LABS_DIR / "04-tools-toolbox.md",
-    LABS_DIR / "05-evaluation.md",
-    LABS_DIR / "06-optimization.md",
-    LABS_DIR / "07-agent-framework-harness.md",
-    LABS_DIR / "08-hosted-multi-agent.md",
-    LABS_DIR / "09-observability-cleanup.md",
+    LABS_DIR / name
+    for name in (
+        "00-overview.md",
+        "01-setup.md",
+        "02-prompt-agent.md",
+        "03-rag-foundry-iq.md",
+        "04-tools-toolbox.md",
+        "05-evaluation.md",
+        "06-optimization.md",
+        "07-agent-framework-harness.md",
+        "08-hosted-multi-agent.md",
+        "09-observability-cleanup.md",
+    )
 ]
-OWNED_FILES = [
+DOCUMENTS = [
     REPO_ROOT / "README.md",
     REPO_ROOT / "README.en.md",
-    REPO_ROOT / "AGENTS.md",
-    *CORE_LABS,
+    *sorted(LABS_DIR.rglob("*.md")),
     *sorted((REPO_ROOT / "docs").rglob("*.md")),
     *sorted((REPO_ROOT / "instructor").rglob("*.md")),
     REPO_ROOT / "src" / "hosted-agent" / "README.md",
-    *sorted((LABS_DIR / "optional").glob("*.md")),
 ]
-
-_LINK_PATTERN = re.compile(r"\[[^\]\n]+\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
-HANDOFF_ZIP = ".workshop/download/foundry-workshop-files.zip"
-BUNDLE_ROOT = "Microsoft-Foundry-Agent-Service-Handson"
-PUBLIC_SOURCE_BASE = "https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/"
-RETIRED_PATH_FRAGMENTS = (
+REPOSITORY = "matayuuu/Microsoft-Foundry-Agent-Service-Handson"
+COMMON_ASSETS = (
+    "assets/skills/travel-estimation.zip",
+    "assets/skills/preapproval-simulation.zip",
+    "assets/openapi/travel-ops.openapi.json",
+)
+RETIRED_REFERENCES = (
+    "environments/azure-ml.md",
+    "00-azureml-setup.ipynb",
+    "setup_azureml.py",
+    "Azure ML",
+    "Azure Machine Learning",
+    "Standard_DS3_v2",
+    "Storage browser",
+    "participantDownload",
+    "foundry-workshop-files.zip",
+    "portal-assets/",
+    "Upload folder",
+    "conda run",
     "environments/cloud-shell.md",
     "setup-cloud-shell.sh",
     "activate-cloud-shell.sh",
     "scripts/setup.sh",
     "scripts/destroy.sh",
-    "prepare_serverless_foundry_iq",
-    "prepare_terraform_plan",
-    "codespaces-cloud-shell-v1",
-    "clouddrive",
+    "terraform_outputs",
 )
-
-
-def extract_link_targets(markdown_text: str) -> list[str]:
-    return _LINK_PATTERN.findall(markdown_text)
-
-
-def is_external_link(target: str) -> bool:
-    if target.startswith("#"):
-        return True
-    return urlsplit(target).scheme in {"http", "https", "mailto"}
-
-
-def resolve_link_path(source_file: Path, target: str) -> Path:
-    path_part = target.split("#", 1)[0]
-    if not path_part:
-        raise ValueError(f"link target {target!r} has no file path component")
-    return (source_file.parent / path_part).resolve()
+RETIRED_IMAGES = (
+    "lab01-azureml-compute.png",
+    "lab01-azureml-idle-shutdown.png",
+    "lab01-azureml-upload.png",
+    "lab01-bootstrap-outputs.png",
+    "lab01-private-zip-download.png",
+)
+LINK_PATTERN = re.compile(r"\[[^\]\n]+\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 
 
 def normalized(text: str) -> str:
-    return " ".join(text.split())
+    return " ".join(text.replace("**", "").replace("`", "").split())
 
 
 def assert_in_order(text: str, steps: tuple[str, ...]) -> None:
-    text = normalized(text.replace("**", "").replace("`", ""))
+    text = normalized(text)
     position = 0
     for step in steps:
         index = text.find(step, position)
@@ -88,489 +89,339 @@ def assert_in_order(text: str, steps: tuple[str, ...]) -> None:
         position = index + len(step)
 
 
-@pytest.mark.parametrize("source_file", OWNED_FILES, ids=lambda path: path.name)
-def test_owned_participant_file_exists(source_file: Path) -> None:
-    assert source_file.is_file(), f"expected owned file to exist: {source_file}"
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
-def _relative_link_cases() -> list[tuple[Path, str]]:
-    cases: list[tuple[Path, str]] = []
-    for source_file in OWNED_FILES:
-        if not source_file.is_file():
-            continue
-        for target in extract_link_targets(source_file.read_text(encoding="utf-8")):
-            if not is_external_link(target):
-                cases.append((source_file, target))
-    return cases
+def links(path: Path) -> list[str]:
+    return LINK_PATTERN.findall(read(path))
+
+
+def local_links() -> list[tuple[Path, str]]:
+    return [
+        (path, target)
+        for path in DOCUMENTS
+        for target in links(path)
+        if not urlsplit(target).scheme
+    ]
+
+
+def markdown_anchors(text: str) -> set[str]:
+    anchors = set(re.findall(r'<a\s+(?:id|name)="([^"]+)"', text))
+    counts: dict[str, int] = {}
+    for heading in re.findall(r"^#{1,6}\s+(.+)$", text, re.MULTILINE):
+        slug = re.sub(r"[^\w -]", "", heading.lower()).replace(" ", "-")
+        count = counts.get(slug, 0)
+        anchors.add(f"{slug}-{count}" if count else slug)
+        counts[slug] = count + 1
+    return anchors
 
 
 @pytest.mark.parametrize(
-    ("source_file", "target"),
-    _relative_link_cases(),
-    ids=[f"{path.name}::{target}" for path, target in _relative_link_cases()],
+    ("source", "target"),
+    local_links(),
+    ids=[f"{path.relative_to(REPO_ROOT)}::{target}" for path, target in local_links()],
 )
-def test_relative_markdown_link_resolves(source_file: Path, target: str) -> None:
-    resolved = resolve_link_path(source_file, target)
-    assert resolved.is_file(), (
-        f"{source_file.relative_to(REPO_ROOT)} links to {target!r}, but {resolved} does not exist"
-    )
+def test_local_document_link_resolves(source: Path, target: str) -> None:
+    parsed = urlsplit(target)
+    resolved = (source.parent / unquote(parsed.path)).resolve() if parsed.path else source
+    assert resolved.is_file(), f"{source.relative_to(REPO_ROOT)} -> {target}"
+    if parsed.fragment and resolved.suffix == ".md":
+        assert unquote(parsed.fragment) in markdown_anchors(read(resolved)), (
+            f"{source.relative_to(REPO_ROOT)} -> missing anchor {target}"
+        )
 
 
-def test_bundled_markdown_links_resolve_inside_the_participant_allowlist() -> None:
-    bundled_files = {path.resolve() for path in collect_source_files(REPO_ROOT)}
-    missing: list[str] = []
-    for source_file in sorted(bundled_files):
-        if source_file.suffix != ".md":
-            continue
-        for target in extract_link_targets(source_file.read_text(encoding="utf-8")):
-            if (
-                not is_external_link(target)
-                and resolve_link_path(source_file, target) not in bundled_files
-            ):
-                missing.append(f"{source_file.relative_to(REPO_ROOT)} -> {target}")
-    assert not missing, "links target files excluded from the participant ZIP:\n" + "\n".join(
-        missing
-    )
+@pytest.mark.parametrize("readme", [REPO_ROOT / "README.md", REPO_ROOT / "README.en.md"])
+def test_readmes_link_all_labs_and_supported_environments(readme: Path) -> None:
+    targets = links(readme)
+    for index, lab in enumerate(CORE_LABS):
+        assert lab.is_file()
+        assert f"[Lab {index}](labs/{lab.name})" in read(readme)
+    for guide in ("custom-template.md", "codespaces.md", "local-dev-container.md"):
+        assert f"docs/participant/environments/{guide}" in targets
 
 
-def test_template_download_links_use_public_development_source_not_absent_main() -> None:
-    for source_file in (
-        LABS_DIR / "01-setup.md",
-        ADMIN_GUIDE,
-    ):
-        targets = [
-            target
-            for target in extract_link_targets(source_file.read_text(encoding="utf-8"))
-            if target.endswith("/infra/azuredeploy.json")
-        ]
-        assert targets, f"{source_file.name} must link to the externally distributed template"
-        for target in targets:
-            assert target.startswith(PUBLIC_SOURCE_BASE)
-            revision = target.removeprefix(PUBLIC_SOURCE_BASE).split("/", 1)[0]
-            assert revision == "dev-custom-template" or re.fullmatch(r"[a-f0-9]{40}", revision)
-
-
-def test_readme_agenda_links_all_ten_labs() -> None:
-    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    for lab_number, lab in enumerate(CORE_LABS):
-        assert f"[Lab {lab_number}](labs/{lab.name})" in readme
-
-
-def test_each_core_lab_links_to_the_next_lab() -> None:
+def test_core_labs_link_to_next_lab() -> None:
     for current, following in pairwise(CORE_LABS):
-        targets = extract_link_targets(current.read_text(encoding="utf-8"))
-        assert any(
-            not is_external_link(target)
-            and resolve_link_path(current, target) == following.resolve()
-            for target in targets
-        ), f"{current.name} does not link to {following.name}"
+        assert following.name in links(current)
 
 
-def test_primary_path_uses_portal_template_private_download_and_azureml() -> None:
-    primary_files = [
-        REPO_ROOT / "README.md",
-        REPO_ROOT / "README.en.md",
-        REPO_ROOT / "docs" / "participant" / "prerequisites.md",
-        TEMPLATE_GUIDE,
-        AZUREML_GUIDE,
-        *CORE_LABS,
-    ]
-    combined = normalized("\n".join(path.read_text(encoding="utf-8") for path in primary_files))
-
-    for required in (
-        "Azure Portal",
-        "Resource groups > Create",
-        "Deploy a custom template",
-        "Build your own template in the editor > Load file",
-        "infra/azuredeploy.json",
-        "Deployment Scripts",
-        "Microsoft Entra user account",
-        "Storage browser",
-        "workshop-files",
-        "Download",
-        "Microsoft Foundry",
-        "Azure ML",
-        "resource_outputs.<key>.value",
-    ):
-        assert required in combined
-    assert "dist/microsoft-foundry-agent-service-handson-portal.zip" not in combined
-    assert "terraform_outputs" not in combined
+@pytest.mark.parametrize("path", DOCUMENTS, ids=lambda path: str(path.relative_to(REPO_ROOT)))
+def test_documents_do_not_reintroduce_retired_handoffs(path: Path) -> None:
+    text = read(path)
+    for retired in RETIRED_REFERENCES:
+        assert retired not in text, f"{path.relative_to(REPO_ROOT)} retains {retired}"
 
 
-def test_readmes_point_to_current_guides_and_all_labs() -> None:
-    readmes = (REPO_ROOT / "README.md", REPO_ROOT / "README.en.md")
-    for readme_path in readmes:
-        readme = readme_path.read_text(encoding="utf-8")
-        assert "docs/participant/environments/custom-template.md" in readme
-        assert "docs/participant/environments/azure-ml.md" in readme
-        assert "docs/admin/prerequisites.md" in readme
-        for lab_number, lab in enumerate(CORE_LABS):
-            assert f"[Lab {lab_number}](labs/{lab.name})" in readme
-
-
-def test_documentation_does_not_reintroduce_retired_provisioning() -> None:
-    for source_file in OWNED_FILES:
-        text = source_file.read_text(encoding="utf-8")
-        for forbidden in RETIRED_PATH_FRAGMENTS:
-            assert forbidden not in text, f"{source_file.name} references {forbidden}"
-        if source_file.name != "AGENTS.md":
-            for forbidden in ("Terraform", "terraform", "Cloud Shell", "Serverless", "serverless"):
-                assert forbidden not in text, f"{source_file.name} retains {forbidden}"
-        assert "Manage files > Download" not in text
-        assert "terraform_outputs" not in text
-
-
-def test_custom_template_provisioning_files_exist_without_retired_entrypoints() -> None:
-    for required in (
-        "docs/participant/environments/custom-template.md",
-        "infra/main.bicep",
-        "infra/azuredeploy.json",
-        "scripts/bootstrap-custom-template.sh",
-        "scripts/bootstrap_custom_template.py",
-    ):
-        assert (REPO_ROOT / required).is_file()
-    for retired in RETIRED_PATH_FRAGMENTS[:5]:
-        path = REPO_ROOT / ("docs/participant" if retired.startswith("environments/") else "")
-        if "/" not in retired:
-            path /= "scripts"
-        assert not (path / retired).exists()
-    assert not list((REPO_ROOT / "infra").glob("*.tf"))
-    assert not list((REPO_ROOT / "docs" / "images").glob("*cloud-shell*"))
-
-
-def test_lab_one_covers_template_initialization_and_private_azureml_handoff() -> None:
-    lab = (LABS_DIR / "01-setup.md").read_text(encoding="utf-8")
-    for required in (
-        "Resource groups > Create",
-        "Build your own template in the editor > Load file",
-        "Review + create",
-        "Succeeded",
-        "status = complete",
-        "Deployment Scripts",
-        "非公開",
-        "Microsoft Entra user account",
-        "workshop-files",
-        "foundry-workshop-files.zip",
-        "resource_outputs.<key>.value",
-        BUNDLE_ROOT,
-        ".workshop/context.json",
-        "portal-assets/",
-        "notebooks/",
-        "src/",
-        "scripts/",
-        "tests/",
-        "Lab 7",
-    ):
-        assert required in lab
-    assert "初期化を含む全体" in lab
-    assert "失敗した場合は次へ進まず" in lab
-    assert "公開リンク、SAS、アカウントキーは使いません" in lab
-    assert "ZIP に認証情報は含まれません" in lab
-    assert "Compute はまだ作りません" in lab
-    assert "隠しフォルダー" in lab
-    assert "../docs/admin/prerequisites.md" in lab
-    assert "推測して入力しません" in lab
-
-
-def test_handoff_generation_contract_is_documented_in_the_architecture_reference() -> None:
-    architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
-    for required in (
-        HANDOFF_ZIP,
-        BUNDLE_ROOT,
-        "resource_outputs.<key>.value",
-        "bundle-manifest.json",
-        "source_revision",
-    ):
-        assert required in architecture
-
-
-def test_lab_one_manually_creates_rg_before_opening_template() -> None:
-    lab = (LABS_DIR / "01-setup.md").read_text(encoding="utf-8")
-    assert re.search(r"RG.*1\s*個.*手動作成", lab)
-    assert "**Create new** は使いません" in lab
+def test_lab_one_creates_rg_then_deploys_defaults_and_waits_for_initialization() -> None:
+    lab = read(CORE_LABS[1])
     assert_in_order(
         lab,
         (
             "Resource groups > Create",
             "Review + create > Create",
-            "作成完了後",
             "Deploy a custom template",
-            "Build your own template in the editor > Load file",
-            "Save",
-            "作成済み RG を選びます",
+            "Load file",
+            "Subscription",
+            "Resource group",
+            "既定値",
             "Review + create > Create",
             "Deployment Scripts",
             "Succeeded",
-            "status = complete",
-            "Storage browser > Blob containers > workshop-files",
-            "Microsoft Entra user account",
-            "foundry-workshop-files.zip",
-            "Download",
-            "1 回だけ",
-            "PC で展開",
+            "workshopContext",
+            "setup_status = complete",
+            "foundryPortalUrl",
         ),
     )
+    for token in ("1 個手動作成", "Create new", "Participant Object Id Override", "空欄"):
+        assert token in lab
+    for output in ("resourceOutputs", "travelApiBaseUrl", "foundryPortalUrl"):
+        assert output in lab
 
 
-def test_admin_guidance_preserves_published_inputs_identity_and_cleanup_boundaries() -> None:
-    admin = ADMIN_GUIDE.read_text(encoding="utf-8")
-    for parameter in (
-        "location",
-        "primaryModelVersion",
-        "evaluationModelVersion",
-        "embeddingModelVersion",
-        "travelApiImageRef",
-        "sourceRevision",
-        "participantObjectIdOverride",
-        "bootstrapRunId",
-    ):
-        assert f"`{parameter}`" in admin
-    for required in (
-        "Owner 相当",
-        "Japan East",
-        "japaneast",
-        "GlobalStandard",
-        "@sha256:",
-        "公開済み",
-        "小文字 40 桁",
-        "空欄可",
-        "実行者 ID",
-        "代理実行",
-        "別の人による再デプロイ",
-        "Entra オブジェクト ID",
-        "意図的に再実行",
-        "Standard_DS3_v2",
-        "Search **Basic**",
-        "infra/README.md",
-    ):
-        assert required in admin
-    for model, capacity in (
-        ("gpt-5.6-luna", 40),
-        ("gpt-5.5", 100),
-        ("text-embedding-3-small", 40),
-    ):
-        model_row = next(line for line in admin.splitlines() if f"`{model}`" in line)
-        assert f"{capacity}K TPM" in model_row
-    assert "容量の予約ではありません" in admin
-    assert "リージョン・モデルを変更せず" in admin
-    assert "サブスクリプション全体の権限は付与しません" in admin
-    assert "推測せず" in admin
-    assert "../../labs/09-observability-cleanup.md" in admin
-
-
-def test_new_preparation_does_not_reuse_old_timing_claims() -> None:
-    for path in (
-        REPO_ROOT / "README.md",
-        REPO_ROOT / "README.en.md",
-        LABS_DIR / "01-setup.md",
-        TEMPLATE_GUIDE,
-        REPO_ROOT / "docs" / "admin" / "prerequisites.md",
-        REPO_ROOT / "instructor" / "runbook.md",
-    ):
-        text = path.read_text(encoding="utf-8")
-        for forbidden in ("10〜15", "10\u201315", "8〜10", "8\u201310", "35.5", "18.85", "6分42"):
-            assert forbidden not in text
-
-
-def test_azureml_guide_preserves_security_persistence_and_cost_boundaries() -> None:
-    guide = AZUREML_GUIDE.read_text(encoding="utf-8")
-    for required in (
-        "User files",
-        "Compute instance",
-        "Compute > Compute instances > New",
-        "Standard_DS3_v2",
-        "Python 3.10 - SDK v2",
-        "Python (Foundry Workshop)",
-        "Python (Foundry Hosted Agent)",
-        "az login --use-device-code",
-        "Idle shutdown",
-        "Upload folder",
-        BUNDLE_ROOT,
-        ".workshop",
-        "notebooks/00-azureml-setup.ipynb",
-    ):
-        assert required in guide
-    assert "Lab 7 の開始時にだけ" in guide
-    assert "Labs 7〜8 は Python (Foundry Hosted Agent)" in guide
-    assert "認証コードやトークン" in guide
-    assert "保存したり他の人へ共有したりしません" in guide
-    assert "../../../labs/09-observability-cleanup.md" in guide
-    assert_in_order(
-        guide,
-        (
-            "Compute > Compute instances > New",
-            "Standard_DS3_v2",
-            "Idle shutdown",
-            "Notebooks > User files > Upload folder",
-            "notebooks/00-azureml-setup.ipynb",
-            "Python 3.10 - SDK v2",
-            "Python (Foundry Workshop)",
-            "Python (Foundry Hosted Agent)",
-        ),
+def test_public_source_links_use_development_branch_or_published_revision() -> None:
+    prefixes = (
+        f"https://github.com/{REPOSITORY}/blob/",
+        f"https://github.com/{REPOSITORY}/tree/",
+        f"https://raw.githubusercontent.com/{REPOSITORY}/",
     )
-    for forbidden in ("API key", "client secret", "No storage account required"):
-        assert forbidden not in guide
+    for document in DOCUMENTS:
+        for target in links(document):
+            for prefix in prefixes:
+                if target.startswith(prefix):
+                    revision, _, path = (
+                        urlsplit(target).path.removeprefix(urlsplit(prefix).path).partition("/")
+                    )
+                    assert revision == "dev-custom-template" or re.fullmatch(
+                        r"[a-f0-9]{40}", revision
+                    )
+                    assert (REPO_ROOT / unquote(path)).exists(), target
+    for document in (CORE_LABS[1], ADMIN_GUIDE):
+        assert any(target.endswith("/infra/azuredeploy.json") for target in links(document))
 
 
-def test_portal_labs_use_resource_outputs_and_required_gpt55() -> None:
-    for filename in (
-        "01-setup.md",
-        "02-prompt-agent.md",
-        "03-rag-foundry-iq.md",
-        "05-evaluation.md",
-        "06-optimization.md",
-    ):
-        text = (LABS_DIR / filename).read_text(encoding="utf-8")
-        assert "terraform_outputs" not in text
-
-    retrieval = (LABS_DIR / "03-rag-foundry-iq.md").read_text(encoding="utf-8")
-    evaluation = (LABS_DIR / "05-evaluation.md").read_text(encoding="utf-8")
-    optimization = (LABS_DIR / "06-optimization.md").read_text(encoding="utf-8")
-    assert "resource_outputs" in retrieval
-    assert "gpt-5.5" in retrieval
-    assert "gpt-5.5" in evaluation
-    assert "gpt-5.5" in optimization
-    assert "optional" not in evaluation.casefold()
-    assert "AAD Search resource connection" in (LABS_DIR / "02-prompt-agent.md").read_text(
-        encoding="utf-8"
-    )
+def test_portal_labs_read_arm_outputs_without_requiring_local_context() -> None:
+    for index in (2, 3, 5, 6):
+        text = read(CORE_LABS[index])
+        assert "resourceOutputs" in text
+        assert ".workshop/context.json" not in text
+    for index in (3, 5, 6):
+        assert "gpt-5.5" in read(CORE_LABS[index])
+    assert "AAD Search resource connection" in read(CORE_LABS[2])
 
 
-def test_toolbox_lab_uses_pre_downloaded_skills_and_live_openapi() -> None:
-    lab = (LABS_DIR / "04-tools-toolbox.md").read_text(encoding="utf-8")
-    for required in (
-        "portal-assets/travel-estimation.zip",
-        "portal-assets/preapproval-simulation.zip",
-        "portal-assets/travel-ops.openapi.json",
+def test_lab_four_downloads_shared_zip_files_and_replaces_only_the_openapi_server() -> None:
+    lab = read(CORE_LABS[4])
+    targets = links(CORE_LABS[4])
+    for asset in COMMON_ASSETS:
+        assert any(
+            target.startswith(f"https://raw.githubusercontent.com/{REPOSITORY}/")
+            and target.endswith(f"/{asset}")
+            for target in targets
+        )
+        assert (REPO_ROOT / asset).is_file()
+    for token in (
+        "PC に保存",
+        "SKILL.md",
+        "直下",
+        "servers[0].url",
+        "travelApiBaseUrl",
         "OpenAPI 3.0+ schema",
         "Project Managed Identity",
         "Publish",
-        "Deployment Scripts",
-        "servers[0].url",
     ):
-        assert required in lab
+        assert token in lab
+    for skill in ("travel-estimation", "preapproval-simulation"):
+        assert f"../data/skills/{skill}/SKILL.md" in targets
 
 
-def test_hosted_labs_use_azureml_kernel_and_portal_context() -> None:
-    for lab_name, notebook_name in (
-        ("07-agent-framework-harness.md", "07-agent-framework-harness.ipynb"),
-        ("08-hosted-multi-agent.md", "08-hosted-agent.ipynb"),
+def test_codespaces_guides_browser_creation_login_and_two_input_setup() -> None:
+    guide = read(CODESPACES_GUIDE)
+    assert_in_order(
+        guide,
+        (
+            "Code > Codespaces",
+            "postCreateCommand",
+            "Terminal > New Terminal",
+            "az login --use-device-code",
+            "00-setup.ipynb",
+            "Python (Foundry Workshop)",
+            "subscription ID",
+            "RG 名",
+            ".workshop/context.json",
+        ),
+    )
+    for token in (
+        "GitHub や Azure Portal",
+        "別",
+        "scripts/configure_workshop.py",
+        "workshopContext",
+        "2.0",
+        "resource_outputs.<key>.value",
+        "~/.venvs/",
+        "foundry-workshop",
+        "foundry-hosted-agent",
+        "3.12",
+        "3.13",
     ):
-        text = (LABS_DIR / lab_name).read_text(encoding="utf-8")
-        assert "Python (Foundry Hosted Agent)" in text
-        assert f"../notebooks/{notebook_name}" in text
-        assert "Azure ML" in text
-        assert "resource_outputs.<key>.value" in text
-        assert "00-azureml-setup.ipynb" in text
+        assert token in guide
+    for target in links(CODESPACES_GUIDE):
+        assert not target.startswith(
+            ("https://codespaces.new/", "https://github.com/codespaces/new")
+        )
 
 
-def test_cleanup_orders_export_hosted_compute_and_portal_resource_group_deletion() -> None:
-    cleanup = (LABS_DIR / "09-observability-cleanup.md").read_text(encoding="utf-8")
+def test_local_guide_uses_same_container_not_a_native_python_setup() -> None:
+    guide = read(LOCAL_GUIDE)
+    assert "ローカルで実施される方は以下の前提条件を確認下さい" in guide
+    for prerequisite in ("Git", "Visual Studio Code", "Dev Containers", "Docker", "Azure"):
+        assert prerequisite in guide
+    assert_in_order(
+        guide,
+        ("git clone", "Dev Containers: Reopen in Container", "codespaces.md#共通手順"),
+    )
+    for unsupported in ("pip install", "python -m venv", "conda create", "conda activate"):
+        assert unsupported not in guide
+
+
+def test_documented_environment_interfaces_exist() -> None:
+    for path in (
+        ".devcontainer/devcontainer.json",
+        "scripts/setup_dev_environment.py",
+        "scripts/configure_workshop.py",
+        "notebooks/00-setup.ipynb",
+    ):
+        assert (REPO_ROOT / path).is_file(), f"pending environment interface: {path}"
+    assert not (ENVIRONMENTS / "azure-ml.md").exists()
+
+
+def test_hosted_labs_use_hosted_kernel_and_confirm_management_actions() -> None:
+    for index in (7, 8):
+        text = read(CORE_LABS[index])
+        for token in (
+            "Codespaces",
+            "local-dev-container.md",
+            "00-setup.ipynb",
+            "Python (Foundry Hosted Agent)",
+            "foundry-hosted-agent",
+            "resource_outputs.<key>.value",
+        ):
+            assert token in text
+    lab_eight = read(CORE_LABS[8])
+    for token in ("DEPLOY", "Agent 名", "foundry-workshop", "venv", "3.12", "ソースコード ZIP"):
+        assert token in lab_eight
+
+
+def test_model_defaults_match_generated_template() -> None:
+    parameters = json.loads(read(REPO_ROOT / "infra" / "azuredeploy.json"))["parameters"]
+    admin = read(ADMIN_GUIDE)
+    for model in ("primary", "evaluation", "embedding"):
+        name = f"{model}ModelVersion"
+        row = next(line for line in admin.splitlines() if f"`{name}`" in line)
+        assert f"`{parameters[name]['defaultValue']}`" in row
+    for model, capacity in (("gpt-5.6-luna", 40), ("gpt-5.5", 100), ("text-embedding-3-small", 40)):
+        row = next(line for line in admin.splitlines() if f"`{model}`" in line)
+        assert f"{capacity}K TPM" in row
+    for token in (
+        "sourceRevision",
+        "公開済み",
+        "互換",
+        "participantObjectIdOverride",
+        "bootstrapRunId",
+    ):
+        assert token in admin
+
+
+def test_cleanup_saves_results_before_hosted_codespace_and_rg_deletion() -> None:
+    cleanup = read(CORE_LABS[9])
     assert_in_order(
         cleanup,
         (
+            "Save All",
             "Export",
             "Python (Foundry Hosted Agent)",
-            "削除セル",
+            "Agent 名",
+            "foundry-workshop",
             "全 versions",
-            "Compute > Compute instances",
-            "Stop",
-            "Stopped",
+            "Stop codespace",
             "Delete",
             "Delete resource group",
             "RG が消えたことを確認",
         ),
     )
-    assert "RG とまとめて削除" in cleanup
-    assert "自分の専用 RG だけ" in cleanup
-    assert "デプロイ履歴の削除では、リソースは消えません" in cleanup
-    for forbidden in (
-        "destroy.sh",
-        "resource inventory が空",
-        "空であることを確認",
-        "empty RG",
-        "`exit`",
-    ):
-        assert forbidden not in cleanup
+    assert "https://github.com/codespaces" in cleanup
+    assert re.search(r"自分.*専用 RG", cleanup)
+    assert re.search(r"デプロイ履歴.*リソース.*消えません", cleanup)
 
 
 @pytest.mark.parametrize("name", ["workshop-architecture", "workshop-learning-flow"])
-def test_diagrams_match_editable_text_and_describe_current_participant_path(name: str) -> None:
-    rendered = REPO_ROOT / "docs" / "images" / f"{name}.svg"
-    source = REPO_ROOT / "docs" / "diagrams" / f"{name}.excalidraw"
-    assert rendered.is_file()
-    assert source.is_file()
-    diagram = json.loads(source.read_text(encoding="utf-8"))
-    svg = ET.parse(rendered).getroot()
+def test_diagrams_preserve_text_geometry_and_current_flow(name: str) -> None:
+    diagram = json.loads(read(REPO_ROOT / "docs" / "diagrams" / f"{name}.excalidraw"))
+    svg = ET.parse(REPO_ROOT / "docs" / "images" / f"{name}.svg").getroot()
+    assert diagram["type"] == "excalidraw" and diagram["version"] == 2
     assert svg.attrib["role"] == "img"
+    elements = {element["id"]: element for element in diagram["elements"]}
+    assert len(elements) == len(diagram["elements"])
+    source_text = {
+        key: normalized(element["text"])
+        for key, element in elements.items()
+        if element["type"] == "text"
+    }
     svg_text = {
         node.attrib["id"]: normalized(" ".join(node.itertext()))
         for node in svg.iter("{http://www.w3.org/2000/svg}text")
     }
-    source_text = {
-        element["id"]: normalized(element["text"])
-        for element in diagram["elements"]
-        if element["type"] == "text" and not element.get("isDeleted", False)
-    }
     assert svg_text == source_text
     labels = " ".join(source_text.values())
-    for required in (
+    for token in (
         "Resource groups > Create",
-        "Deploy a custom template",
-        "Load file",
-        "infra/azuredeploy.json",
         "existing RG",
         "Deployment Scripts",
-        "Microsoft Entra user account",
-        "workshop-files",
-        "Azure Machine Learning",
-        "Azure Portal",
-        "Standard_DS3_v2",
-        "Idle shutdown",
-        "Python 3.10 - SDK v2",
+        "GitHub",
+        "Codespaces",
+        "local Dev Container",
+        "Azure CLI",
+        "00-setup.ipynb",
         "Python (Foundry Hosted Agent)",
         "Delete resource group",
         "verify deletion",
-        "deployment history",
     ):
-        assert required in labels
-    for forbidden in ("Cloud Shell", "Terraform", "Codespaces", "empty RG", "clouddrive"):
-        assert forbidden not in labels
-
-
-@pytest.mark.parametrize("name", ["workshop-architecture", "workshop-learning-flow"])
-def test_editable_diagrams_keep_visible_text_and_transparent_containers(name: str) -> None:
-    source = REPO_ROOT / "docs" / "diagrams" / f"{name}.excalidraw"
-    diagram = json.loads(source.read_text(encoding="utf-8"))
-    assert diagram["type"] == "excalidraw"
-    assert diagram["version"] == 2
-    elements = {
-        element["id"]: element
-        for element in diagram["elements"]
-        if not element.get("isDeleted", False)
+        assert token in labels
+    for retired in RETIRED_REFERENCES:
+        assert retired not in labels
+    svg_rectangles = {
+        node.attrib.get("id"): node for node in svg.iter("{http://www.w3.org/2000/svg}rect")
     }
-    assert len(elements) == len(diagram["elements"])
     rectangles = [element for element in elements.values() if element["type"] == "rectangle"]
-    for element in elements.values():
-        if element["type"] == "text":
-            assert element["width"] > 0
-            minimum_height = element["fontSize"] * 2.5 * len(element["text"].splitlines())
-            assert element["height"] >= minimum_height
-            assert element["strokeColor"] == "#000000"
-            if container_id := element.get("containerId"):
-                container = elements[container_id]
-                assert {"id": element["id"], "type": "text"} in container["boundElements"]
-                assert element["x"] >= container["x"]
-                assert element["y"] >= container["y"]
-                assert element["x"] + element["width"] <= container["x"] + container["width"]
-                assert element["y"] + element["height"] <= container["y"] + container["height"]
-    for container in rectangles:
+    for element in rectangles:
+        for dimension in ("x", "y", "width", "height"):
+            assert float(svg_rectangles[element["id"]].attrib[dimension]) == element[dimension]
         for child in rectangles:
             if (
-                container["id"] != child["id"]
-                and container["x"] <= child["x"]
-                and container["y"] <= child["y"]
-                and child["x"] + child["width"] <= container["x"] + container["width"]
-                and child["y"] + child["height"] <= container["y"] + container["height"]
+                element["id"] != child["id"]
+                and element["x"] <= child["x"]
+                and element["y"] <= child["y"]
+                and child["x"] + child["width"] <= element["x"] + element["width"]
+                and child["y"] + child["height"] <= element["y"] + element["height"]
             ):
-                assert container["backgroundColor"] == "transparent"
+                assert element["backgroundColor"] == "transparent"
+    for element in elements.values():
+        if element["type"] != "text":
+            continue
+        assert element["width"] > 0
+        assert element["height"] >= element["fontSize"] * 2.5 * len(element["text"].splitlines())
+        assert element["strokeColor"] == "#000000"
+        if container_id := element.get("containerId"):
+            container = elements[container_id]
+            assert {"id": element["id"], "type": "text"} in container["boundElements"]
+            assert element["x"] >= container["x"] and element["y"] >= container["y"]
+            assert element["x"] + element["width"] <= container["x"] + container["width"]
+            assert element["y"] + element["height"] <= container["y"] + container["height"]
+
+
+def test_retired_screenshots_are_removed_but_generic_completion_example_remains() -> None:
+    images = REPO_ROOT / "docs" / "images"
+    for filename in RETIRED_IMAGES:
+        assert not (images / filename).exists()
+    assert (images / "lab01-template-succeeded.png").is_file()

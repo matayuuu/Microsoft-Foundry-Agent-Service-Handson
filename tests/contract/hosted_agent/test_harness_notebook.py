@@ -16,6 +16,8 @@ import pytest
 import travel_agents
 from agent_framework import AgentSession, get_agent_mode
 
+from scripts.lib import workshop_runtime as runtime
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 NOTEBOOK_PATH = REPO_ROOT / "notebooks" / "07-agent-framework-harness.ipynb"
 
@@ -129,20 +131,25 @@ def test_notebook_builds_plain_then_harness_agent_with_shared_resources(
     context_dir = tmp_path / ".workshop"
     context_dir.mkdir()
     context_dir.joinpath("context.json").write_text(
-        json.dumps(
-            {
-                "resource_outputs": {
-                    "foundry_project_endpoint": {"value": "https://project.example.invalid"},
-                    "primary_model_deployment_name": {"value": "synthetic-model"},
-                    "search_service_endpoint": {"value": "https://search.example.invalid"},
-                    "foundry_project_name": {"value": "synthetic-project"},
-                }
-            }
-        ),
+        (REPO_ROOT / "tests" / "fixtures" / "workshop-context.json").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "path", sys.path.copy())
+    for name in (
+        "WORKSHOP_CREDENTIAL_MODE",
+        "FOUNDRY_PROJECT_ENDPOINT",
+        "FOUNDRY_MODEL",
+        "AZURE_AI_SEARCH_SERVICE_ENDPOINT",
+        "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME",
+        "TOOLBOX_NAME",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    def check_kernel(spec: runtime.EnvironmentSpec) -> None:
+        assert spec == runtime.HOSTED_ENVIRONMENT
+
+    monkeypatch.setattr(runtime, "require_current_runtime", check_kernel)
 
     credential = _Credential()
     plain_agent = _PlainAgent()

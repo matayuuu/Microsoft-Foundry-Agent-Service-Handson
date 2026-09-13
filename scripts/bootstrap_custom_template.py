@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Initialize a custom-template deployment and publish its private participant ZIP.
+"""Initialize and validate a custom-template deployment for shared GitHub materials.
 
 The Deployment Scripts identity is already authenticated. This adapter only sequences
 the existing setup scripts; it neither provisions infrastructure nor changes login state.
@@ -10,8 +10,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
-import shutil
 import subprocess
 import sys
 import time
@@ -19,44 +17,19 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
-from urllib.parse import urlsplit
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import bootstrap_data
 from lib.workshop_context import (
-    CUSTOM_TEMPLATE_RESOURCE_OUTPUTS,
-    SOURCE_REPOSITORY,
     WorkshopContextError,
-    participant_object_id,
     validate_source_revision,
+    validate_workshop_context,
 )
 from validate_environment import DEFAULT_INDEX_NAMES, is_transient_failure, redact_diagnostic
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-ARTIFACT_CONTAINER = "workshop-files"
-ARTIFACT_BLOB = "foundry-workshop-files.zip"
-PORTAL_ASSETS = (
-    "travel-ops.openapi.json",
-    "portal-values.json",
-    "travel-estimation.zip",
-    "preapproval-simulation.zip",
-)
-CONTEXT_KEYS = frozenset(
-    {
-        "schema_version",
-        "provisioning_method",
-        "setup_status",
-        "subscription_id",
-        "resource_group_name",
-        "location",
-        "source_base",
-        "source_revision",
-        "participant_object_id",
-        "resource_outputs",
-    }
-)
 Runner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
 
 
@@ -68,7 +41,6 @@ class BootstrapError(RuntimeError):
 class BootstrapInputs:
     context: dict[str, Any]
     output_path: Path
-    container: str = ARTIFACT_CONTAINER
 
 
 @dataclass(frozen=True)
@@ -96,141 +68,26 @@ DEFAULT_RETRY = RetryPolicy()
 
 def canonical_context(raw: Any, revision: str) -> dict[str, Any]:
     """Validate the template boundary and construct only allowlisted non-secret fields."""
-    validate_source_revision(revision)
-    if not isinstance(raw, dict) or set(raw) != CONTEXT_KEYS:
-        raise BootstrapError(
-            "inputs: context must contain exactly the documented canonical fields."
+    try:
+        context = validate_workshop_context(
+            raw,
+            allowed_statuses=("infrastructure-ready", "complete"),
+            expected_revision=revision,
         )
-    if (
-        raw["schema_version"] != "1.0"
-        or raw["provisioning_method"] != "azure-custom-template"
-        or raw["setup_status"] not in ("infrastructure-ready", "complete")
-    ):
-        raise BootstrapError(
-            "inputs: context must describe initialized custom-template infrastructure."
-        )
-    if raw["source_revision"] != revision or raw["source_base"] != (
-        f"{SOURCE_REPOSITORY}/blob/{revision}"
-    ):
-        raise BootstrapError(
-            "inputs: context source revision/base does not match the pinned source."
-        )
-    participant = participant_object_id(raw)
-    subscription = raw["subscription_id"]
-    if (
-        not isinstance(subscription, str)
-        or re.fullmatch(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", subscription)
-        is None
-        or UUID(subscription).int == 0
-    ):
-        raise BootstrapError("inputs: subscription_id must be a valid nonzero UUID.")
-    group, location = raw["resource_group_name"], raw["location"]
-    if (
-        not isinstance(group, str)
-        or re.fullmatch(r"[\w.()-]{1,90}", group) is None
-        or group.endswith(".")
-        or not isinstance(location, str)
-        or re.fullmatch(r"[a-z0-9]+", location) is None
-    ):
-        raise BootstrapError("inputs: resource_group_name or location is invalid.")
-    outputs = raw["resource_outputs"]
-    if not isinstance(outputs, dict) or set(outputs) != set(CUSTOM_TEMPLATE_RESOURCE_OUTPUTS):
-        raise BootstrapError(
-            "inputs: resource_outputs must contain exactly the template output keys."
-        )
-    values: dict[str, str] = {}
-    for key, entry in outputs.items():
-        value = entry.get("value") if isinstance(entry, dict) else None
-        if (
-            not isinstance(entry, dict)
-            or set(entry) != {"value"}
-            or not isinstance(value, str)
-            or not value.strip()
-            or value != value.strip()
-            or any(ord(character) < 32 for character in value)
-        ):
-            raise BootstrapError(f"inputs: resource output {key} must contain one nonempty value.")
-        values[key] = value
-        if (
-            key.endswith("_name")
-            and key != "resource_group_name"
-            and re.fullmatch(r"[A-Za-z0-9_.()-]{1,128}", value) is None
-        ):
-            raise BootstrapError(f"inputs: resource output {key} contains an invalid name.")
-    if values["resource_group_name"] != group or values["location"] != location:
-        raise BootstrapError("inputs: resource outputs disagree with the context's group/location.")
-    if re.fullmatch(r"[a-z0-9]{3,24}", values["storage_account_name"]) is None:
-        raise BootstrapError("inputs: storage_account_name is invalid.")
-    rg_id = f"/subscriptions/{subscription}/resourceGroups/{group}"
-    expected_ids = {
-        "foundry_project_id": (
-            f"{rg_id}/providers/Microsoft.CognitiveServices/accounts/"
-            f"{values['ai_services_account_name']}/projects/{values['foundry_project_name']}"
-        ),
-        "application_insights_id": (
-            f"{rg_id}/providers/Microsoft.Insights/components/{values['application_insights_name']}"
-        ),
-        "azureml_workspace_id": (
-            f"{rg_id}/providers/Microsoft.MachineLearningServices/workspaces/"
-            f"{values['azureml_workspace_name']}"
-        ),
-        "storage_account_id": (
-            f"{rg_id}/providers/Microsoft.Storage/storageAccounts/{values['storage_account_name']}"
-        ),
-        "key_vault_id": f"{rg_id}/providers/Microsoft.KeyVault/vaults/{values['key_vault_name']}",
-    }
-    for key, expected in expected_ids.items():
-        if values[key].casefold() != expected.casefold():
-            raise BootstrapError(
-                f"inputs: {key} does not identify the expected resource in this RG."
-            )
-    account = values["ai_services_account_name"]
-    expected_urls = {
-        "ai_services_endpoint": {
-            f"https://{account}.cognitiveservices.azure.com",
-            f"https://{account}.services.ai.azure.com",
-        },
-        "openai_endpoint": {f"https://{account}.openai.azure.com/openai/v1"},
-        "foundry_project_endpoint": {
-            f"https://{account}.services.ai.azure.com/api/projects/{values['foundry_project_name']}"
-        },
-        "search_service_endpoint": {f"https://{values['search_service_name']}.search.windows.net"},
-        "foundry_portal_url": {"https://ai.azure.com"},
-    }
-    for key, allowed in expected_urls.items():
-        if values[key].removesuffix("/") not in allowed:
-            raise BootstrapError(
-                f"inputs: {key} must be the expected unsigned Azure HTTPS endpoint."
-            )
-    fqdn = values["travel_api_fqdn"]
-    if (
-        re.fullmatch(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", fqdn) is None
-        or not fqdn.endswith(".azurecontainerapps.io")
-        or urlsplit(f"https://{fqdn}").hostname != fqdn
-    ):
-        raise BootstrapError("inputs: travel_api_fqdn must be an Azure Container Apps hostname.")
-    return {
-        **{key: raw[key] for key in CONTEXT_KEYS - {"resource_outputs"}},
-        "participant_object_id": participant,
-        "setup_status": "infrastructure-ready",
-        "resource_outputs": {
-            key: {"value": values[key]} for key in CUSTOM_TEMPLATE_RESOURCE_OUTPUTS
-        },
-    }
+    except WorkshopContextError as exc:
+        raise BootstrapError(f"inputs: {exc}") from exc
+    return {**context, "setup_status": "infrastructure-ready"}
 
 
 def inputs_from_environment(environment: Mapping[str, str]) -> BootstrapInputs:
     required = (
         "WORKSHOP_SOURCE_REVISION",
         "WORKSHOP_CONTEXT_JSON",
-        "WORKSHOP_ARTIFACT_CONTAINER",
         "AZ_SCRIPTS_OUTPUT_PATH",
     )
     missing = [key for key in required if not environment.get(key)]
     if missing:
         raise BootstrapError(f"inputs: missing environment variable(s): {', '.join(missing)}.")
-    if environment["WORKSHOP_ARTIFACT_CONTAINER"] != ARTIFACT_CONTAINER:
-        raise BootstrapError(f"inputs: WORKSHOP_ARTIFACT_CONTAINER must be {ARTIFACT_CONTAINER}.")
     try:
         revision = validate_source_revision(environment["WORKSHOP_SOURCE_REVISION"])
         context = canonical_context(json.loads(environment["WORKSHOP_CONTEXT_JSON"]), revision)
@@ -262,13 +119,9 @@ def verify_local_assets(root: Path) -> dict[str, Any]:
         "scripts/bootstrap_data.py",
         "scripts/run_evaluation.py",
         "scripts/validate_environment.py",
-        "scripts/prepare_toolbox_assets.py",
-        "scripts/prepare_participant_download.py",
         "data/manifest.json",
         "data/schemas/manifest.schema.json",
         "data/schemas/eval_case.schema.json",
-        "data/skills/travel-estimation/SKILL.md",
-        "data/skills/preapproval-simulation/SKILL.md",
     ):
         require_file(root / name, "local-assets")
     try:
@@ -393,18 +246,6 @@ def plan_initialization(
                     ),
                 ),
             ),
-            Stage(
-                "prepare-portal-assets",
-                (
-                    python,
-                    str(root / "scripts" / "prepare_toolbox_assets.py"),
-                    "--context",
-                    context_path,
-                    "--output-dir",
-                    str(root / ".workshop" / "toolbox"),
-                ),
-                readiness_retries=False,
-            ),
         )
     )
     return tuple(stages)
@@ -508,14 +349,6 @@ def json_object(text: str, stage: str) -> dict[str, Any]:
     return value
 
 
-def file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def write_json(path: Path, value: dict[str, Any]) -> None:
     if path.is_symlink():
         raise BootstrapError("local-output: refusing to replace a symbolic link.")
@@ -536,8 +369,6 @@ def run_bootstrap(
     sleep: Callable[[float], None] = time.sleep,
     log: Callable[[str], None] = print,
 ) -> dict[str, str]:
-    if inputs.container != ARTIFACT_CONTAINER:
-        raise BootstrapError(f"inputs: artifact container must be {ARTIFACT_CONTAINER}.")
     if not inputs.output_path.is_absolute() or inputs.output_path.is_symlink():
         raise BootstrapError("inputs: deployment output must not be a symbolic link.")
     inputs.output_path.unlink(missing_ok=True)
@@ -545,8 +376,6 @@ def run_bootstrap(
     context = canonical_context(inputs.context, inputs.context["source_revision"])
     stages = plan_initialization(context, manifest, root, sys.executable)
     context_path = root / ".workshop" / "context.json"
-    artifact = root / ".workshop" / "download" / ARTIFACT_BLOB
-    verified = artifact.with_name(f"verified-{uuid4().hex}.zip")
     if runner is None:
 
         def runner(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
@@ -563,165 +392,13 @@ def run_bootstrap(
     def execute(stage: Stage) -> subprocess.CompletedProcess[str]:
         return execute_stage(stage, runner, sleep=sleep, log=log)
 
-    storage = context["resource_outputs"]["storage_account_name"]["value"]
-    az = shutil.which("az") or "az"
-
-    def storage_stage(name: str, arguments: Sequence[str]) -> Stage:
-        return Stage(
-            name,
-            (
-                az,
-                "storage",
-                *arguments,
-                "--account-name",
-                storage,
-                "--auth-mode",
-                "login",
-                "--only-show-errors",
-                "--output",
-                "json",
-            ),
-        )
-
-    def verify_private_container() -> None:
-        result = execute(
-            storage_stage(
-                "verify-private-container",
-                (
-                    "container",
-                    "show",
-                    "--name",
-                    inputs.container,
-                    "--query",
-                    "{public_access:properties.publicAccess}",
-                ),
-            )
-        )
-        info = json_object(result.stdout, "verify-private-container")
-        if "public_access" not in info or info["public_access"] not in (
-            None,
-            "off",
-            "None",
-            "none",
-        ):
-            raise BootstrapError("verify-private-container: participant container must be private.")
-
     write_json(context_path, context)
-    try:
-        for stage in stages:
-            execute(stage)
-        for name in PORTAL_ASSETS:
-            require_file(root / ".workshop" / "toolbox" / name, "prepare-portal-assets")
-        write_json(context_path, {**context, "setup_status": "complete"})
-        execute(
-            Stage(
-                "package-participant-download",
-                (
-                    sys.executable,
-                    str(root / "scripts" / "prepare_participant_download.py"),
-                    "--context",
-                    str(context_path),
-                    "--output",
-                    str(artifact),
-                ),
-                readiness_retries=False,
-            )
-        )
-        require_file(artifact, "package-participant-download")
-        digest = file_sha256(artifact)
-        revision = context["source_revision"]
-        verify_private_container()
-        execute(
-            storage_stage(
-                "upload-participant-download",
-                (
-                    "blob",
-                    "upload",
-                    "--container-name",
-                    inputs.container,
-                    "--name",
-                    ARTIFACT_BLOB,
-                    "--file",
-                    str(artifact),
-                    "--overwrite",
-                    "true",
-                    "--no-progress",
-                    "--content-type",
-                    "application/zip",
-                    "--metadata",
-                    f"sha256={digest}",
-                    f"source_revision={revision}",
-                ),
-            )
-        )
-        result = execute(
-            storage_stage(
-                "verify-blob-metadata",
-                (
-                    "blob",
-                    "show",
-                    "--container-name",
-                    inputs.container,
-                    "--name",
-                    ARTIFACT_BLOB,
-                    "--query",
-                    "{etag:properties.etag,size:properties.contentLength,metadata:metadata}",
-                ),
-            )
-        )
-        remote = json_object(result.stdout, "verify-blob-metadata")
-        if (
-            remote.get("size") != artifact.stat().st_size
-            or not isinstance(remote.get("metadata"), dict)
-            or remote["metadata"].get("sha256") != digest
-            or remote["metadata"].get("source_revision") != revision
-            or not isinstance(remote.get("etag"), str)
-            or re.fullmatch(r'"?0x[0-9a-fA-F]+"?', remote["etag"]) is None
-        ):
-            raise BootstrapError(
-                "verify-blob-metadata: published artifact metadata does not match."
-            )
-        execute(
-            storage_stage(
-                "verify-blob-content",
-                (
-                    "blob",
-                    "download",
-                    "--container-name",
-                    inputs.container,
-                    "--name",
-                    ARTIFACT_BLOB,
-                    "--file",
-                    str(verified),
-                    "--if-match",
-                    remote["etag"],
-                    "--overwrite",
-                    "true",
-                    "--no-progress",
-                ),
-            )
-        )
-        require_file(verified, "verify-blob-content")
-        if file_sha256(verified) != digest:
-            raise BootstrapError("verify-blob-content: published artifact SHA-256 does not match.")
-        verify_private_container()
-        output = {
-            "status": "complete",
-            "storage_account_name": storage,
-            "container_name": inputs.container,
-            "blob_name": ARTIFACT_BLOB,
-            "sha256": digest,
-            "source_revision": revision,
-        }
-        write_json(inputs.output_path, output)
-        log("bootstrap complete: private participant artifact published and verified.")
-        return output
-    except Exception:
-        write_json(context_path, context)
-        inputs.output_path.unlink(missing_ok=True)
-        raise
-    finally:
-        verified.unlink(missing_ok=True)
+    for stage in stages:
+        execute(stage)
+    output = {"status": "complete", "source_revision": context["source_revision"]}
+    write_json(inputs.output_path, output)
+    log("bootstrap complete: Search and evaluation data are ready; all checks passed.")
+    return output
 
 
 def main() -> int:

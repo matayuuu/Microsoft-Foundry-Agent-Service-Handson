@@ -7,6 +7,7 @@ import asyncio
 import inspect
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,9 @@ from fakes import (
     REVIEWER_RESPONSE,
     ScriptedChatClient,
 )
+
+from scripts.lib import workshop_runtime as runtime
+from scripts.lib.workshop_context import WorkshopContextError
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 NOTEBOOK_PATH = REPO_ROOT / "notebooks" / "08-hosted-agent.ipynb"
@@ -73,20 +77,24 @@ def notebook_namespace(
     context_dir = tmp_path / ".workshop"
     context_dir.mkdir()
     context_dir.joinpath("context.json").write_text(
-        json.dumps(
-            {
-                "resource_outputs": {
-                    "foundry_project_endpoint": {"value": "https://project.example.invalid"},
-                    "primary_model_deployment_name": {"value": "synthetic-model"},
-                    "search_service_endpoint": {"value": "https://search.example.invalid"},
-                    "foundry_project_name": {"value": "synthetic-project"},
-                }
-            }
-        ),
+        (REPO_ROOT / "tests" / "fixtures" / "workshop-context.json").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "path", sys.path.copy())
+    for name in (
+        "WORKSHOP_CREDENTIAL_MODE",
+        "FOUNDRY_PROJECT_ENDPOINT",
+        "FOUNDRY_MODEL",
+        "AZURE_AI_SEARCH_SERVICE_ENDPOINT",
+        "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    def check_kernel(spec: runtime.EnvironmentSpec) -> None:
+        assert spec == runtime.HOSTED_ENVIRONMENT
+
+    monkeypatch.setattr(runtime, "require_current_runtime", check_kernel)
     credential = _Credential()
     chat_client.include_policy_tool_events = True
     monkeypatch.setattr(travel_agents, "create_credential", lambda: credential)
@@ -117,6 +125,10 @@ def test_notebook_runs_three_normal_agents_in_sequential_order(
 ) -> None:
     monkeypatch.setattr(shutil, "which", lambda _: None)
 
+    def unexpected(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("Run All without confirmation must not launch management commands")
+
+    monkeypatch.setattr(subprocess, "run", unexpected)
     asyncio.run(execute_cells(notebook_namespace))
 
     assert notebook_namespace["expected_order"] == [
@@ -193,5 +205,38 @@ def test_notebook_explains_missing_setup(
 ) -> None:
     Path(".workshop", "context.json").unlink()
 
-    with pytest.raises(FileNotFoundError, match="Lab 1"):
+    with pytest.raises(FileNotFoundError, match=r"00-setup\.ipynb"):
+        asyncio.run(execute_cells(notebook_namespace, stop_after="configure-environment"))
+
+
+@pytest.mark.parametrize("cancellation", [EOFError, KeyboardInterrupt])
+def test_run_all_cancellation_never_launches_management_commands(
+    notebook_namespace: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    cancellation: type[BaseException],
+) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+
+    def cancelled(_: str) -> str:
+        raise cancellation
+
+    def unexpected(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("Cancellation must not deploy or delete")
+
+    notebook_namespace["input"] = cancelled
+    monkeypatch.setattr(subprocess, "run", unexpected)
+    asyncio.run(execute_cells(notebook_namespace))
+    assert notebook_namespace["credential"].closed is True
+
+
+@pytest.mark.parametrize("field,value", [("schema_version", "1.0"), ("setup_status", "pending")])
+def test_notebook_rejects_old_or_incomplete_context_before_agent_creation(
+    notebook_namespace: dict[str, Any], field: str, value: str
+) -> None:
+    path = Path(".workshop", "context.json")
+    context = json.loads(path.read_text(encoding="utf-8"))
+    context[field] = value
+    path.write_text(json.dumps(context), encoding="utf-8")
+
+    with pytest.raises(WorkshopContextError):
         asyncio.run(execute_cells(notebook_namespace, stop_after="configure-environment"))

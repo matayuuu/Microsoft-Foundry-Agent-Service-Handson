@@ -2,7 +2,7 @@
 
 `main.bicep` is the source of truth. `azuredeploy.json` is its compiled,
 Portal-ready ARM template, not a separately maintained implementation.
-Participants need neither a local CLI nor Cloud Shell.
+Portal provisioning does not require a local CLI. Labs 7/8 run in the shared Dev Container.
 
 ## Deployment boundary
 
@@ -10,13 +10,13 @@ Participants need neither a local CLI nor Cloud Shell.
    disposable workload resource group.
 2. Open **Deploy a custom template > Build your own template in the editor >
    Load file** and load `azuredeploy.json`.
-3. Select the **existing** group and enter administrator-verified parameters.
+3. Select **Subscription** and the **existing** resource group; keep all template
+   parameters at their release defaults, including the empty participant ID override.
    Do not use **Create new** in the template screen.
 4. Use **Review + create > Create**. Wait for the deployment, including the
    `ds-fdyws-bootstrap-*` Deployment Script, to succeed.
-5. Open the Storage account indicated by `participantDownload`, then **Storage
-   browser > Microsoft Entra user account > Blob containers > workshop-files**.
-   Select `foundry-workshop-files.zip` and **Download**.
+5. Confirm `workshopContext.setup_status = complete`. Use the shared materials in
+   GitHub; there is no per-environment download or participant Blob container.
 
 The root `targetScope = 'resourceGroup'` reads `resourceGroup()`; it creates
 neither a resource group nor a subscription-scoped deployment or role assignment.
@@ -27,20 +27,38 @@ of existing resources or local state.
 
 ## Template parameters
 
-`azuredeploy.parameters.example.json` is an **inert example**: replace every
-placeholder before using it. It contains no working model versions, image digest,
-source revision, or account-specific values.
+All eight parameters have release defaults in `main.bicep`, compiled into
+`azuredeploy.json`. Participants deploying for themselves select only
+**Subscription** and the existing **Resource group**. They do not need to look up
+model versions, image digests, source SHAs, or their object ID.
 
-| Parameter | Requirement |
+`azuredeploy.parameters.example.json` mirrors those defaults without placeholders
+or account-specific values. It is an optional administrator reference, not another
+file participants must load.
+
+| Parameter | Default / override requirement |
 | --- | --- |
 | `location` | Only `japaneast` is accepted; default `japaneast`. The group's metadata location does not override it. |
-| `primaryModelVersion` | Required administrator-verified version for `gpt-5.6-luna` / GlobalStandard in Japan East. |
-| `evaluationModelVersion` | Required administrator-verified version for `gpt-5.5` / GlobalStandard in Japan East. |
-| `embeddingModelVersion` | Required administrator-verified version for `text-embedding-3-small` / GlobalStandard in Japan East. |
-| `travelApiImageRef` | Required public `ghcr.io/<owner>/<image>@sha256:<64 lowercase hexadecimal characters>` reference. No tags, private registry secrets, or fallback image. |
-| `sourceRevision` | Required published lowercase 40-character commit SHA in `matayuuu/Microsoft-Foundry-Agent-Service-Handson`. No branch names or alternate source repositories. |
+| `primaryModelVersion` | `2026-07-09` for `gpt-5.6-luna` / GlobalStandard in Japan East. |
+| `evaluationModelVersion` | `2026-04-24` for `gpt-5.5` / GlobalStandard in Japan East. |
+| `embeddingModelVersion` | `1` for `text-embedding-3-small` / GlobalStandard in Japan East. |
+| `travelApiImageRef` | `ghcr.io/matayuuu/travel-ops-api@sha256:173f7e954cd284057bf2a2fe10d53efae83547a060ec2ac23172dd5458816dcf`. Overrides must be public GHCR digest references; no tags, private registry secrets, or fallback image. |
+| `sourceRevision` | `223a74f219078ededb21a27258501182da7a6432`. Overrides must be published lowercase 40-character commit SHAs in `matayuuu/Microsoft-Foundry-Agent-Service-Handson`, not branch names or alternate repositories. |
 | `participantObjectIdOverride` | Default empty: root `deployer().objectId` is the participant. For administrator/automation deployment or redeployment, supply the intended participant's Entra **User** object ID. |
 | `bootstrapRunId` | Default `1`. Keep stable for ordinary redeployment; change deliberately to rerun initialization. |
+
+The model defaults are the latest versions available for these three models in
+Japan East / GlobalStandard as of **2026-09-12**, pinned as concrete values rather
+than dynamically resolving `latest`. The public Travel API image is the digest
+published for `v1.0.4`; the source default is the
+[published workshop revision](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/commit/223a74f219078ededb21a27258501182da7a6432).
+
+For a new release, administrators verify current model availability / quota and
+publish the compatible source and public image first. Update `main.bicep`, the
+parameter example, and the documented defaults together, then regenerate the ARM
+artifact using the build instructions below. The source SHA must already be
+published; it need not be the commit containing the template itself. Do not ask
+participants to invent values or change regions / models when deployment fails.
 
 The participant identity is resolved once at the root and passed to every
 participant grant and the canonical context. It is not inferred from a UPN, the
@@ -75,25 +93,13 @@ non-immutable image and source inputs before they can be consumed.
 - Public Container Apps Travel Ops API: port 8080, HTTPS ingress, 0.25 vCPU /
   0.5 GiB, scale 0–1, anonymous pull of the required public GHCR digest.
   Policy citations use the same immutable `sourceRevision` as bootstrap.
-- Azure ML workspace with Storage, Key Vault and the same Application Insights.
-  No Compute instance is created; participants create Compute in Lab 7.
-  Key Vault retains soft delete with seven-day retention. The optional
-  `enablePurgeProtection` property is omitted: the service rejects an explicit
-  `false`, and enabling irreversible purge protection is not a deployment workaround.
+- Codespaces and local VS Code use the same Dev Container. This template does not
+  create an Azure ML workspace, Compute, or permanent workshop Storage / Key Vault.
 - No Cosmos DB, capability host, ACR, virtual network or private endpoint.
 
-Azure ML backing Storage deliberately keeps `allowSharedKeyAccess: true` for
-its default datastore compatibility. The handoff container is private:
-`allowBlobPublicAccess: false`, container `publicAccess: 'None'`, and
-`defaultToOAuthAuthentication: true`. OAuth-default Portal access is **not**
-the same as disabling Shared Key. ZIP upload and participant download use Entra
-ID, never keys, public blobs or shared SAS links.
-
-All eight participant grants and the Foundry project, Search and Azure ML
-identity grants are preserved at their resource scopes. Azure ML itself adds
-Storage Blob Data Contributor for its workspace identity: redeclaring that grant
-races the platform and causes `RoleAssignmentExists`. Only the additional
-workspace identity Key Vault Secrets User grant is declared here.
+The six participant grants and the Foundry project / Search identities retain
+their resource-scoped access. Removed execution and distribution resources have
+no leftover role assignments. No storage data role is needed by the bootstrap identity.
 
 ### Connection schema exception
 
@@ -119,7 +125,7 @@ the real Portal E2E before distributing a release.
 
 Application Insights connection-string metadata and the Container Apps
 Log Analytics shared-key association are internal resource wiring only.
-Neither is copied to bootstrap environment/context, outputs or the ZIP.
+Neither is copied to bootstrap environment/context or participant-facing outputs.
 
 ## Managed-identity bootstrap
 
@@ -130,7 +136,7 @@ environment and runs `scripts/bootstrap_custom_template.py`. Deployment Scripts
 performs managed-identity login; the adapters use `AzureCliCredential`.
 Source extraction, the virtual environment, and package builds use container-local
 `/tmp`, not the Azure Files-backed script directory. Only the service output JSON
-and the uploaded private ZIP cross that temporary filesystem boundary.
+crosses that temporary filesystem boundary.
 
 The pinned Azure CLI version is **2.87.0**, an Azure Linux release published
 before the embedded Python 3.14 change in CLI 2.88. It is listed in the
@@ -154,37 +160,44 @@ The dedicated bootstrap UAMI receives only:
 | Foundry account | Foundry User (required data operations). |
 | Search service | Search Service Contributor and Search Index Data Contributor. |
 | Existing workload resource group | Reader for resource validation and ARM role-assignment reads. |
-| Private `workshop-files` container | Storage Blob Data Contributor for the handoff artifact. |
 
 It has no Owner, role-assignment write permission, subscription grant, storage
 account-wide data grant, or deployment-resource creation role. The **deployment
 principal**, not the script identity, must be authorized to create the declared
 resources, scoped roles, UAMI association and supporting ACI/Storage resources.
-Participants also need RG/resource management read permissions to navigate
-Storage browser; data-plane access alone does not provide that Portal access.
+Participants need RG deployment read access so the initial Notebook can retrieve
+their non-secret setup context after personal Azure CLI sign-in.
 
 The script depends on the required resources, all connections and all role
 assignments. Its only template-supplied environment variables are:
 
 - `WORKSHOP_SOURCE_REVISION`: validated source commit.
 - `WORKSHOP_CONTEXT_JSON`: serialized non-secret canonical context.
-- `WORKSHOP_ARTIFACT_CONTAINER`: `workshop-files`.
 
-The context has `schema_version: "1.0"`,
+The context has `schema_version: "2.0"`,
 `provisioning_method: "azure-custom-template"`, `setup_status: "infrastructure-ready"`, subscription,
-RG, location, source base/revision, participant ID, and all 30 existing
-`resource_outputs.<key>.value` fields. Only successful initialization marks the
-ZIP context complete and writes the successful JSON to `AZ_SCRIPTS_OUTPUT_PATH`.
-Packaging requires `setup_status: "complete"` and actual generated Portal assets,
-not a static-asset fallback. The manifest records `source_revision`, not
-`source_branch`. The ZIP's script/test selection keeps runtime scripts,
-`scripts/lib`, and Hosted Agent tests; bootstrap, packager, and administrator code
-are excluded.
+RG, location, source base/revision, participant ID, and 24
+`resource_outputs.<key>.value` fields. Bootstrap seeds the two Search indexes,
+prepares the evaluation dataset/rubric, and validates the environment. Only after
+all stages pass does it write `status: complete` and `source_revision` to
+`AZ_SCRIPTS_OUTPUT_PATH`. It does not build assets, package a participant ZIP, or
+read/write Blob Storage.
 
-`participantDownload` allowlists that output's `status`, `storage_account_name`,
-`container_name`, `blob_name`, `sha256`, and `source_revision`. It never invents a
-success value or emits a SAS/connection string. `resourceOutputs` preserves the
-canonical mapping; `storagePortalUrl` is a non-secret navigation convenience.
+ARM exposes four non-secret outputs:
+
+| Output | Use |
+| --- | --- |
+| `workshopContext` | Completed schema 2.0 context, gated by bootstrap success |
+| `resourceOutputs` | Canonical resource-name/endpoint mapping |
+| `travelApiBaseUrl` | Replace `servers[0].url` in the common OpenAPI JSON |
+| `foundryPortalUrl` | Open the workshop project in Foundry |
+
+After `az login --use-device-code` in the Dev Container,
+`scripts/configure_workshop.py --subscription <id> --resource-group <name>` reads
+the deployment and writes `.workshop/context.json`. It validates deployment state,
+scope, schema and endpoints, rejects ambiguous environments, and does not overwrite
+a context for another project. `--deployment <name>` is available for explicit selection.
+No credentials, SAS links, or participant configuration are published to GitHub.
 
 ### Retry, supporting resources and cleanup
 
@@ -194,8 +207,7 @@ Script content changes, or redeployment after the script's retention expires,
 can also cause a rerun, so initialization must remain idempotent.
 
 The service auto-creates **separate temporary ACI and Azure Files backing
-Storage**. `storageAccountSettings` is intentionally absent: the AML Storage
-account is the ZIP destination, not script backing storage. Provider registration
+Storage**. `storageAccountSettings` is intentionally absent. Provider registration
 and policy/quota must permit Microsoft.Resources Deployment Scripts,
 Microsoft.ManagedIdentity, Microsoft.ContainerInstance and Microsoft.Storage,
 including supporting Azure Files/shared-key access.
@@ -210,20 +222,20 @@ A failed deployment is not a transaction rollback: already-created resources or
 seeded data can remain. Inspect deployment/script errors, correct the verified
 inputs or prerequisite, and redeploy the same group with the same participant
 ID; change `bootstrapRunId` when a forced rerun is needed. Never treat a partial
-bootstrap or stale ZIP as a successful handoff.
+bootstrap as a completed environment.
 
-For final cleanup, export work, remove Hosted Agent versions, stop/delete Compute,
+For final cleanup, save work, remove Hosted Agent versions, stop/delete the Codespace,
 then delete the **dedicated resource group** in Azure Portal and verify removal.
 Deleting only the deployment record does not delete workload resources.
 Do not delete unrelated resources, existing local state or caches.
 
 ## Reproduce and validate locally (maintainers only)
 
-From the repository root in PowerShell, using the existing developer environment:
+From the repository root, using the shared Dev Container:
 
-```powershell
-az bicep build --file .\infra\main.bicep --outfile .\infra\azuredeploy.json
-python -m pytest .\tests\contract\test_custom_template_contract.py -q
+```bash
+az bicep build --file infra/main.bicep --outfile infra/azuredeploy.json
+python -m pytest tests/contract/test_custom_template_contract.py -q
 ```
 
 Pin the Bicep CLI to **v0.46.1 (545b338e2c)**, recorded as **0.46.1.21595** in
@@ -241,5 +253,3 @@ not prove Azure runtime availability or substitute for real Portal E2E.
 - [Runtime, identity and cleanup](https://learn.microsoft.com/azure/azure-resource-manager/bicep/deployment-script-develop)
 - [Foundry account](https://learn.microsoft.com/azure/templates/microsoft.cognitiveservices/2026-05-01/accounts)
 - [Search Basic and authentication](https://learn.microsoft.com/azure/templates/microsoft.search/2025-05-01/searchservices)
-- [Azure ML workspace](https://learn.microsoft.com/azure/templates/microsoft.machinelearningservices/2025-06-01/workspaces)
-- [Portal Blob authorization](https://learn.microsoft.com/azure/storage/blobs/authorize-data-operations-portal)

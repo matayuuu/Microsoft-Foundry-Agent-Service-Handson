@@ -1,7 +1,7 @@
 # Optional labs
 
 本編 Lab 0〜9 の完了後に、組織の許可と追加費用を確認して実施します。
-本編の RG 手動作成 → custom template → private ZIP 取得の代替 setup ではありません。
+本編の RG 手動作成 → custom template → GitHub 共通教材・Codespaces の代替 setup ではありません。
 追加インフラを伴う付録は別の承認済み検証環境で実施し、本編の固定構成を変更しません。
 
 | Lab | 追加要件 |

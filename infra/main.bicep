@@ -8,30 +8,30 @@ metadata description = 'Deploy the Foundry workshop into the dedicated resource 
 ])
 param location string = 'japaneast'
 
-@description('Administrator-verified gpt-5.6-luna version available with GlobalStandard in Japan East. No version is guessed.')
+@description('Release-pinned gpt-5.6-luna version available with GlobalStandard in Japan East. Keep the default for this workshop.')
 @minLength(1)
 @maxLength(64)
-param primaryModelVersion string
+param primaryModelVersion string = '2026-07-09'
 
-@description('Administrator-verified gpt-5.5 version available with GlobalStandard in Japan East. No version is guessed.')
+@description('Release-pinned gpt-5.5 version available with GlobalStandard in Japan East. Keep the default for this workshop.')
 @minLength(1)
 @maxLength(64)
-param evaluationModelVersion string
+param evaluationModelVersion string = '2026-04-24'
 
-@description('Administrator-verified text-embedding-3-small version available with GlobalStandard in Japan East.')
+@description('Release-pinned text-embedding-3-small version available with GlobalStandard in Japan East. Keep the default for this workshop.')
 @minLength(1)
 @maxLength(64)
-param embeddingModelVersion string
+param embeddingModelVersion string = '1'
 
-@description('Public GHCR Travel Ops API image: ghcr.io/<owner>/<image>@sha256:<64 lowercase hexadecimal characters>. Tags and private registry credentials are not accepted.')
+@description('Release-pinned public GHCR Travel Ops API image. Keep the default; administrator overrides must use ghcr.io/<owner>/<image>@sha256:<64 lowercase hexadecimal characters>, never tags or private registry credentials.')
 @minLength(83)
 @maxLength(256)
-param travelApiImageRef string
+param travelApiImageRef string = 'ghcr.io/matayuuu/travel-ops-api@sha256:173f7e954cd284057bf2a2fe10d53efae83547a060ec2ac23172dd5458816dcf'
 
-@description('Published lowercase 40-character commit SHA in matayuuu/Microsoft-Foundry-Agent-Service-Handson. Used for bootstrap source, citations, and the handoff manifest.')
+@description('Release-pinned published lowercase 40-character commit SHA in matayuuu/Microsoft-Foundry-Agent-Service-Handson. Keep the default; it supplies bootstrap source and policy citations.')
 @minLength(40)
 @maxLength(40)
-param sourceRevision string
+param sourceRevision string = '223a74f219078ededb21a27258501182da7a6432'
 
 @description('Intended participant Entra User object ID. Leave empty only when the participant deploys personally. Specify the same participant for administrator/automation redeployment.')
 @maxLength(36)
@@ -85,9 +85,6 @@ var names = {
   appInsights: 'appi-fdyws-${nameSuffix}'
   containerEnvironment: 'cae-fdyws-${nameSuffix}'
   travelApi: 'ca-travel-api-${nameSuffix}'
-  azureml: 'mlw-fdyws-${nameSuffix}'
-  storage: 'stfdyws${nameSuffix}'
-  keyVault: 'kv-fdyws-${nameSuffix}'
   bootstrapIdentity: 'id-fdyws-bootstrap-${nameSuffix}'
   bootstrap: 'ds-fdyws-bootstrap-${nameSuffix}'
 }
@@ -110,9 +107,6 @@ var roleIds = {
   privilegedMonitoringDataReader: 'dbc9c667-e97f-4491-aee6-90b9cf960190'
   monitoringMetricsPublisher: '3913510d-42f4-4e42-8a64-420c390055eb'
   cognitiveServicesOpenAIUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
-  azuremlDataScientist: 'f6c7c914-8db3-469d-8ca1-694a8f32e121'
-  storageBlobDataContributor: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-  keyVaultSecretsUser: '4633458b-17de-408a-b874-0445c86b69e6'
   reader: 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
 }
 
@@ -323,79 +317,6 @@ resource travelApi 'Microsoft.App/containerApps@2025-01-01' = {
   }
 }
 
-resource storage 'Microsoft.Storage/storageAccounts@2025-01-01' = {
-  name: names.storage
-  location: location
-  tags: tags
-  kind: 'StorageV2'
-  sku: {
-    name: 'Standard_LRS'
-  }
-  properties: {
-    accessTier: 'Hot'
-    publicNetworkAccess: 'Enabled'
-    supportsHttpsTrafficOnly: true
-    minimumTlsVersion: 'TLS1_2'
-    // AML's default datastore still requires Shared Key compatibility.
-    allowSharedKeyAccess: true
-    allowBlobPublicAccess: false
-    defaultToOAuthAuthentication: true
-  }
-}
-
-resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2025-01-01' = {
-  parent: storage
-  name: 'default'
-}
-
-resource artifactContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-01-01' = {
-  parent: blobService
-  name: 'workshop-files'
-  properties: {
-    publicAccess: 'None'
-  }
-}
-
-resource keyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
-  name: names.keyVault
-  location: location
-  tags: tags
-  properties: {
-    tenantId: subscription().tenantId
-    sku: {
-      family: 'A'
-      name: 'standard'
-    }
-    enableRbacAuthorization: true
-    accessPolicies: []
-    publicNetworkAccess: 'Enabled'
-    enableSoftDelete: true
-    softDeleteRetentionInDays: 7
-    // Omit purge protection; the service rejects an explicit false value.
-  }
-}
-
-resource azureml 'Microsoft.MachineLearningServices/workspaces@2025-06-01' = {
-  name: names.azureml
-  location: location
-  tags: tags
-  identity: {
-    type: 'SystemAssigned'
-  }
-  sku: {
-    name: 'Basic'
-    tier: 'Basic'
-  }
-  properties: {
-    applicationInsights: appInsights.id
-    keyVault: keyVault.id
-    storageAccount: storage.id
-    publicNetworkAccess: 'Enabled'
-    hbiWorkspace: false
-    v1LegacyMode: false
-  }
-}
-
 resource bootstrapIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: names.bootstrapIdentity
   location: location
@@ -468,41 +389,6 @@ resource participantMonitoringDataReader 'Microsoft.Authorization/roleAssignment
     )
     principalId: participantObjectId
     principalType: 'User'
-  }
-}
-
-resource participantAzuremlDataScientist 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(azureml.id, participantObjectId, roleIds.azuremlDataScientist)
-  scope: azureml
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleIds.azuremlDataScientist)
-    principalId: participantObjectId
-    principalType: 'User'
-  }
-}
-
-resource participantStorageBlobDataContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storage.id, participantObjectId, roleIds.storageBlobDataContributor)
-  scope: storage
-  properties: {
-    roleDefinitionId: subscriptionResourceId(
-      'Microsoft.Authorization/roleDefinitions',
-      roleIds.storageBlobDataContributor
-    )
-    principalId: participantObjectId
-    principalType: 'User'
-  }
-}
-
-// AML automatically assigns its workspace identity Storage Blob Data Contributor.
-// Declaring that same grant races the platform and causes RoleAssignmentExists.
-resource azuremlKeyVaultSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, azureml.id, roleIds.keyVaultSecretsUser)
-  scope: keyVault
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleIds.keyVaultSecretsUser)
-    principalId: azureml.identity.principalId
-    principalType: 'ServicePrincipal'
   }
 }
 
@@ -637,19 +523,6 @@ resource bootstrapReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
   }
 }
 
-resource bootstrapArtifactContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(artifactContainer.id, bootstrapIdentity.id, roleIds.storageBlobDataContributor)
-  scope: artifactContainer
-  properties: {
-    roleDefinitionId: subscriptionResourceId(
-      'Microsoft.Authorization/roleDefinitions',
-      roleIds.storageBlobDataContributor
-    )
-    principalId: bootstrapIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
 resource searchConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2026-05-01' = {
   parent: project
   name: connectionNames.search
@@ -737,12 +610,6 @@ var resourceOutputValues = {
   log_analytics_workspace_name: { value: names.logAnalytics }
   application_insights_name: { value: names.appInsights }
   application_insights_id: { value: appInsights.id }
-  azureml_workspace_name: { value: names.azureml }
-  azureml_workspace_id: { value: azureml.id }
-  storage_account_name: { value: names.storage }
-  storage_account_id: { value: storage.id }
-  key_vault_name: { value: names.keyVault }
-  key_vault_id: { value: keyVault.id }
   search_connection_name: { value: connectionNames.search }
   knowledge_mcp_connection_name: { value: connectionNames.knowledgeMcp }
   application_insights_connection_name: { value: connectionNames.appInsights }
@@ -751,8 +618,8 @@ var resourceOutputValues = {
   foundry_portal_url: { value: 'https://ai.azure.com' }
 }
 
-var workshopContext = {
-  schema_version: '1.0'
+var initialWorkshopContext = {
+  schema_version: '2.0'
   provisioning_method: 'azure-custom-template'
   setup_status: 'infrastructure-ready'
   subscription_id: subscription().subscriptionId
@@ -788,11 +655,7 @@ resource bootstrap 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       }
       {
         name: 'WORKSHOP_CONTEXT_JSON'
-        value: string(workshopContext)
-      }
-      {
-        name: 'WORKSHOP_ARTIFACT_CONTAINER'
-        value: artifactContainer.name
+        value: string(initialWorkshopContext)
       }
     ]
     timeout: 'PT1H'
@@ -816,9 +679,6 @@ resource bootstrap 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
     participantSearchIndexDataContributor
     participantLogAnalyticsReader
     participantMonitoringDataReader
-    participantAzuremlDataScientist
-    participantStorageBlobDataContributor
-    azuremlKeyVaultSecretsUser
     projectFoundryUser
     projectSearchIndexDataContributor
     projectSearchServiceContributor
@@ -830,22 +690,20 @@ resource bootstrap 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
     bootstrapSearchServiceContributor
     bootstrapSearchIndexDataContributor
     bootstrapReader
-    bootstrapArtifactContributor
   ]
 }
 
-@description('Canonical non-secret resource_outputs mapping. The handoff ZIP contains the complete initialized context.')
+@description('Canonical non-secret resource_outputs mapping for the shared workshop materials.')
 output resourceOutputs object = resourceOutputValues
 
-@description('Successful bootstrap artifact coordinates, source revision, and SHA-256. Use Storage browser > Microsoft Entra user account > Blob containers > workshop-files > Download.')
-output participantDownload object = {
-  status: bootstrap.properties.outputs.status
-  storage_account_name: bootstrap.properties.outputs.storage_account_name
-  container_name: bootstrap.properties.outputs.container_name
-  blob_name: bootstrap.properties.outputs.blob_name
-  sha256: bootstrap.properties.outputs.sha256
+@description('Completed non-secret environment context. The setup Notebook retrieves it after Azure CLI sign-in.')
+output workshopContext object = union(initialWorkshopContext, {
+  setup_status: bootstrap.properties.outputs.status
   source_revision: bootstrap.properties.outputs.source_revision
-}
+})
 
-@description('Open this Storage account in Azure Portal, then use Storage browser and Microsoft Entra user account to download the private handoff ZIP.')
-output storagePortalUrl string = 'https://portal.azure.com/#resource${storage.id}/overview'
+@description('Replace servers[0].url in the common OpenAPI JSON with this URL.')
+output travelApiBaseUrl string = 'https://${travelApi.properties.configuration.ingress.fqdn}'
+
+@description('Open the workshop account and project in Microsoft Foundry.')
+output foundryPortalUrl string = 'https://ai.azure.com'

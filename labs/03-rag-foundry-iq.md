@@ -20,8 +20,8 @@ Lab 7 の plain / Harness Agent と Lab 8 の Hosted workflow も、同じ remot
 
 ## 使用する値
 
-PC に展開した `.workshop/context.json` の
-`resource_outputs.evaluation_model_deployment_name.value = gpt-5.5` を確認します。Search connection は
+Lab 1 のデプロイの **Outputs > resourceOutputs** で
+`evaluation_model_deployment_name.value = gpt-5.5` を確認します。Search connection は
 `contoso-travel-search`、indexes は `contoso-travel-policy` と
 `contoso-travel-approval` です。Agent から knowledge base の MCP endpoint を keyless に
 呼ぶ `contoso-travel-knowledge-lab-mcp` connection も Lab 1 の template で作成済みです。

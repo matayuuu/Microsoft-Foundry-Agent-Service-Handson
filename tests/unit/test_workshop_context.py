@@ -199,10 +199,12 @@ def test_source_revision_accepts_only_the_exact_commit() -> None:
     assert ctx.validate_source_revision("1a" * 20) == "1a" * 20
 
 
-def test_context_recovery_uses_private_portal_download(tmp_path: Path) -> None:
+def test_context_recovery_uses_the_shared_setup_notebook(tmp_path: Path) -> None:
     with pytest.raises(ctx.WorkshopContextError) as error:
         ctx.load_context(tmp_path / "missing.json")
-    assert "Azure Portal" in str(error.value)
-    assert "private workshop-files container" in str(error.value)
+    assert "Dev Container" in str(error.value)
+    assert "00-setup.ipynb" in str(error.value)
+    assert "subscription ID and resource group" in str(error.value)
+    assert "private workshop-files" not in str(error.value)
     assert "setup.sh" not in str(error.value)
     assert "Cloud Shell" not in str(error.value)

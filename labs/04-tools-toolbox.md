@@ -37,26 +37,24 @@ Tool Search を有効にすると、最初から全 tool 定義をモデルへ�
 
 ## 1. 貼り付け・アップロード用ファイルを用意する
 
-PC に展開した workshop folder の `portal-assets/` を開きます。これらは Lab 1 の
-Deployment Scripts が実際の Travel Ops API と canonical
-`resource_outputs.<key>.value` context から生成し、private container `workshop-files` の
-download ZIP へ格納したものです。Entra ID で取得済みの同じ bundle を使います。
-このファイル確認では Toolbox、Skill、Agent はまだ作成・更新しません。
+次の共通ファイルを GitHub から **PC に保存**します。
+リンクはファイル本体です。ZIP は展開せず、そのままアップロードに使います。
 
 | ファイル | 用途 |
 |---|---|
-| `portal-assets/travel-ops.openapi.json` | Portal の schema editor へ内容を貼り付ける |
-| PC 上の `portal-assets/travel-estimation.zip` | 見積もり Skill のアップロード。ZIP 直下に `SKILL.md` |
-| PC 上の `portal-assets/preapproval-simulation.zip` | 承認シミュレーション Skill のアップロード |
-| `portal-assets/portal-values.json` | 自分の環境の Portal 値を確認する |
+| [travel-estimation.zip](https://raw.githubusercontent.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/dev-custom-template/assets/skills/travel-estimation.zip) | 見積もり Skill |
+| [preapproval-simulation.zip](https://raw.githubusercontent.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/dev-custom-template/assets/skills/preapproval-simulation.zip) | 承認シミュレーション Skill |
+| [travel-ops.openapi.json](https://raw.githubusercontent.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/dev-custom-template/assets/openapi/travel-ops.openapi.json) | OpenAPI の共通定義 |
 
-Browser の file picker は**手元の PC**を参照します。Lab 1 で bundle を展開した PC 上の
-`portal-assets/` から 2 つの ZIP を選びます。別の remote asset を download しません。
+各 Skill ZIP の直下には `SKILL.md` があります。`SKILL.md` 単体ではなく ZIP を選んでください。
+ブラウザーの file picker は手元の PC を参照します。
 
-OpenAPI は PC の text editor で表示し、JSON 全体だけを Portal の schema field
-へ貼り付けます。この field は file upload ではありません。
+OpenAPI は PC の text editor で開き、`servers[0].url` の
+`https://replace-with-your-travel-api.example.invalid` **だけ**を、Lab 1 の
+Azure Portal **Deployments > 対象デプロイ > Outputs > travelApiBaseUrl** の値に置き換えます。
+変更後の JSON 全体を、後の **OpenAPI 3.0+ schema** 欄へ貼り付けます。この欄は file upload ではありません。
 
-Skill の本文を読むときは次の元ファイルを開きます。
+本文を読む場合の正本は `data/skills/` にあります。
 
 - [`travel-estimation/SKILL.md`](../data/skills/travel-estimation/SKILL.md)
 - [`preapproval-simulation/SKILL.md`](../data/skills/preapproval-simulation/SKILL.md)
@@ -96,7 +94,7 @@ Contoso Travel Ops API、数値比較用 Code Interpreter、明示された現�
 | **Name** | `travel_ops_api` |
 | **Description** | `Contoso の日当照会、費用見積もり、事前承認シミュレーションを実行する Travel Ops API。` |
 | **Authentication method** | `Anonymous` |
-| **OpenAPI 3.0+ schema** | `portal-assets/travel-ops.openapi.json` の内容全体 |
+| **OpenAPI 3.0+ schema** | `servers[0].url` を変更した `travel-ops.openapi.json` の内容全体 |
 
 ![OpenAPI の入力画面](../docs/images/lab04-openapi-form.png)
 
@@ -136,12 +134,12 @@ Web Search は「現在の公開情報を調べて」と明示された場合だ
 2. **Select a skill** の **Configured** で **Add skill** を選択します。
 
 3. メニューから **Upload skill** を選択します。
-4. **Browse** を押し、PC の `portal-assets/travel-estimation.zip` を選びます。
+4. **Browse** を押し、PC に保存した `travel-estimation.zip` を選びます。
 5. 表示されたファイル名と **Name = travel-estimation** を確認し、**Create** を押します。
    Name と Description は、ZIP 内の `SKILL.md` から読み取られます。
 6. Toolbox の画面に戻り、Included に Skill が増えたことを確認します。
 7. 同じ **Add skill > Upload skill** の手順で
-   `portal-assets/preapproval-simulation.zip` を選択します。
+   `preapproval-simulation.zip` を選択します。
    Name が **preapproval-simulation** であることを確認して **Create** を押します。
 
 アップロードした Skill は自動で Included に入ります。
@@ -175,7 +173,6 @@ Toolbox は MCP という共通の接続方式で Agent から呼び出します
 **Lab 3 の Knowledge は削除しません。**
 
 1. 公開済み Toolbox の **Call this toolbox > Endpoint** を **Copy endpoint** でコピーします。
-   同じ値は `portal-assets/portal-values.json` の `toolbox_mcp_endpoint` でも確認できます。
 2. **Build > Agents > contoso-travel-assistant** を開きます。
 3. **Tools** 側の **Add > Add tools** を開きます。Knowledge 側の Add ではありません。
 4. **Custom > Model Context Protocol (MCP)** を選択し、**Create** を押します。
@@ -185,7 +182,7 @@ Toolbox は MCP という共通の接続方式で Agent から呼び出します
 | 項目 | 値 |
 |---|---|
 | Name | `contoso-travel-toolbox-mcp` |
-| Remote MCP Server endpoint | コピーした自分の `toolbox_mcp_endpoint` |
+| Remote MCP Server endpoint | 公開済み Toolbox からコピーした Endpoint |
 | Authentication | **Microsoft Entra** |
 | Type | **Project Managed Identity** |
 | Audience | `https://ai.azure.com/` |
@@ -349,11 +346,12 @@ Lab 8 は token 消費を抑えた通常 Agent workflow のため、Skills を�
 - 見積もり依頼で無関係な tool と `createPreapproval` が呼ばれないことを確認した
 - Skill は登録・公開済みであり、`load_skill` / `resources/read` なしには利用済みと主張しない
 
-## 任意: Lab 7 後に Azure ML Notebook で同じ構成を扱う
+## 任意: Lab 7 後に Notebook で同じ構成を扱う
 
 [`notebooks/04-create-toolbox.ipynb`](../notebooks/04-create-toolbox.ipynb) は SDK 学習用の補助です。
-Lab 7 の Azure ML setup 完了後に **Python (Foundry Workshop)** kernel を選びます。
-Notebook は本編では使いません。Labs 2〜6 のために Azure ML Compute を早く作成しません。
+Lab 7 の [共通環境の準備](../docs/participant/environments/codespaces.md)と
+`notebooks/00-setup.ipynb` の完了後に **Python (Foundry Workshop)** kernel を選びます。
+この Notebook は本編では使いません。
 OpenAPI の更新時に既存 Skills・他の tools・guardrail・Tool Search を保持し、不足する
 Lab 4 の built-in tool と Tool Search だけを SDK が対応する正式な model で追加しますが、
 Skill 自体のアップロードは上の Portal 手順で行います。
@@ -362,7 +360,7 @@ UI の作成操作を体験する前に Notebook で Toolbox を作る必要は�
 
 公式仕様: [Toolbox](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/toolbox) /
 [Skills](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/skills)。
-困った場合は [Toolbox のトラブルシューティング](../docs/participant/troubleshooting.md#portal-での-toolbox-操作)
+困った場合は [Toolbox のトラブルシューティング](../docs/participant/troubleshooting.md#lab-4-のファイル)
 を参照してください。
 
 ## 次の Lab

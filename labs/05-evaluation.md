@@ -18,9 +18,9 @@ Lab 4 の MCP 自動承認設定まで保存した Agent を使います。
 
 ## 0. 共通 GPT-5.5 deployment を確認する
 
-PC に展開した `.workshop/context.json` の
-`resource_outputs.evaluation_model_deployment_name.value` が `gpt-5.5` であることを
-text editor で確認します。Foundry IQ、Lab 5、Lab 6 は
+Lab 1 のデプロイの **Outputs > resourceOutputs** で
+`evaluation_model_deployment_name.value` が `gpt-5.5` であることを確認します。
+Foundry IQ、Lab 5、Lab 6 は
 同じ必須の GPT-5.5 deployment を共有します。値が欠落している場合は Lab 1 の
 model deployment と Deployment Scripts の validation を管理者と修復してから続行します。
 リソース作成だけを成功とせず、bootstrap の `status = complete` を確認します。

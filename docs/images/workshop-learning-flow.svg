@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1640" height="1880" viewBox="0 0 1640 1880" role="img" aria-labelledby="diagram-title diagram-description">
   <title id="diagram-title">Workshop learning flow</title>
-  <desc id="diagram-description">Labs 0–1 manually create the resource group, load the custom template, validate bootstrap, and download the private ZIP. Labs 2–6 develop one Prompt Agent in Foundry Portal. Lab 7 prepares Azure ML and compares plain and Harness Agents. Lab 8 deploys a source-based intake, policy, reviewer workflow. Lab 9 exports results, removes Hosted Agents and Compute, and deletes the resource group.</desc>
+  <desc id="diagram-description">Labs 0–1 manually create the resource group, load the custom template with verified defaults and validate Azure bootstrap. Labs 2–6 develop one Prompt Agent in Foundry Portal; Lab 4 uses GitHub Skill ZIPs and common OpenAPI. Lab 7 prepares Codespaces or the same local Dev Container, signs in with Azure CLI, retrieves context through the setup notebook and compares plain and Harness Agents. Lab 8 deploys a source-based intake, policy, reviewer workflow. Lab 9 saves results, removes Hosted Agents, stops/deletes the Codespace and deletes only the dedicated resource group.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#0078D4" stroke-width="1.5"/></marker>
     <marker id="green-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#107C10" stroke-width="1.5"/></marker>
@@ -25,11 +25,11 @@
     <tspan x="80">Lab 0: overview and safety</tspan>
     <tspan x="80" dy="42.5">1. Resource groups &gt; Create: manually create ONE dedicated RG</tspan>
     <tspan x="80" dy="42.5">2. Deploy a custom template &gt; Build your own template in the editor &gt; Load file</tspan>
-    <tspan x="80" dy="42.5">3. infra/azuredeploy.json &gt; existing RG &gt; Review + create &gt; Create</tspan>
-    <tspan x="80" dy="42.5">4. Deployment Scripts validation passes &gt; private ZIP download via Microsoft Entra user account</tspan>
-    <tspan x="80" dy="42.5">5. PC extract: Microsoft-Foundry-Agent-Service-Handson</tspan>
+    <tspan x="80" dy="42.5">3. infra/azuredeploy.json &gt; Subscription + existing RG; keep defaults &gt; Create</tspan>
+    <tspan x="80" dy="42.5">4. Deployment Scripts: Search + evaluation preparation &gt; validation &gt; complete</tspan>
+    <tspan x="80" dy="42.5">5. Outputs: workshopContext / resourceOutputs / travelApiBaseUrl / foundryPortalUrl</tspan>
   </text>
-  <text id="preparation-boundary" x="60" y="596">No Compute until Lab 7. Context = resource_outputs.&lt;key&gt;.value. Private container = workshop-files.</text>
+  <text id="preparation-boundary" x="60" y="596">Common materials live in GitHub. The setup notebook creates .workshop/context.json later.</text>
   <path id="prepare-to-build" d="M415 650 V695" fill="none" stroke="#0078D4" stroke-width="2" marker-end="url(#arrow)"/>
   <rect id="prompt-learning" class="container" x="40" y="705" width="750" height="720" rx="12" stroke="#5C2D91"/>
   <text id="prompt-title" x="60" y="747" style="font-size:22px">Labs 2–6 — Microsoft Foundry Portal</text>
@@ -46,7 +46,7 @@
   <rect id="lab4" class="box purple" x="60" y="1040" width="710" height="100" rx="12"/>
   <text id="lab4-text" x="80" y="1066">
     <tspan x="80">Lab 4 — Toolbox / OpenAPI / Skills</tspan>
-    <tspan x="80" dy="40">Live portal-assets; Publish; Tool Search</tspan>
+    <tspan x="80" dy="40">GitHub Skill ZIPs + OpenAPI; set travelApiBaseUrl</tspan>
   </text>
   <rect id="lab5" class="box purple" x="60" y="1155" width="710" height="100" rx="12"/>
   <text id="lab5-text" x="80" y="1181">
@@ -60,13 +60,13 @@
   </text>
   <path id="build-to-code" class="edge" d="M800 1090 H840"/>
   <rect id="hosted-learning" class="container" x="850" y="705" width="750" height="720" rx="12" stroke="#107C10"/>
-  <text id="hosted-title" x="870" y="747" style="font-size:22px">Labs 7–8 — Azure Machine Learning</text>
+  <text id="hosted-title" x="870" y="747" style="font-size:22px">Labs 7–8 — Codespaces / local Dev Container</text>
   <rect id="lab7-setup" class="box green" x="870" y="810" width="710" height="190" rx="12"/>
   <text id="lab7-setup-text" x="890" y="841">
-    <tspan x="890">Lab 7 preparation: Standard_DS3_v2 + Idle shutdown</tspan>
-    <tspan x="890" dy="40">Notebooks &gt; User files &gt; Upload folder</tspan>
-    <tspan x="890" dy="40">00-azureml-setup.ipynb: Python 3.10 - SDK v2</tspan>
-    <tspan x="890" dy="40">Creates Python (Foundry Workshop) + Python (Foundry Hosted Agent)</tspan>
+    <tspan x="890">Post-create: Python 3.12 + 3.13 isolated venvs</tspan>
+    <tspan x="890" dy="40">Azure CLI sign-in in container (once)</tspan>
+    <tspan x="890" dy="40">00-setup.ipynb: subscription ID + RG name</tspan>
+    <tspan x="890" dy="40">Management kernel: Python (Foundry Workshop)</tspan>
   </text>
   <rect id="lab7-agents" class="box green" x="870" y="1030" width="710" height="130" rx="12"/>
   <text id="lab7-agents-text" x="890" y="1066">
@@ -77,7 +77,7 @@
   <text id="lab8-text" x="890" y="1226">
     <tspan x="890">Lab 8 — Hosted Agent source remote build</tspan>
     <tspan x="890" dy="40">intake_agent &gt; policy_agent &gt; reviewer_agent</tspan>
-    <tspan x="890" dy="40">Reuses Foundry IQ; no Lab 7 session state</tspan>
+    <tspan x="890" dy="40">Deploy / delete: management venv + confirmation</tspan>
   </text>
   <text id="hosted-kernel" x="870" y="1394" style="font-size:14px">Labs 7/8 kernel: Python (Foundry Hosted Agent)</text>
   <path id="workflow-to-cleanup" class="edge" d="M1225 1435 V1490"/>
@@ -85,9 +85,9 @@
   <text id="cleanup-title" x="60" y="1542" style="font-size:22px">Lab 9 — trace comparison and complete cleanup</text>
   <rect id="cleanup-steps" class="box gray" x="60" y="1595" width="1520" height="150" rx="12"/>
   <text id="cleanup-steps-text" x="80" y="1626">
-    <tspan x="80">Export notebooks &gt; delete Hosted Agent / versions &gt; Compute Stop / Delete</tspan>
-    <tspan x="80" dy="40">Azure Portal &gt; Delete resource group &gt; verify deletion</tspan>
-    <tspan x="80" dy="40">Delete the dedicated RG with its resources; deployment history deletion is not resource deletion</tspan>
+    <tspan x="80">Save / export &gt; delete Hosted Agent / versions &gt; Codespace Stop / Delete</tspan>
+    <tspan x="80" dy="40">Azure Portal &gt; Delete resource group (own dedicated RG only) &gt; verify deletion</tspan>
+    <tspan x="80" dy="40">Deleting deployment history does not delete resources</tspan>
   </text>
-  <text id="learning-footer" x="40" y="1836">Portal E2E must use actual UI; diagrams and simulated assets are not execution evidence.</text>
+  <text id="learning-footer" x="40" y="1836">Shared GitHub repository in both environments; no manual folder upload or environment archive download.</text>
 </svg>

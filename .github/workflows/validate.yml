@@ -20,13 +20,15 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: python -m pip install -e ".[dev]" -e "./src/travel-api[dev]"
+        run: python -m pip install -r .devcontainer/requirements-dev.txt -e ".[dev]" -e "./src/travel-api[dev]"
       - name: Lint
         run: |
           python -m ruff check .
           python -m ruff format --check .
       - name: Test
         run: python -m pytest
+      - name: Verify shared GitHub materials
+        run: python scripts/build_common_assets.py --check
       - name: Validate shell syntax
         run: make shell-validate
 
@@ -40,7 +42,7 @@ jobs:
           cache: pip
           cache-dependency-path: src/hosted-agent/requirements.txt
       - name: Install Hosted Agent dependencies
-        run: python -m pip install -r src/hosted-agent/requirements.txt pytest ruff ipykernel
+        run: python -m pip install -r .devcontainer/requirements-dev.txt -r src/hosted-agent/requirements.txt
       - name: Test Hosted Agent
         run: python -m pytest tests/unit/hosted_agent tests/contract/hosted_agent -q
       - name: Lint Hosted Agent
@@ -74,6 +76,35 @@ jobs:
           docker build --build-arg "AZURE_CLI_VERSION=$cli_version" \
             --file tests/runtime/bootstrap.Dockerfile \
             --tag workshop-bootstrap-runtime:validation "$runtime_context"
+
+  devcontainer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Start the common Codespaces/local container
+        id: container
+        shell: bash
+        run: |
+          npx --yes @devcontainers/cli@0.89.0 up --workspace-folder "$GITHUB_WORKSPACE" > "$RUNNER_TEMP/workshop-container.json"
+          container_id=$(jq -er '.containerId' "$RUNNER_TEMP/workshop-container.json")
+          echo "id=$container_id" >> "$GITHUB_OUTPUT"
+      - name: Verify both isolated runtimes and kernels
+        shell: bash
+        run: |
+          npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder "$GITHUB_WORKSPACE" bash -lc '
+            set -euo pipefail
+            "$WORKSHOP_MANAGEMENT_PYTHON" -c "import sys, azure.ai.projects, travel_api; assert sys.version_info[:2] == (3, 12)"
+            "$WORKSHOP_HOSTED_PYTHON" -c "import sys, agent_framework, agent_framework_foundry_hosting; assert sys.version_info[:2] == (3, 13)"
+            "$WORKSHOP_MANAGEMENT_PYTHON" -m jupyter kernelspec list --json | "$WORKSHOP_MANAGEMENT_PYTHON" -c "import json,sys; assert set((\"foundry-workshop\", \"foundry-hosted-agent\")) <= json.load(sys.stdin)[\"kernelspecs\"].keys()"
+          '
+      - name: Remove the test container
+        if: always() && steps.container.outputs.id != ''
+        run: docker rm --force "${{ steps.container.outputs.id }}"
 
   travel-api-container:
     runs-on: ubuntu-latest

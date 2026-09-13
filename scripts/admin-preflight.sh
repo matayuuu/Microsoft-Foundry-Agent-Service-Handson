@@ -136,9 +136,7 @@ REQUIRED_PROVIDERS=(
   "Microsoft.Insights"
   "Microsoft.OperationalInsights"
   "Microsoft.App"
-  "Microsoft.MachineLearningServices"
   "Microsoft.Storage"
-  "Microsoft.KeyVault"
   "Microsoft.ManagedIdentity"
   "Microsoft.ContainerInstance"
   "Microsoft.Resources"
@@ -153,9 +151,7 @@ declare -A REQUIRED_RESOURCE_TYPES=(
   ["Microsoft.Insights"]="components"
   ["Microsoft.OperationalInsights"]="workspaces"
   ["Microsoft.App"]="containerApps"
-  ["Microsoft.MachineLearningServices"]="workspaces"
   ["Microsoft.Storage"]="storageAccounts"
-  ["Microsoft.KeyVault"]="vaults"
   ["Microsoft.ManagedIdentity"]="userAssignedIdentities"
   ["Microsoft.ContainerInstance"]="containerGroups"
   ["Microsoft.Resources"]="deploymentScripts"
@@ -485,7 +481,7 @@ else
   deny_count="$(jq 'length' <<<"${deny_json}")"
   if [[ "${deny_count}" -gt 0 ]]; then
     deny_names="$(jq -r '[.[].displayName] | join(", ")' <<<"${deny_json}")"
-    add_check "policy-scan" "warn" "Found ${deny_count} enforced policy assignment(s) visible from this subscription that may restrict workshop resources. Check public network access, Storage shared-key requirements for Azure Machine Learning and Deployment Scripts Azure Files, temporary Container Instances, Key Vault RBAC, user-assigned managed identities, allowed types, and regions (best-effort scan, not exhaustive -- inspect each policy's actual effect and scope): ${deny_names}."
+    add_check "policy-scan" "warn" "Found ${deny_count} enforced policy assignment(s) visible from this subscription that may restrict workshop resources. Check public network access, Deployment Scripts temporary Azure Files Storage and Container Instances, user-assigned managed identities, allowed types, and regions (best-effort scan, not exhaustive -- inspect each policy's actual effect and scope): ${deny_names}."
   else
     add_check "policy-scan" "pass" "No enforced policy assignments found in this best-effort scan (not exhaustive: management-group-level policies with narrower conditions may still apply)."
   fi

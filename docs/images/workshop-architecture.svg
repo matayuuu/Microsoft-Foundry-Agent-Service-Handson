@@ -1,9 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="1840" viewBox="0 0 1760 1840" role="img" aria-labelledby="diagram-title diagram-description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="1950" viewBox="0 0 1760 1950" role="img" aria-labelledby="diagram-title diagram-description">
   <title id="diagram-title">Custom-template workshop architecture</title>
-  <desc id="diagram-description">The participant manually creates one dedicated Japan East resource group before loading the ARM template. Deployment Scripts validates initialization and publishes one private ZIP for Entra-authenticated download. Foundry Portal hosts Labs 2–6; Azure ML Compute is created only for Lab 7. Export, Hosted cleanup, Compute deletion, and resource group deletion finish the workshop.</desc>
+  <desc id="diagram-description">The participant manually creates one dedicated Japan East resource group before loading the ARM template and keeps verified defaults. Azure bootstrap prepares Search and evaluation data, validates, and returns completed context. GitHub owns common Skill ZIPs, OpenAPI, notebooks and source. Foundry Portal hosts Labs 2–6; Codespaces and the same local Dev Container run Labs 7–8 after personal Azure CLI sign-in. Save results, delete Hosted versions, stop/delete the Codespace, and delete only the dedicated resource group.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#0078D4" stroke-width="1.5"/></marker>
-    <marker id="orange-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#F7630C" stroke-width="1.5"/></marker>
     <style>
       text { fill: #000000; font-family: Arial, Helvetica, sans-serif; font-size: 16px; }
       .container { fill: none; stroke-width: 2; }
@@ -16,9 +15,9 @@
       .edge { fill: none; stroke: #0078D4; stroke-width: 2; marker-end: url(#arrow); }
     </style>
   </defs>
-  <rect width="1760" height="1840" fill="#ffffff"/>
+  <rect width="1760" height="1950" fill="#ffffff"/>
   <text id="title" x="40" y="50" style="font-size:30px">Microsoft Foundry workshop — custom-template architecture</text>
-  <text id="subtitle" x="40" y="118" style="font-size:18px">Manual RG &gt; custom template &gt; Azure bootstrap &gt; private ZIP &gt; Foundry / Azure ML</text>
+  <text id="subtitle" x="40" y="118" style="font-size:18px">Azure bootstrap + GitHub common materials &gt; Foundry Portal + Codespaces / local Dev Container</text>
   <rect id="portal-flow" class="container" x="40" y="170" width="1680" height="280" rx="12" stroke="#0078D4"/>
   <text id="portal-flow-title" x="60" y="203" style="font-size:18px">Lab 1 — participant actions in Azure Portal</text>
   <rect id="manual-rg" class="box blue" x="60" y="250" width="400" height="180" rx="12"/>
@@ -30,9 +29,9 @@
   <path id="rg-to-template" class="edge" d="M470 340 H520"/>
   <rect id="template" class="box blue" x="530" y="250" width="680" height="180" rx="12"/>
   <text id="template-text" x="550" y="276">
-    <tspan x="550">2. Deploy a custom template</tspan>
-    <tspan x="550" dy="40">Build your own template in the editor &gt; Load file</tspan>
-    <tspan x="550" dy="40">infra/azuredeploy.json &gt; select the existing RG</tspan>
+    <tspan x="550">2. Deploy a custom template &gt; Load file</tspan>
+    <tspan x="550" dy="40">infra/azuredeploy.json</tspan>
+    <tspan x="550" dy="40">Select Subscription + existing RG; keep other defaults</tspan>
     <tspan x="550" dy="40">Review + create &gt; Create</tspan>
   </text>
   <path id="template-to-gate" class="edge" d="M1220 340 H1280"/>
@@ -46,7 +45,7 @@
   <path id="template-to-resources" class="edge" d="M870 460 V490"/>
   <rect id="resource-group" class="container" x="40" y="500" width="1680" height="800" rx="12" stroke="#107C10"/>
   <text id="resource-group-title" x="60" y="535" style="font-size:20px">Dedicated workload RG — Japan East / Basic Agent Setup / public endpoints / scoped RBAC</text>
-  <text id="resource-ownership" x="60" y="593" style="font-size:18px">Bicep / ARM: Foundry + models + Search + API + monitoring + Azure ML; no RG / Compute creation</text>
+  <text id="resource-ownership" x="60" y="593" style="font-size:18px">Bicep / ARM: Foundry + models + Search + API + monitoring; deploy into the existing RG</text>
   <rect id="foundry" class="box green" x="60" y="650" width="750" height="240" rx="12"/>
   <text id="foundry-text" x="80" y="696">
     <tspan x="80">Microsoft Foundry — contoso-travel</tspan>
@@ -74,49 +73,51 @@
   </text>
   <rect id="bootstrap" class="box orange" x="60" y="1020" width="750" height="240" rx="12"/>
   <text id="bootstrap-text" x="80" y="1066">
-    <tspan x="80">Deployment Scripts + dedicated bootstrap UAMI</tspan>
-    <tspan x="80" dy="40">Seed Search &gt; evaluation assets &gt; validate &gt; live assets &gt; ZIP</tspan>
-    <tspan x="80" dy="40">Temporary ACI / Azure Files Storage: OnSuccess; P1D</tspan>
-    <tspan x="80" dy="40">UAMI and scoped grants remain until RG cleanup</tspan>
+    <tspan x="80">Deployment Scripts + dedicated bootstrap identity</tspan>
+    <tspan x="80" dy="40">Search seed &gt; evaluation data / rubric &gt; validation</tspan>
+    <tspan x="80" dy="40">ARM: workshopContext + resourceOutputs</tspan>
+    <tspan x="80" dy="40">setup_status = complete</tspan>
   </text>
-  <path id="bootstrap-to-storage" d="M820 1140 H880" fill="none" stroke="#F7630C" stroke-width="2" marker-end="url(#orange-arrow)"/>
-  <rect id="aml-resources" class="box green" x="890" y="1020" width="810" height="240" rx="12"/>
-  <text id="aml-resources-text" x="910" y="1066">
-    <tspan x="910">Azure Machine Learning workspace + Storage + Key Vault</tspan>
-    <tspan x="910" dy="40">Application Insights + Log Analytics</tspan>
-    <tspan x="910" dy="40">Private workshop-files/foundry-workshop-files.zip</tspan>
-    <tspan x="910" dy="40">OAuth-default browser; Shared Key retained for AML</tspan>
+  <rect id="monitoring" class="box green" x="890" y="1020" width="810" height="240" rx="12"/>
+  <text id="monitoring-text" x="910" y="1066">
+    <tspan x="910">Application Insights + Log Analytics</tspan>
+    <tspan x="910" dy="40">Traces from Prompt / Hosted Agents</tspan>
+    <tspan x="910" dy="40">Project Managed Identity connection</tspan>
+    <tspan x="910" dy="40">Scoped runtime identity permissions</tspan>
   </text>
-  <path id="storage-to-pc" class="edge" d="M1295 1270 V1330 H310 V1360"/>
-  <rect id="pc" class="box blue" x="60" y="1370" width="530" height="240" rx="12"/>
-  <text id="pc-text" x="80" y="1406">
-    <tspan x="80">Storage browser: Microsoft Entra user account</tspan>
-    <tspan x="80" dy="40">Download once &gt; PC extract</tspan>
-    <tspan x="80" dy="40">Microsoft-Foundry-Agent-Service-Handson</tspan>
-    <tspan x="80" dy="40">.workshop/context.json</tspan>
-    <tspan x="80" dy="40">resource_outputs.&lt;key&gt;.value</tspan>
+  <path id="bootstrap-to-context" class="edge" d="M435 1270 V1330 H1440 V1360"/>
+  <rect id="github" class="box blue" x="60" y="1370" width="530" height="340" rx="12"/>
+  <text id="github-text" x="80" y="1436">
+    <tspan x="80">GitHub — common materials</tspan>
+    <tspan x="80" dy="40">assets/skills/*.zip (SKILL.md at root)</tspan>
+    <tspan x="80" dy="40">assets/openapi/travel-ops.openapi.json</tspan>
+    <tspan x="80" dy="40">notebooks/ + scripts/ + src/</tspan>
+    <tspan x="80" dy="40">Repository opened in the same Dev Container</tspan>
   </text>
-  <path id="pc-to-foundry-portal" class="edge" d="M600 1490 H640"/>
-  <rect id="foundry-portal" class="box purple" x="650" y="1370" width="450" height="240" rx="12"/>
+  <path id="github-to-foundry-portal" class="edge" d="M600 1540 H640"/>
+  <rect id="foundry-portal" class="box purple" x="650" y="1370" width="450" height="340" rx="12"/>
   <text id="foundry-portal-text" x="670" y="1436">
     <tspan x="670">Microsoft Foundry Portal</tspan>
     <tspan x="670" dy="40">Labs 2–6: Agent / IQ / Toolbox</tspan>
+    <tspan x="670" dy="40">Lab 4: GitHub ZIPs + OpenAPI</tspan>
+    <tspan x="670" dy="40">servers[0].url = travelApiBaseUrl</tspan>
     <tspan x="670" dy="40">Evaluation / Optimizer / Traces</tspan>
   </text>
-  <path id="foundry-to-aml" class="edge" d="M1110 1490 H1170"/>
-  <rect id="aml-execution" class="box green" x="1180" y="1370" width="520" height="240" rx="12"/>
-  <text id="aml-execution-text" x="1200" y="1406">
-    <tspan x="1200">Azure ML Studio — only at Lab 7</tspan>
-    <tspan x="1200" dy="40">Standard_DS3_v2 + Idle shutdown</tspan>
-    <tspan x="1200" dy="40">User files: upload extracted folder</tspan>
-    <tspan x="1200" dy="40">00 setup: Python 3.10 - SDK v2</tspan>
+  <rect id="dev-container" class="box green" x="1180" y="1370" width="520" height="340" rx="12"/>
+  <text id="dev-container-text" x="1200" y="1406">
+    <tspan x="1200">Codespaces / local Dev Container</tspan>
+    <tspan x="1200" dy="40">Azure CLI sign-in before notebooks</tspan>
+    <tspan x="1200" dy="40">00-setup.ipynb: subscription ID + RG name</tspan>
+    <tspan x="1200" dy="40">.workshop/context.json: schema 2.0</tspan>
+    <tspan x="1200" dy="40">resource_outputs.&lt;key&gt;.value</tspan>
+    <tspan x="1200" dy="40">3.12 management / 3.13 Hosted venvs</tspan>
     <tspan x="1200" dy="40">Labs 7/8: Python (Foundry Hosted Agent)</tspan>
   </text>
-  <path id="execution-to-cleanup" class="edge" d="M1440 1620 V1650"/>
-  <rect id="cleanup" class="box gray" x="40" y="1660" width="1680" height="150" rx="12"/>
-  <text id="cleanup-text" x="60" y="1691">
-    <tspan x="60">Lab 9: Export &gt; delete Hosted Agent / versions &gt; Compute Stop / Delete</tspan>
-    <tspan x="60" dy="40">Azure Portal &gt; Delete resource group &gt; verify deletion</tspan>
+  <path id="execution-to-cleanup" class="edge" d="M1440 1720 V1760"/>
+  <rect id="cleanup" class="box gray" x="40" y="1770" width="1680" height="150" rx="12"/>
+  <text id="cleanup-text" x="60" y="1801">
+    <tspan x="60">Lab 9: Save / export &gt; delete Hosted Agent / versions &gt; Codespace Stop / Delete</tspan>
+    <tspan x="60" dy="40">Azure Portal &gt; Delete resource group (own dedicated RG only) &gt; verify deletion</tspan>
     <tspan x="60" dy="40">Deleting deployment history does not delete resources</tspan>
   </text>
 </svg>

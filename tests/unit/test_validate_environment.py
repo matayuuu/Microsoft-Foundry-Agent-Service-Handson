@@ -25,14 +25,10 @@ def _context() -> dict[str, object]:
             "search_service_endpoint": "https://search.example.invalid",
             "travel_api_container_app_name": "ca-fixture",
             "travel_api_fqdn": "travel.example.invalid",
-            "azureml_workspace_id": (
-                "/subscriptions/sub/resourceGroups/rg/providers/"
-                "Microsoft.MachineLearningServices/workspaces/mlw-fixture"
-            ),
         }
     )
     return {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "provisioning_method": "azure-custom-template",
         "subscription_id": "00000000-0000-0000-0000-000000000000",
         "resource_group_name": "rg-fixture",
@@ -57,10 +53,10 @@ def test_context_and_resource_outputs_are_canonical() -> None:
 
 
 def test_missing_resource_output_fails_with_name() -> None:
-    result = validation.validate_resource_outputs_present({}, ("azureml_workspace_id",))
+    result = validation.validate_resource_outputs_present({}, ("foundry_project_id",))
 
     assert result.status == "fail"
-    assert "azureml_workspace_id" in result.detail
+    assert "foundry_project_id" in result.detail
 
 
 def test_build_credential_is_explicit_azure_cli() -> None:
@@ -69,7 +65,7 @@ def test_build_credential_is_explicit_azure_cli() -> None:
     assert isinstance(validation.build_credential(), AzureCliCredential)
 
 
-def test_main_validates_azureml_api_and_both_search_indexes(
+def test_main_validates_core_api_and_both_search_indexes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     context_path = tmp_path / "context.json"
@@ -126,14 +122,14 @@ def test_main_validates_azureml_api_and_both_search_indexes(
 
     assert result == 0
     assert index_calls == list(validation.DEFAULT_INDEX_NAMES)
-    assert any("Microsoft.MachineLearningServices/workspaces" in item for item in resource_calls)
+    assert len(resource_calls) == 3
+    assert all("MachineLearningServices" not in item for item in resource_calls)
     report = json.loads(report_path.read_text(encoding="utf-8"))
     names = {check["name"] for check in report["checks"]}
     assert {
         "arm-foundry-account-exists",
         "arm-search-service-exists",
         "arm-travel-api-container-app-exists",
-        "arm-azureml-workspace-exists",
         "search-index-schema:contoso-travel-policy",
         "search-index-schema:contoso-travel-approval",
     } <= names

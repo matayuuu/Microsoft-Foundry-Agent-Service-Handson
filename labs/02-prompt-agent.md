@@ -25,8 +25,8 @@ Lab 4 では費用を計算する機能を追加します。
 
 ## 始める前に
 
-Lab 1 の custom template / Deployment Scripts / validation が成功し、
-private ZIP を Entra ID で取得・展開したことを確認して、自分の Foundry project を開きます。
+Lab 1 の custom template / Deployment Scripts / validation が成功したことを確認し、
+`foundryPortalUrl` から自分の Foundry project を開きます。
 以後、同じ `contoso-travel-assistant` を編集して機能を追加します。
 Lab ごとに別の Agent を作る必要はありません。
 Labs 2〜6 ではこの 1 つの Prompt Agent を育てます。Lab 7 / 8 は別の Agent を
@@ -34,10 +34,10 @@ Labs 2〜6 ではこの 1 つの Prompt Agent を育てます。Lab 7 / 8 は別
 
 ## 使用する値
 
-PC に展開した `.workshop/context.json` を text editor で開き、
-`resource_outputs.<key>.value` の `foundry_project_name`、`primary_model_deployment_name`、
+Lab 1 のデプロイの **Outputs > resourceOutputs** で、
+`foundry_project_name`、`primary_model_deployment_name`、
 `search_service_name` を確認します。direct search index は
-`contoso-travel-policy` です。Azure ML Compute はまだ作成しません。
+`contoso-travel-policy` です。各項目の `value` を使います。
 
 ## 1. Prompt Agent を作成する
 

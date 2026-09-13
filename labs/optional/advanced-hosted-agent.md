@@ -8,7 +8,7 @@ workflow を **source-code remote build** で Hosted Agent としてデプロイ
 source deploy のままです**。このラボは、Lab 8 のコードとデプロイ結果をベースに、
 Hosted Agent の任意（optional）の拡張パターンを扱います。
 追加インフラは本編とは別の承認済み検証環境で扱います。Lab 1 の RG 手動作成、
-custom template、private ZIP 取得を置き換える setup ではありません。
+custom template、GitHub 共通教材・Codespaces を置き換える setup ではありません。
 
 > [!IMPORTANT]
 > このラボの内容はどれも、`scripts/deploy_hosted_agent.py` や `src/hosted-agent/` の
@@ -24,7 +24,7 @@ custom template、private ZIP 取得を置き換える setup ではありませ�
 Hosted Agent は本来、コンテナイメージとして Azure Container Registry (ACR) にビルド・push し、
 Foundry がそのイメージを pull して実行する仕組みが基本形です。本編は
 `dependency_resolution=REMOTE_BUILD` の source deploy（Foundry がサーバー側でビルドする方式）
-を使うことで、参加者が Docker や ACR を意識しなくて済むようにしています。次のような要件が
+を使うことで、参加者による Hosted イメージのビルド・ACR の準備を不要にしています。次のような要件が
 ある場合は、コンテナ／ACR 経由のデプロイを検討してください。
 
 - **コンプライアンス**: イメージを組織が既に運用する中央管理レジストリに置く必要がある。
@@ -39,7 +39,7 @@ Foundry がそのイメージを pull して実行する仕組みが基本形で
   （[azd 付録](azd-appendix.md)の「プロジェクトを初期化する」参照）。
 - `azd` の Foundry 拡張機能（`microsoft.foundry`）がインストール済み。
 - `azd auth login` で認証済みのセッション（**`az login` とは別の認証**です。本編の
-  Hosted execution は Azure ML の既存 Azure CLI 認証を使い、`azd auth login` は使いません — [azd 付録](azd-appendix.md)
+  Hosted execution は Dev Container 内で本人が行った Azure CLI 認証を使い、`azd auth login` は使いません — [azd 付録](azd-appendix.md)
   参照）。
 - 既存の ACR へのアクセスと、選んだビルド経路に必要な ACR ロール。
 

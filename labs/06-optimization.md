@@ -20,9 +20,9 @@ Lab 5 を実行できた場合は、`sample.output_items` / `sample.tool_calls`�
 
 ## 使用する値
 
-Lab 1 の private ZIP を PC に展開した `.workshop/context.json` の `resource_outputs.<key>.value` で
+Lab 1 のデプロイの **Outputs > resourceOutputs** で
 `evaluation_model_deployment_name` と `optimizer_model_deployment_name` がどちらも
-`gpt-5.5` であることを確認します。この output は必須です。欠落している場合は、
+`value = gpt-5.5` であることを確認します。この output は必須です。欠落している場合は、
 Lab 1 の custom template / Deployment Scripts の model deployment と validation を
 管理者と修復してから続行します。
 
@@ -32,7 +32,7 @@ GPT-5.5 は2026-09-09時点の
 **No supported optimization model** と表示される場合は重複したモデルを追加せず、
 講師に共有して対応状況を確認します。参考結果の読み方は
 [optimizer-run.simulated.json](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/dev-custom-template/instructor/completed-run-assets/optimizer-run.simulated.json)
-で確認できます。これは ZIP に含まれないオンラインの参考資料であり、実行結果ではありません。
+で確認できます。これは架空の参考資料であり、実行結果ではありません。
 
 ## 1. Optimization wizard を開く
 

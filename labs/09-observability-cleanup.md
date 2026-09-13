@@ -11,18 +11,23 @@ Foundry Portal の **Build > Agents > Traces** で、Lab 4 と Lab 8 の実行�
 
 ## 2. 成果物を保存し、Hosted Agent を削除する
 
-1. Azure ML の **User files** から、必要なノートブックと結果を PC へ **Export** します。
-2. Lab 8 のノートブックを **Python (Foundry Hosted Agent)** で開き、削除セルを実行します。
+1. VS Code の **File > Save All** で保存します。Codespaces では、必要なノートブックと結果を
+   Explorer の **Download...** で PC へ保存（Export）します。
+2. Lab 8 のノートブックを **Python (Foundry Hosted Agent)** で開き、削除セルの対象を確認して
+   表示された **Agent 名**（`contoso-travel-hosted-planner`）を入力します。
+   セルは管理用 `foundry-workshop` venv で削除を実行します。
 3. Hosted Agent と全 versions が削除済み、または存在しないことを確認します。
 
-## 3. Compute を停止・削除する
+## 3. Codespace を停止・削除する
 
-Azure ML Studio の **Compute > Compute instances** で、自分の対象を選びます。
+[Your codespaces](https://github.com/codespaces) で、この教材の Codespace を確認します。
 
-1. **Stop** を選び、**Stopped** まで待ちます。
-2. **Delete** を選び、一覧から消えたことを確認します。
+1. 対象の **… > Stop codespace** を選び、停止を確認します。
+2. 保存・Export が済んでいることを再確認して **… > Delete** を選びます。
+3. 一覧から消えたことを確認します。停止だけではストレージが残ります。
 
-Compute を作成していない場合は、この手順は不要です。
+ローカル Dev Container の場合は、ファイルを保存してこの教材のコンテナーを停止します。
+他のコンテナー、volume、ホストの Python 環境は削除しません。
 
 ## 4. 専用 RG を削除する
 
@@ -36,4 +41,4 @@ Compute を作成していない場合は、この手順は不要です。
 
 > [!IMPORTANT]
 > 削除するのは **自分の専用 RG だけ**です。必要な成果物の Export と、
-> Hosted Agent・Compute の削除を済ませてから RG を削除してください。
+> Hosted Agent・Codespace の削除を済ませてから RG を削除してください。

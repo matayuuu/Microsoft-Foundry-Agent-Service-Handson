@@ -14,6 +14,7 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from azure.core.credentials import TokenCredential
@@ -31,6 +32,21 @@ DEFAULT_SEARCH_INDEX_NAME = "contoso-travel-policy"
 DEFAULT_AGENT_NAME = "contoso-travel-assistant"
 DEFAULT_TOOLBOX_NAME = "contoso-travel-toolbox"
 SOURCE_REPOSITORY = "https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson"
+CONTEXT_SCHEMA_VERSION = "2.0"
+CONTEXT_KEYS = frozenset(
+    {
+        "schema_version",
+        "provisioning_method",
+        "setup_status",
+        "subscription_id",
+        "resource_group_name",
+        "location",
+        "source_base",
+        "source_revision",
+        "participant_object_id",
+        "resource_outputs",
+    }
+)
 CUSTOM_TEMPLATE_RESOURCE_OUTPUTS = (
     "resource_group_name",
     "location",
@@ -50,12 +66,6 @@ CUSTOM_TEMPLATE_RESOURCE_OUTPUTS = (
     "log_analytics_workspace_name",
     "application_insights_name",
     "application_insights_id",
-    "azureml_workspace_name",
-    "azureml_workspace_id",
-    "storage_account_name",
-    "storage_account_id",
-    "key_vault_name",
-    "key_vault_id",
     "search_connection_name",
     "knowledge_mcp_connection_name",
     "application_insights_connection_name",
@@ -64,8 +74,8 @@ CUSTOM_TEMPLATE_RESOURCE_OUTPUTS = (
     "foundry_portal_url",
 )
 CONTEXT_RECOVERY = (
-    "Check the custom-template deployment in Azure Portal, then download and extract "
-    "the completed workshop ZIP from the private workshop-files container."
+    "Sign in to Azure in the Dev Container, then run notebooks/00-setup.ipynb "
+    "with the subscription ID and resource group from your successful template deployment."
 )
 
 
@@ -150,6 +160,135 @@ def validate_source_revision(value: Any) -> str:
             "source_revision must be a published lowercase 40-character commit SHA."
         )
     return value
+
+
+def validate_workshop_context(
+    raw: Any,
+    *,
+    allowed_statuses: tuple[str, ...] = ("complete",),
+    expected_revision: str | None = None,
+    expected_subscription_id: str | None = None,
+    expected_resource_group: str | None = None,
+) -> dict[str, Any]:
+    """Validate the non-secret ARM boundary before persisting or using its endpoints."""
+    if not isinstance(raw, dict) or set(raw) != CONTEXT_KEYS:
+        raise WorkshopContextError("context must contain exactly the documented canonical fields.")
+    if (
+        raw["schema_version"] != CONTEXT_SCHEMA_VERSION
+        or raw["provisioning_method"] != "azure-custom-template"
+        or raw["setup_status"] not in allowed_statuses
+    ):
+        raise WorkshopContextError(
+            "context must describe a successful current workshop deployment."
+        )
+    revision = validate_source_revision(raw["source_revision"])
+    if (expected_revision is not None and revision != expected_revision) or raw[
+        "source_base"
+    ] != f"{SOURCE_REPOSITORY}/blob/{revision}":
+        raise WorkshopContextError("context source revision/base does not match the pinned source.")
+    participant = participant_object_id(raw)
+    subscription = raw["subscription_id"]
+    if (
+        not isinstance(subscription, str)
+        or re.fullmatch(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", subscription)
+        is None
+        or UUID(subscription).int == 0
+    ):
+        raise WorkshopContextError("subscription_id must be a valid nonzero UUID.")
+    group = raw["resource_group_name"]
+    if (
+        not isinstance(group, str)
+        or re.fullmatch(r"[\w.()-]{1,90}", group) is None
+        or group.endswith(".")
+        or raw["location"] != "japaneast"
+    ):
+        raise WorkshopContextError("resource_group_name or location is invalid.")
+    if (
+        expected_subscription_id is not None
+        and subscription.casefold() != expected_subscription_id.casefold()
+    ) or (
+        expected_resource_group is not None
+        and group.casefold() != expected_resource_group.casefold()
+    ):
+        raise WorkshopContextError(
+            "deployment context does not match the requested subscription/RG."
+        )
+    outputs = raw["resource_outputs"]
+    if not isinstance(outputs, dict) or set(outputs) != set(CUSTOM_TEMPLATE_RESOURCE_OUTPUTS):
+        raise WorkshopContextError(
+            "resource_outputs must contain exactly the template output keys."
+        )
+    values: dict[str, str] = {}
+    for key, entry in outputs.items():
+        value = entry.get("value") if isinstance(entry, dict) else None
+        if (
+            not isinstance(entry, dict)
+            or set(entry) != {"value"}
+            or not isinstance(value, str)
+            or not value.strip()
+            or value != value.strip()
+            or any(ord(character) < 32 for character in value)
+        ):
+            raise WorkshopContextError(f"resource output {key} must contain one nonempty value.")
+        values[key] = value
+        if (
+            key.endswith("_name")
+            and key != "resource_group_name"
+            and re.fullmatch(r"[A-Za-z0-9_.()-]{1,128}", value) is None
+        ):
+            raise WorkshopContextError(f"resource output {key} contains an invalid name.")
+    if (
+        values["resource_group_name"].casefold() != group.casefold()
+        or values["location"] != raw["location"]
+        or values["search_pricing_model"] != "dedicated"
+    ):
+        raise WorkshopContextError(
+            "resource outputs disagree with the context's group/configuration."
+        )
+    rg_id = f"/subscriptions/{subscription}/resourceGroups/{group}"
+    expected_ids = {
+        "foundry_project_id": (
+            f"{rg_id}/providers/Microsoft.CognitiveServices/accounts/"
+            f"{values['ai_services_account_name']}/projects/{values['foundry_project_name']}"
+        ),
+        "application_insights_id": (
+            f"{rg_id}/providers/Microsoft.Insights/components/{values['application_insights_name']}"
+        ),
+    }
+    for key, expected in expected_ids.items():
+        if values[key].casefold() != expected.casefold():
+            raise WorkshopContextError(f"{key} does not identify the expected resource in this RG.")
+    account = values["ai_services_account_name"]
+    expected_urls = {
+        "ai_services_endpoint": {
+            f"https://{account}.cognitiveservices.azure.com",
+            f"https://{account}.services.ai.azure.com",
+        },
+        "openai_endpoint": {f"https://{account}.openai.azure.com/openai/v1"},
+        "foundry_project_endpoint": {
+            f"https://{account}.services.ai.azure.com/api/projects/{values['foundry_project_name']}"
+        },
+        "search_service_endpoint": {f"https://{values['search_service_name']}.search.windows.net"},
+        "foundry_portal_url": {"https://ai.azure.com"},
+    }
+    for key, allowed in expected_urls.items():
+        if values[key].removesuffix("/") not in allowed:
+            raise WorkshopContextError(f"{key} must be the expected unsigned Azure HTTPS endpoint.")
+    fqdn = values["travel_api_fqdn"]
+    if (
+        re.fullmatch(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", fqdn) is None
+        or not fqdn.endswith(".azurecontainerapps.io")
+        or urlsplit(f"https://{fqdn}").hostname != fqdn
+    ):
+        raise WorkshopContextError("travel_api_fqdn must be an Azure Container Apps hostname.")
+    return {
+        **{key: raw[key] for key in CONTEXT_KEYS - {"resource_outputs"}},
+        "participant_object_id": participant,
+        "subscription_id": str(UUID(subscription)),
+        "resource_outputs": {
+            key: {"value": values[key]} for key in CUSTOM_TEMPLATE_RESOURCE_OUTPUTS
+        },
+    }
 
 
 def project_endpoint(context: dict[str, Any]) -> str:

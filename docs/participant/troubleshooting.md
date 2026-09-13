@@ -8,19 +8,21 @@
 | RG を作成できない | アカウント、サブスクリプション、作成権限。共有 RG で代用しません |
 | テンプレートを読み込めない | 管理者指定の `azuredeploy.json` 本体か確認。HTML ページは読み込めません |
 | デプロイ・初期化が失敗する | RG の **Deployments** と Deployment Scripts の **Logs** を確認。リージョン・モデルを変えず、管理者へ連絡 |
-| ZIP の取得が 403 になる | **Storage browser** の認証を **Microsoft Entra user account** に変更。解決しなければ対象の権限を管理者に確認 |
-| ZIP が見つからない・展開できない | 初期化の `status = complete` と、非公開の `workshop-files` を確認。以前の ZIP で続行しません |
-| モデルや接続先が見つからない | `.workshop/context.json` にある自分のプロジェクトを開いているか確認 |
-| Azure ML のカーネルが表示されない | [準備ガイド](environments/azure-ml.md)の設定ノートブックを完了し、画面を更新 |
+| モデルや接続先が見つからない | Lab 1 の **Outputs > resourceOutputs** にある自分のプロジェクトを開いているか確認 |
+| Codespace を作れない | GitHub アカウント、利用枠、組織の Codespaces ポリシーを確認 |
+| カーネルが表示されない | Dev Container の post-create 完了を確認し、VS Code のカーネル一覧を更新。[準備ガイド](environments/codespaces.md)参照 |
+| Notebook で認証エラー | コンテナーの Terminal で Azure CLI にサインインしたか確認。Portal のログインだけでは使えません |
+| 初回設定で対象が見つからない・曖昧になる | subscription ID / RG 名と **Succeeded** の deployment を確認。複数候補は管理者へ相談し、推測で選びません |
+| 接続先の不一致で初回設定が止まる | 既存の `.workshop/context.json` と今回の対象を確認。別環境の設定を上書きして続けません |
 | RG を削除できない | [Lab 9](../../labs/09-observability-cleanup.md) の順序と **Activity log** を確認。ロックなどは管理者へ相談 |
-
-ZIP の取得に公開リンク、SAS、アカウントキーは使いません。
 
 ## Lab 4 のファイル
 
-Skill は PC の `portal-assets/` 内にある ZIP をアップロードします。
-`travel-ops.openapi.json` は内容全体を **OpenAPI 3.0+ schema** に貼り付けます。
-この欄はファイルのアップロードではありません。
+Skill は [Lab 4 の GitHub リンク](../../labs/04-tools-toolbox.md)から PC に保存した ZIP を
+アップロードします。直下に `SKILL.md` がある ZIP を使い、Markdown 単体は選びません。
+`travel-ops.openapi.json` は `servers[0].url` を **Outputs > travelApiBaseUrl** に置換してから、
+JSON 全体を **OpenAPI 3.0+ schema** に貼り付けます。
+404 や HTML が表示される場合は、リンク先と保存したファイルを管理者へ確認します。
 
 ## 引用リンク
 

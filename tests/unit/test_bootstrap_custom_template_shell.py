@@ -41,6 +41,7 @@ def environment(root: Path) -> dict[str, str]:
         "WORKSHOP_SOURCE_REVISION": REVISION,
         "WORKSHOP_CONTEXT_JSON": json.dumps(
             {
+                "schema_version": "2.0",
                 "source_revision": REVISION,
                 "source_base": (
                     "https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson"
@@ -48,7 +49,6 @@ def environment(root: Path) -> dict[str, str]:
                 ),
             }
         ),
-        "WORKSHOP_ARTIFACT_CONTAINER": "workshop-files",
         "AZ_SCRIPTS_OUTPUT_PATH": str(root / "deployment-output.json"),
     }
 
@@ -146,7 +146,6 @@ def test_archive_rejects_duplicate_entries_and_expansion_limit(
         ("WORKSHOP_SOURCE_REVISION", "A" * 40),
         ("WORKSHOP_SOURCE_REVISION", "a" * 39),
         ("WORKSHOP_SOURCE_REVISION", "a" * 41),
-        ("WORKSHOP_ARTIFACT_CONTAINER", "public-files"),
         ("WORKSHOP_CONTEXT_JSON", "null"),
         ("AZ_SCRIPTS_OUTPUT_PATH", "relative-output.json"),
     ],
@@ -178,6 +177,17 @@ def test_wrapper_requires_matching_context_revision_and_source(
     context["source_base"] = "https://untrusted.invalid/source"
     values["WORKSHOP_CONTEXT_JSON"] = json.dumps(context)
     with pytest.raises(RuntimeError, match="fixed workshop repository"):
+        runtime.validate_environment(values)
+
+
+def test_runtime_rejects_the_retired_context_schema(
+    runtime: types.ModuleType, tmp_path: Path
+) -> None:
+    values = environment(tmp_path)
+    context = json.loads(values["WORKSHOP_CONTEXT_JSON"])
+    context["schema_version"] = "1.0"
+    values["WORKSHOP_CONTEXT_JSON"] = json.dumps(context)
+    with pytest.raises(RuntimeError, match=r"schema version 2\.0"):
         runtime.validate_environment(values)
 
 

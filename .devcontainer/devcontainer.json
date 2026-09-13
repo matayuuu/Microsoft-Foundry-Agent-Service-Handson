@@ -1,0 +1,58 @@
+{
+  "name": "Foundry Workshop",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/python:1.8.0": {
+      "version": "3.12.14",
+      "installPath": "/usr/local/python",
+      "installTools": false,
+      "installJupyterlab": false
+    },
+    "ghcr.io/devcontainers/features/azure-cli:1.3.0": {
+      "version": "2.90.0",
+      "extensions": "",
+      "installBicep": false
+    }
+  },
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "WORKSHOP_MANAGEMENT_PYTHON": "/home/vscode/.venvs/foundry-workshop/bin/python",
+    "WORKSHOP_HOSTED_PYTHON": "/home/vscode/.venvs/foundry-hosted-agent/bin/python",
+    "PYTHONNOUSERSITE": "1",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+  },
+  "postCreateCommand": [
+    "python3.12",
+    "scripts/setup_dev_environment.py"
+  ],
+  "waitFor": "postCreateCommand",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "charliermarsh.ruff"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/home/vscode/.venvs/foundry-workshop/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "remote.autoForwardPorts": false,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+          }
+        }
+      }
+    }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  }
+}

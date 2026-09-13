@@ -49,8 +49,8 @@ def validate_environment(environment):
     expected_source = f"https://github.com/{REPOSITORY}/blob/{revision}"
     if context.get("source_base") != expected_source:
         fail("inputs", "context.source_base must reference the fixed workshop repository and SHA.")
-    if environment.get("WORKSHOP_ARTIFACT_CONTAINER") != "workshop-files":
-        fail("inputs", "WORKSHOP_ARTIFACT_CONTAINER must be workshop-files.")
+    if context.get("schema_version") != "2.0":
+        fail("inputs", "WORKSHOP_CONTEXT_JSON must use the current schema version 2.0.")
     output = environment.get("AZ_SCRIPTS_OUTPUT_PATH", "")
     if not output or not Path(output).is_absolute():
         fail("inputs", "AZ_SCRIPTS_OUTPUT_PATH must be supplied by Azure Deployment Scripts.")

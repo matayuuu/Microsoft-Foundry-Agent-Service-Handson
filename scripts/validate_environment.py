@@ -261,7 +261,7 @@ def validate_context_metadata(context: dict[str, Any]) -> CheckResult:
     if context.get("setup_status") not in ("infrastructure-ready", "complete"):
         return CheckResult("context-metadata", "fail", "context setup_status is not ready.")
     if (
-        context.get("schema_version") != "1.0"
+        context.get("schema_version") != "2.0"
         or context.get("provisioning_method") != "azure-custom-template"
     ):
         return CheckResult(
@@ -501,7 +501,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     search_name = _output_value(outputs, "search_service_name")
     container_name = _output_value(outputs, "travel_api_container_app_name")
     travel_fqdn = _output_value(outputs, "travel_api_fqdn")
-    azureml_id = _output_value(outputs, "azureml_workspace_id")
 
     resources = {
         "arm-foundry-account-exists": (
@@ -519,7 +518,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             if container_name
             else ""
         ),
-        "arm-azureml-workspace-exists": azureml_id,
     }
     for label, resource_id in resources.items():
         if resource_id:

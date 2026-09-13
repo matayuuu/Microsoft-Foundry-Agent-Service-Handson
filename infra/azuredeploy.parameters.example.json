@@ -6,19 +6,19 @@
       "value": "japaneast"
     },
     "primaryModelVersion": {
-      "value": "REPLACE_WITH_ADMIN_VERIFIED_VERSION"
+      "value": "2026-07-09"
     },
     "evaluationModelVersion": {
-      "value": "REPLACE_WITH_ADMIN_VERIFIED_VERSION"
+      "value": "2026-04-24"
     },
     "embeddingModelVersion": {
-      "value": "REPLACE_WITH_ADMIN_VERIFIED_VERSION"
+      "value": "1"
     },
     "travelApiImageRef": {
-      "value": "ghcr.io/<owner>/<image>@sha256:<verified-64-lowercase-hex-digest>"
+      "value": "ghcr.io/matayuuu/travel-ops-api@sha256:173f7e954cd284057bf2a2fe10d53efae83547a060ec2ac23172dd5458816dcf"
     },
     "sourceRevision": {
-      "value": "REPLACE_WITH_PUBLISHED_40_CHARACTER_SHA"
+      "value": "223a74f219078ededb21a27258501182da7a6432"
     },
     "participantObjectIdOverride": {
       "value": ""

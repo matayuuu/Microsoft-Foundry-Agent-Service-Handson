@@ -39,9 +39,6 @@ ROLE_IDS = {
     "privilegedMonitoringDataReader": "dbc9c667-e97f-4491-aee6-90b9cf960190",
     "monitoringMetricsPublisher": "3913510d-42f4-4e42-8a64-420c390055eb",
     "cognitiveServicesOpenAIUser": "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd",
-    "azuremlDataScientist": "f6c7c914-8db3-469d-8ca1-694a8f32e121",
-    "storageBlobDataContributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
-    "keyVaultSecretsUser": "4633458b-17de-408a-b874-0445c86b69e6",
     "reader": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
 }
 OUTPUT_KEYS = {
@@ -63,12 +60,6 @@ OUTPUT_KEYS = {
     "log_analytics_workspace_name",
     "application_insights_name",
     "application_insights_id",
-    "azureml_workspace_name",
-    "azureml_workspace_id",
-    "storage_account_name",
-    "storage_account_id",
-    "key_vault_name",
-    "key_vault_id",
     "search_connection_name",
     "knowledge_mcp_connection_name",
     "application_insights_connection_name",
@@ -297,13 +288,8 @@ def test_template_is_compiled_resource_group_only_with_an_exact_inventory(templa
             APP_INSIGHTS: 1,
             APP_ENVIRONMENT: 1,
             APP: 1,
-            STORAGE: 1,
-            BLOB_SERVICE: 1,
-            CONTAINER: 1,
-            KEY_VAULT: 1,
-            AML: 1,
             UAMI: 1,
-            ROLES: 21,
+            ROLES: 17,
             CONNECTIONS: 3,
             SCRIPT: 1,
         }
@@ -321,41 +307,54 @@ def test_template_is_compiled_resource_group_only_with_an_exact_inventory(templa
     assert "targetScope = 'resourceGroup'" in (INFRA / "main.bicep").read_text(encoding="utf-8")
 
 
-def test_exact_parameter_boundary_and_inert_example(template):
+def test_exact_parameter_boundary_and_release_defaults(template):
     parameters = template["parameters"]
     assert parameters.keys() == PARAMETERS
     assert all(item["type"] == "string" for item in parameters.values())
     assert parameters["location"]["allowedValues"] == ["japaneast"]
     assert parameters["location"]["defaultValue"] == "japaneast"
-    assert {name for name, value in parameters.items() if "defaultValue" in value} == {
-        "location",
-        "participantObjectIdOverride",
-        "bootstrapRunId",
-    }
+    assert {name for name, value in parameters.items() if "defaultValue" in value} == PARAMETERS
+    for name, item in parameters.items():
+        value = item["defaultValue"]
+        assert isinstance(value, str)
+        assert item.get("minLength", 0) <= len(value) <= item.get("maxLength", len(value))
+        if name != "participantObjectIdOverride":
+            assert value
     for model in ("primary", "evaluation", "embedding"):
         assert parameters[f"{model}ModelVersion"]["minLength"] >= 1
+    for model in ("primary", "evaluation"):
+        assert re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}", parameters[f"{model}ModelVersion"]["defaultValue"]
+        )
+    assert re.fullmatch(r"\d+", parameters["embeddingModelVersion"]["defaultValue"])
     assert parameters["sourceRevision"]["minLength"] == 40
     assert parameters["sourceRevision"]["maxLength"] == 40
     assert parameters["travelApiImageRef"]["minLength"] >= 83
     assert parameters["travelApiImageRef"]["maxLength"] <= 256
     assert parameters["participantObjectIdOverride"]["defaultValue"] == ""
     assert parameters["bootstrapRunId"]["defaultValue"] == "1"
+
+    inputs = InputExpressions(template)
+    revision = parameters["sourceRevision"]["defaultValue"]
+    assert inputs.variable("validatedSourceRevision") == revision
+    assert inputs.variable("sourceBase") == (
+        f"https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/{revision}"
+    )
+    assert (
+        inputs.variable("validatedTravelApiImageRef")
+        == (parameters["travelApiImageRef"]["defaultValue"])
+    )
+
+
+def test_parameter_example_matches_all_release_defaults(template):
     example = json.loads(
         (INFRA / "azuredeploy.parameters.example.json").read_text(encoding="utf-8")
     )
     assert example["parameters"].keys() == PARAMETERS
     assert all(item.keys() == {"value"} for item in example["parameters"].values())
-    for model in ("primary", "evaluation", "embedding"):
-        assert example["parameters"][f"{model}ModelVersion"]["value"] == (
-            "REPLACE_WITH_ADMIN_VERIFIED_VERSION"
-        )
-    inputs = InputExpressions(
-        template, **{key: value["value"] for key, value in example["parameters"].items()}
-    )
-    with pytest.raises(InputFailure):
-        inputs.variable("validatedSourceRevision")
-    with pytest.raises(InputFailure):
-        inputs.variable("validatedTravelApiImageRef")
+    assert {key: item["value"] for key, item in example["parameters"].items()} == {
+        key: item["defaultValue"] for key, item in template["parameters"].items()
+    }
 
 
 @pytest.mark.parametrize("revision", ["0123456789abcdef" * 2 + "01234567", "0" * 40])
@@ -458,9 +457,6 @@ def test_resource_names_do_not_change_when_source_or_run_id_changes(template):
         "appInsights": "appi-fdyws-",
         "containerEnvironment": "cae-fdyws-",
         "travelApi": "ca-travel-api-",
-        "azureml": "mlw-fdyws-",
-        "storage": "stfdyws",
-        "keyVault": "kv-fdyws-",
         "bootstrapIdentity": "id-fdyws-bootstrap-",
         "bootstrap": "ds-fdyws-bootstrap-",
     }
@@ -501,7 +497,7 @@ def test_foundry_and_search_keep_the_keyless_basic_configuration(template):
         "disableLocalAuth": True,
         "publicNetworkAccess": "Enabled",
     }
-    for kind in (FOUNDRY, PROJECT, SEARCH, APP, AML):
+    for kind in (FOUNDRY, PROJECT, SEARCH, APP):
         assert resource(template, kind)["identity"] == {"type": "SystemAssigned"}
 
 
@@ -574,52 +570,16 @@ def test_monitoring_and_container_api_preserve_existing_settings(template):
     ]
 
 
-def test_aml_storage_is_private_oauth_default_without_breaking_shared_key_compatibility(template):
-    storage = resource(template, STORAGE)
-    assert storage["kind"] == "StorageV2"
-    assert storage["sku"] == {"name": "Standard_LRS"}
-    assert storage["properties"] == {
-        "accessTier": "Hot",
-        "publicNetworkAccess": "Enabled",
-        "supportsHttpsTrafficOnly": True,
-        "minimumTlsVersion": "TLS1_2",
-        "allowSharedKeyAccess": True,
-        "allowBlobPublicAccess": False,
-        "defaultToOAuthAuthentication": True,
-    }
-    container = resource(template, CONTAINER)
-    assert container["properties"] == {"publicAccess": "None"}
-    assert node(container["name"]) == call(
-        "format",
-        literal("{0}/{1}/{2}"),
-        node(storage["name"]),
-        literal("default"),
-        literal("workshop-files"),
-    )
-    vault = resource(template, KEY_VAULT)
-    assert vault["properties"]["enableRbacAuthorization"] is True
-    assert vault["properties"]["accessPolicies"] == []
-    assert vault["properties"]["publicNetworkAccess"] == "Enabled"
-    assert vault["properties"]["softDeleteRetentionInDays"] == 7
-    assert "enablePurgeProtection" not in vault["properties"]
-    workspace = resource(template, AML)
-    assert workspace["apiVersion"] == "2025-06-01"
-    assert workspace["sku"] == {"name": "Basic", "tier": "Basic"}
-    assert normalized(workspace["properties"]) == {
-        "applicationInsights": resource_id(resource(template, APP_INSIGHTS)),
-        "keyVault": resource_id(vault),
-        "storageAccount": resource_id(storage),
-        "publicNetworkAccess": "Enabled",
-        "hbiWorkspace": False,
-        "v1LegacyMode": False,
-    }
+def test_container_execution_does_not_provision_aml_or_permanent_artifact_storage(template):
+    for kind in (AML, STORAGE, BLOB_SERVICE, CONTAINER, KEY_VAULT):
+        assert resources(template, kind) == []
+    assert not any(item["type"].startswith(f"{AML}/") for item in template["resources"])
 
 
 def expected_grants(template):
     principal = expression("[variables('participantObjectId')]")
     project = reference(resource(template, PROJECT), "identity", "principalId", full=True)
     search = reference(resource(template, SEARCH), "identity", "principalId", full=True)
-    aml = reference(resource(template, AML), "identity", "principalId", full=True)
     bootstrap = reference(resource(template, UAMI), "principalId")
     entries = [
         (principal, "User", FOUNDRY, "foundryUser"),
@@ -628,9 +588,6 @@ def expected_grants(template):
         (principal, "User", SEARCH, "searchIndexDataContributor"),
         (principal, "User", LOG_ANALYTICS, "logAnalyticsReader"),
         (principal, "User", APP_INSIGHTS, "privilegedMonitoringDataReader"),
-        (principal, "User", AML, "azuremlDataScientist"),
-        (principal, "User", STORAGE, "storageBlobDataContributor"),
-        (aml, "ServicePrincipal", KEY_VAULT, "keyVaultSecretsUser"),
         (project, "ServicePrincipal", FOUNDRY, "foundryUser"),
         (project, "ServicePrincipal", SEARCH, "searchIndexDataContributor"),
         (project, "ServicePrincipal", SEARCH, "searchServiceContributor"),
@@ -642,7 +599,6 @@ def expected_grants(template):
         (bootstrap, "ServicePrincipal", SEARCH, "searchServiceContributor"),
         (bootstrap, "ServicePrincipal", SEARCH, "searchIndexDataContributor"),
         (bootstrap, "ServicePrincipal", None, "reader"),
-        (bootstrap, "ServicePrincipal", CONTAINER, "storageBlobDataContributor"),
     ]
     return {
         (
@@ -659,7 +615,7 @@ def expected_grants(template):
     }
 
 
-def test_all_rbac_grants_are_exact_scoped_and_do_not_duplicate_the_aml_automatic_grant(template):
+def test_all_rbac_grants_are_exact_and_scoped_to_the_remaining_services(template):
     assert template["variables"]["roleIds"] == ROLE_IDS
     grants = resources(template, ROLES)
     actual = {
@@ -671,7 +627,7 @@ def test_all_rbac_grants_are_exact_scoped_and_do_not_duplicate_the_aml_automatic
         )
         for item in grants
     }
-    assert len(actual) == len(grants) == 21
+    assert len(actual) == len(grants) == 17
     assert actual == expected_grants(template)
     for item in grants:
         assert item["apiVersion"] == "2022-04-01"
@@ -686,7 +642,7 @@ def test_all_rbac_grants_are_exact_scoped_and_do_not_duplicate_the_aml_automatic
             assert name[2][1] == principal
         else:
             assert name[2][1] in {
-                resource_id(resource(template, kind)) for kind in (PROJECT, SEARCH, AML, UAMI)
+                resource_id(resource(template, kind)) for kind in (PROJECT, SEARCH, UAMI)
             }
 
 
@@ -766,7 +722,7 @@ def test_connections_preserve_the_complete_preview_wire_contract(template):
     assert re.search(r"\bany\s*\(", source) is None
 
 
-def test_bootstrap_has_a_dedicated_identity_private_artifact_and_bounded_lifecycle(template):
+def test_bootstrap_has_a_dedicated_identity_and_bounded_data_initialization(template):
     script = resource(template, SCRIPT)
     assert script["apiVersion"] == "2023-08-01"
     assert script["kind"] == "AzureCLI"
@@ -799,16 +755,14 @@ def test_bootstrap_has_a_dedicated_identity_private_artifact_and_bounded_lifecyc
         expression("[parameters('bootstrapRunId')]"),
     )
     environment = properties["environmentVariables"]
-    assert len(environment) == 3
+    assert len(environment) == 2
     assert all(item.keys() == {"name", "value"} for item in environment)
     values = {item["name"]: item["value"] for item in environment}
     assert values.keys() == {
         "WORKSHOP_SOURCE_REVISION",
         "WORKSHOP_CONTEXT_JSON",
-        "WORKSHOP_ARTIFACT_CONTAINER",
     }
     assert values["WORKSHOP_SOURCE_REVISION"] == "[variables('validatedSourceRevision')]"
-    assert values["WORKSHOP_ARTIFACT_CONTAINER"] == "workshop-files"
 
 
 def test_bootstrap_waits_for_every_resource_connection_and_grant(template):
@@ -859,7 +813,12 @@ def test_embedded_script_is_the_actual_entrypoint_normalized_for_linux(template)
 
 def test_resource_outputs_and_embedded_context_have_the_exact_canonical_shape(template):
     outputs = template["outputs"]
-    assert outputs.keys() == {"resourceOutputs", "participantDownload", "storagePortalUrl"}
+    assert outputs.keys() == {
+        "resourceOutputs",
+        "workshopContext",
+        "travelApiBaseUrl",
+        "foundryPortalUrl",
+    }
     assert outputs["resourceOutputs"]["type"] == "object"
     values = outputs["resourceOutputs"]["value"]
     assert values.keys() == OUTPUT_KEYS
@@ -869,18 +828,12 @@ def test_resource_outputs_and_embedded_context_have_the_exact_canonical_shape(te
         ("search_service_name", SEARCH),
         ("log_analytics_workspace_name", LOG_ANALYTICS),
         ("application_insights_name", APP_INSIGHTS),
-        ("azureml_workspace_name", AML),
-        ("storage_account_name", STORAGE),
-        ("key_vault_name", KEY_VAULT),
         ("travel_api_container_app_name", APP),
     ]:
         assert values[key]["value"] == resource(template, kind)["name"]
     for key, kind in [
         ("foundry_project_id", PROJECT),
         ("application_insights_id", APP_INSIGHTS),
-        ("azureml_workspace_id", AML),
-        ("storage_account_id", STORAGE),
-        ("key_vault_id", KEY_VAULT),
     ]:
         assert node(values[key]["value"]) == resource_id(resource(template, kind))
     for key, expected in {
@@ -923,7 +876,7 @@ def test_resource_outputs_and_embedded_context_have_the_exact_canonical_shape(te
     )
     assert serialized[:2] == ("call", "string")
     assert unpack(serialized[2][0]) == {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "provisioning_method": "azure-custom-template",
         "setup_status": "infrastructure-ready",
         "subscription_id": expression("[subscription().subscriptionId]"),
@@ -936,21 +889,18 @@ def test_resource_outputs_and_embedded_context_have_the_exact_canonical_shape(te
     }
 
 
-def test_download_outputs_are_allowlisted_script_results_not_invented_success_or_credentials(
+def test_context_outputs_are_gated_by_initialization_and_have_no_download_credentials(
     template,
 ):
-    download = template["outputs"]["participantDownload"]
-    assert download["type"] == "object"
-    assert download["value"].keys() == {
-        "status",
-        "storage_account_name",
-        "container_name",
-        "blob_name",
-        "sha256",
-        "source_revision",
+    context = template["outputs"]["workshopContext"]
+    assert context["type"] == "object"
+    value = node(context["value"])
+    assert value[:2] == ("call", "union")
+    completed = unpack(value[2][1])
+    assert completed == {
+        "setup_status": reference(resource(template, SCRIPT), "outputs", "status"),
+        "source_revision": reference(resource(template, SCRIPT), "outputs", "source_revision"),
     }
-    for key, value in download["value"].items():
-        assert node(value) == reference(resource(template, SCRIPT), "outputs", key)
     surfaces = {
         "outputs": template["outputs"],
         "environment": resource(template, SCRIPT)["properties"]["environmentVariables"],
@@ -968,8 +918,9 @@ def test_download_outputs_are_allowlisted_script_results_not_invented_success_or
         "primaryendpoints.blob",
     ):
         assert forbidden not in serialized
-    assert node(template["outputs"]["storagePortalUrl"]["value"]) == call(
+    assert node(template["outputs"]["travelApiBaseUrl"]["value"]) == call(
         "format",
-        literal("https://portal.azure.com/#resource{0}/overview"),
-        resource_id(resource(template, STORAGE)),
+        literal("https://{0}"),
+        reference(resource(template, APP), "configuration", "ingress", "fqdn"),
     )
+    assert template["outputs"]["foundryPortalUrl"]["value"] == "https://ai.azure.com"

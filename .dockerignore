@@ -1,0 +1,16 @@
+.git
+.workshop
+.azure
+.terraform
+.env
+.env.*
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+artifacts
+results

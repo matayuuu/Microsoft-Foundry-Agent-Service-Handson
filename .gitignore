@@ -41,6 +41,8 @@ crash.log
 artifacts/
 results/
 *.zip
+!/assets/skills/travel-estimation.zip
+!/assets/skills/preapproval-simulation.zip
 
 # Editors and operating systems
 .DS_Store

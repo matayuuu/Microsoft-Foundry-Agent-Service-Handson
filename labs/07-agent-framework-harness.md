@@ -14,16 +14,10 @@ Notebook で次の 2 つを順に作ります。
 Lab 4 で公開した Skills は、この Lab で初めて `load_skill` により本文を読み込みます。
 Toolbox へ登録しただけの状態と、Agent が実際に利用した状態の違いを実行記録で確認します。
 
-> [!IMPORTANT]
-> この Lab は Notebook 上で Agent をローカル実行しますが、モデル推論、Foundry IQ、
-> Toolbox tools、Web Search は Azure 上のサービスを呼び出します。教材の合成データだけを
-> 入力し、secret、顧客情報、個人情報を送信しないでください。
-
 > [!WARNING]
-> モデル、Foundry IQ、Code Interpreter、Web Search の利用には料金が発生します。
-> Harness Agent の loop には反復上限を設定しています。同じ cell を結果待ちの間に再実行
-> しないでください。既定の 40K TPM deployment で急な連続呼び出しを避けるため、model call
-> の間に最大 20 秒ほど待つことがあります。
+> Agent は Notebook のコンテナー内で実行しますが、モデル、Foundry IQ、
+> Toolbox tools は Azure のサービスを呼び出し、料金が発生します。
+> 結果待ちの cell を重複実行しないでください。
 
 ## 通常の Agent と Harness Agent
 
@@ -39,28 +33,22 @@ Toolbox へ登録しただけの状態と、Agent が実際に利用した状態
 複雑な作業を 1 つの Agent 内で管理しやすくした構成です。複数 Agent を明示的につなぐ方法は
 次の Lab 8 で、通常 Agent だけを使って扱います。
 
-## 1. Azure ML を準備して Notebook を開く
+## 1. Codespaces を準備して Notebook を開く
 
-1. **この Lab の開始時に初めて** [Azure ML 実行環境](../docs/participant/environments/azure-ml.md)
-   に従い、Lab 1 の custom template が作成した workspace を開きます。
-2. **Standard_DS3_v2** Compute instance を **Idle shutdown** 有効で作成します。
-3. Lab 1 の private ZIP を PC に展開した最上位 `Microsoft-Foundry-Agent-Service-Handson`
-   folder を **Notebooks > User files > Upload folder** へ upload。
-   `.workshop/context.json`、`scripts/`、`notebooks/`、`src/`、必要な `tests/` を含む構成を保ちます。
-4. `notebooks/00-azureml-setup.ipynb` を built-in **Python 3.10 - SDK v2** で実行し、
-   2 kernels を作成します。
-5. Azure ML Studio の **Notebooks > User files** で
+1. [Codespaces の準備](../docs/participant/environments/codespaces.md)に従い、
+   コンテナーの Terminal で Azure CLI にサインインします。
+   ローカルの方は[同じ Dev Container](../docs/participant/environments/local-dev-container.md)を使います。
+2. `notebooks/00-setup.ipynb` を **Python (Foundry Workshop)** で実行し、
+   subscription ID と RG 名から `.workshop/context.json` を作成します。
+3. VS Code の Explorer で
    [`notebooks/07-agent-framework-harness.ipynb`](../notebooks/07-agent-framework-harness.ipynb)
    を開きます。
-6. kernel に **Python (Foundry Hosted Agent)** を選択します。
-   `foundry-hosted-agent` Conda environment を指すことを確認します。
-   root の **Python (Foundry Workshop)** は選びません。
-7. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばしません。
+4. kernel に **Python (Foundry Hosted Agent)**（`foundry-hosted-agent`、Python 3.13）を選択します。
+5. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばしません。
 
-Notebook は download bundle 内の `.workshop/context.json` の `resource_outputs.<key>.value` を読みます。
-接続先や model deployment を
-手入力する必要はありません。認証には Azure ML Terminal で行った `az login --use-device-code` を使い、API key や
-client secret は使いません。
+Notebook・source・scripts はリポジトリに揃っています。手動で集めたりアップロードしたりしません。
+Notebook は `.workshop/context.json` の `resource_outputs.<key>.value` を読むため、
+接続先や model deployment の手入力は不要です。
 Notebook を保存しても、実行中の session、todos、memory が保存されるわけではありません。
 kernel を再起動した場合は接続セルから必要なセルを順番に再実行し、plan の確認もやり直します。
 
@@ -166,7 +154,7 @@ Lab 8 は、この Notebook の session、todos、memory、出力を引き継ぎ
 Lab 8 は `intake_agent`、`policy_agent`、`reviewer_agent` という通常 Agent の
 sequential workflow です。Lab 3 の Foundry IQ が準備できていれば、経験者は
 Lab 7 の Agent 実行を省略して Lab 8 へ進めます。ただし、この Lab の環境準備
-（Compute、folder upload、`00-azureml-setup.ipynb`、2 kernels）は省略できません。
+（共通 Dev Container、Azure CLI サインイン、`00-setup.ipynb`）は省略できません。
 
 連続して受講する場合は、この Lab で単一 Agent 内の仕組みを観察してから、Lab 8 で
 複数の通常 Agent に役割を分ける構成と比較してください。
