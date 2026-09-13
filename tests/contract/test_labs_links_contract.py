@@ -209,7 +209,7 @@ def test_portal_labs_read_arm_outputs_without_requiring_local_context() -> None:
         assert ".workshop/context.json" not in text
     for index in (3, 5, 6):
         assert "gpt-5.5" in read(CORE_LABS[index])
-    assert "AAD Search resource connection" in read(CORE_LABS[2])
+    assert "Microsoft Entra ID 認証の Azure AI Search connection" in read(CORE_LABS[2])
 
 
 def test_lab_four_downloads_shared_zip_files_and_replaces_only_the_openapi_server() -> None:
