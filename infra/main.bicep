@@ -31,7 +31,7 @@ param travelApiImageRef string = 'ghcr.io/matayuuu/travel-ops-api@sha256:173f7e9
 @description('Release-pinned published lowercase 40-character commit SHA in matayuuu/Microsoft-Foundry-Agent-Service-Handson. Keep the default; it supplies bootstrap source and policy citations.')
 @minLength(40)
 @maxLength(40)
-param sourceRevision string = '2895a0125288d0c4dd84dfbb2387cc0e132b16ea'
+param sourceRevision string = '05bd80776c0091ae03d8cfae9312a14b0db00b5f'
 
 @description('Intended participant Entra User object ID. Leave empty only when the participant deploys personally. Specify the same participant for administrator/automation redeployment.')
 @maxLength(36)

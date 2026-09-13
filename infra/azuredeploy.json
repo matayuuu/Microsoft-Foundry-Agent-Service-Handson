@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "13287367865396054313"
+      "templateHash": "3150412189267918458"
     },
     "description": "Deploy the Foundry workshop into the dedicated resource group already created in Azure Portal."
   },
@@ -58,7 +58,7 @@
     },
     "sourceRevision": {
       "type": "string",
-      "defaultValue": "2895a0125288d0c4dd84dfbb2387cc0e132b16ea",
+      "defaultValue": "05bd80776c0091ae03d8cfae9312a14b0db00b5f",
       "minLength": 40,
       "maxLength": 40,
       "metadata": {
