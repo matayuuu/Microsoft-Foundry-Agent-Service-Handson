@@ -84,13 +84,15 @@ task-level/custom rubric/Trace で確認する対象であり、Optimizer の li
 
 ## 4. Criteria を選択する
 
-**Criteria** では、Lab 1 で登録したカスタム評価器 **Contoso Travel Rubric** の行に
-チェックを付け、**Next** を選択します。この演習では、ほかの評価器は追加しません。
+**Criteria** では、Lab 1 で登録したカスタム評価器
+**[Contoso Travel Rubric](../docs/participant/contoso-travel-rubric.md)** の行にチェックを付け、
+**Next** を選択します。この演習では、ほかの評価器は追加しません。
 
-この rubric は回答と期待する振る舞いを task-level で比較します。Tool Search の
-`tool_search` / `call_tool` の選択と、その内側の実 operation の正確さを 1 つの process score
-として扱いません。候補ごとの Conversation / Trace で 2 層を確認します。Code Interpreter や
-Web Search を使う別 dataset に ToolInputAccuracy 等を適用しないでください。
+この rubric は、規程準拠、引用、Tool 利用、対象範囲と安全上の制約という固定の 4 評価軸で
+回答を task-level で採点します。Tool Search の `tool_search` / `call_tool` の選択と、その内側の
+実 operation の正確さを 1 つの process score として扱いません。候補ごとの Conversation / Trace で
+2 層を確認します。Code Interpreter や Web Search を使う別 dataset に ToolInputAccuracy 等を
+適用しないでください。
 
 ![Optimizer の custom rubric 選択](../docs/images/lab06-optimizer-criteria.png)
 

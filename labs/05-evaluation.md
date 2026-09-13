@@ -3,7 +3,7 @@
 ## ゴール
 
 Microsoft Foundry Portal で、Lab 1 の Deployment Scripts が登録した合成 test data を使い
-`contoso-travel-assistant` を end-to-end で評価します。Lab 本編では Python を使いません。
+`contoso-travel-assistant` を end-to-end で評価します。
 
 Lab 4 までで作った Agent に同じ質問集を実行し、**回答と tool の使い方から改善点を見つけます。**
 
@@ -15,15 +15,6 @@ Agent に `gpt-5.6-luna`、設定可能な LLM judge（採点役）に `gpt-5.5`
 > この Lab では 7 件の合成データに限定します。
 
 Lab 4 の MCP 自動承認設定まで保存した Agent を使います。
-
-## 0. 共通 GPT-5.5 deployment を確認する
-
-Lab 1 のデプロイの **Outputs > resourceOutputs** で
-`evaluation_model_deployment_name.value` が `gpt-5.5` であることを確認します。
-Foundry IQ、Lab 5、Lab 6 は
-同じ必須の GPT-5.5 deployment を共有します。値が欠落している場合は Lab 1 の
-model deployment と Deployment Scripts の validation を管理者と修復してから続行します。
-リソース作成だけを成功とせず、bootstrap の `status = complete` を確認します。
 
 ## 1. Evaluation を作成する
 
@@ -50,11 +41,31 @@ model deployment と Deployment Scripts の validation を管理者と修復し�
 ![合成 dataset の選択](../docs/images/lab05-data-selection.png)
 
 この dataset は Lab 1 の Python adapter が `data/eval/live_subset.jsonl` から登録した架空データです。
-Skill のアップロードに使われた `skill_...` という項目が表示されても、それは選びません。
-**Field mapping** が開いた場合は、dataset の `query` を `query` に割り当てます。
 新しいデータは生成せず、登録済みの 7 件を使います。
 
-## 3. Agent の入力を確認する
+## 3. Field mapping を設定する
+
+**Field mapping** では、dataset の列を表す `item.*` と、Evaluation 実行時に Agent から
+取得する `sample.*` を evaluator の標準フィールドへ割り当てます。
+
+1. **Judge model** で **Deployments > gpt-5.5** を選択します。
+   初期選択が `gpt-5.6-luna` なら変更してください。`gpt-5.5` が表示されない場合は、
+   Lab 1 の model deployment を管理者に確認してから続行します。
+2. 各フィールドが次の値になっていることを確認します。
+
+| Field | Mapping | 内容 |
+|---|---|---|
+| **Query** | `{{item.query}}` | dataset に保存された質問 |
+| **Response** | `{{sample.output_text}}` | Agent がこの実行で生成する最終回答 |
+| **Context** | **Not available** | この dataset には固定の `context` 列がないため、そのままにする |
+| **Ground truth** | `{{item.ground_truth}}` | 正解例がある行の期待回答 |
+| **Tool calls** | `{{sample.tool_calls}}` | Agent がこの実行で行った tool call |
+| **Tool definitions** | `{{sample.tool_definitions}}` | Agent が利用できる tool の定義 |
+
+
+3. **Next** を選択します。
+
+## 4. Agent の入力を確認する
 
 1. **Configure agents** で `contoso-travel-assistant` の **Configure** を選択します。
 
@@ -62,73 +73,56 @@ Skill のアップロードに使われた `skill_...` という項目が表示�
    違っていればこの値を入力し、**Save** を押します。
 3. **Next** を選択します。
 
-## 4. Process evaluator の適用範囲を決める
-
-Tool Search を有効にすると、tool call は `tool_search` / `call_tool` と、その内側で
-実行された実 tool の 2 層になります。downstream call が `sample.tool_calls` へ flatten
-されるかは runtime に依存し、Evaluation 実行前にはこの project の sample shape を
-確認できません。
-
-そのため、**本編の 1 回目は shape に依存しない task-level/custom evaluator だけ**を使います。
-Tool の選択と引数は Conversation / Trace で確認します。実行後に raw sample で 2 層とも
-確認できた場合だけ、ToolSelection / ToolInputAccuracy を使う任意の 2 回目へ進めます。
-
-> [!IMPORTANT]
-> 公式ドキュメントでは、Code Interpreter と Web Search は process evaluator の対応が限定的です。
-> これらを呼ぶ case に ToolSelection、ToolInputAccuracy、ToolCallAccuracy などを適用しません。
-> 7 件の live subset は両 tool を呼ばない構成です。現在情報/Web Search case は master dataset
-> にだけ置き、task-level、custom rubric、Trace で出典 URL と取得日時を確認します。
-
 ## 5. Criteria を選択する
 
-1. **Judge model** で **Deployments** の **gpt-5.5** を選択します。
-   `evaluation_model_deployment_name` の値です。初期選択が Luna なら変更してください。
-
-2. 初期選択の評価器から、次の **2 つだけ**を残します。
+1. 初期選択の評価器から **TaskAdherence** と **TaskCompletion** だけを残します。
    不要なチップの **×** で外せます。**Quality** と **Safety** の評価器は、
    それぞれの **Remove all** でまとめて外して構いません。
-   これは今回実行する評価器の選択であり、Agent の Guardrail を削除する操作ではありません。
+2. Lab 1 で登録した、このハンズオン専用の custom evaluator
+   **[Contoso Travel Rubric](../docs/participant/contoso-travel-rubric.md)** を追加します。
+3. 最終的に、次の **3 つ**が選択されていることを確認します。
 
 | Evaluator | 確認すること |
 |---|---|
 | **TaskAdherence** | instructions と依頼に従ったか |
 | **TaskCompletion** | 必要な内容を回答したか |
+| **Contoso Travel Rubric** | 出張・経費規程に沿い、必要な引用、適切な tool 利用、対象範囲と安全上の制約を満たしたか |
 
-3. Lab 1 で登録した custom evaluator **Contoso Travel Rubric** を追加します。
-   これで本編の評価器は合計 **3 つ**です。
+ToolSelection / ToolInputAccuracy / ToolCallAccuracy は追加しません。
+ここで評価器を外しても、Agent の Guardrail は変更されません。
 
-## 6. 評価器が読むデータを確認する
+## 6. 評価器ごとの入力を設定する
 
-TaskAdherence と custom rubric には、最終文章だけでなく top-level の tool call を含む
-`sample.output_items` を渡します。downstream operation の評価に使うわけではありません。
+手順 3 の Field mapping は共通の初期値です。ここでは各 evaluator のチップを開き、
+次の値を設定して、それぞれ **Update** を押します。
 
-1. **TaskAdherence** のチップを開き、**Response** を `{{sample.output_items}}` に
-   変更して **Update** を押します。Judge model は `gpt-5.5`、
-   Query は `{{item.query}}`、Tool definitions は `{{sample.tool_definitions}}` のままです。
+| Evaluator | Judge model | Query | Response |
+|---|---|---|---|
+| **TaskAdherence** | `gpt-5.5` | `{{item.query}}` | `{{sample.output_items}}` |
+| **TaskCompletion** | `gpt-5.5` | `{{item.query}}` | `{{sample.output_text}}` |
+| **Contoso Travel Rubric** | `gpt-5.5` | `{{item.query}}` | `{{sample.output_items}}` |
+
+`sample.output_text` は最終回答だけ、`sample.output_items` は最終回答と直接記録された
+tool call を評価器へ渡します。
+
+**TaskAdherence** の **Tool definitions** は `{{sample.tool_definitions}}` のままにします。
+表にない項目は既定値から変更しません。
 
 ![TaskAdherence の Response は output_items にする](../docs/images/lab05-task-adherence-mapping.png)
 
-2. **TaskCompletion** は `gpt-5.5`、Query = `{{item.query}}`、
-   Response = `{{sample.output_text}}` を確認します。Threshold などは既定のままです。
-3. **Contoso Travel Rubric** は Judge model = `gpt-5.5`、
-   Query = `{{item.query}}`、Response = `{{sample.output_items}}` にします。
-4. Judge model と評価器が 3 つであることを再確認して、**Next** を押します。
+3 つの evaluator をすべて **Update** したら、**Next** を選択します。
 
-Portal が追加の evaluator を初期選択していても、本編では上の 3 つを正とします。
-ToolSelection / ToolInputAccuracy はまだ追加しません。
-
-## 7. 実行する
+## 7. Evaluation を実行する
 
 1. **Review** の Evaluation name に `contoso-travel-portal-eval` を入力します。
 2. Target が `contoso-travel-assistant` の 1 version、dataset が指定の合成データ、
-   Frequency が One time、評価器が上の 3 つであることを確認します。
+   Frequency が One time、Judge model が `gpt-5.5`、評価器が上の 3 つであることを確認します。
 3. **Submit** を選択します。
 
-4. Evaluation detail の run が終了するまで待ちます。
-   **Completed** になったら結果を開きます。**Partial** は一部を採点できなかった状態なので、
-   同様に結果を開き、次の手順で Error の内容を確認します。
-
-7 件では通常数分かかります。**In progress** の間は同じ run を再送しません。
+4. Evaluation detail の status が **Completed** または **Partial** になるまで待ちます。
+   7 件では通常数分かかります。**In progress** の間は同じ run を再送しません。
+5. 結果を開きます。**Partial** は一部を採点できなかった状態なので、次の手順で
+   **Error** の内容を確認します。
 
 ## 8. 結果を読む
 
@@ -150,18 +144,8 @@ Conversation ID が表示される行は、そのリンクから会話や tool �
 | 攻撃文の行で `content_filter` | 保護機能による遮断として記録する。Guardrail を弱めて通さない |
 | `429`・タイムアウトなどの **Error** | 採点結果と区別し、[トラブルシューティング](../docs/participant/troubleshooting.md#評価と最適化)で原因を解消する |
 
-Tool Search の row は、次の 2 層を分けて記録します。
-
-| 層 | 確認場所 | 確認内容 |
-|---|---|---|
-| discovery/meta | `sample.output_items` / `sample.tool_calls` と Conversation | `tool_search` の意図、`call_tool` の選択 |
-| downstream | `sample.tool_calls` に実在する場合、または Trace | `createTripEstimate` などの実 operation と引数・出力 |
-
-ここが **compatibility gate** です。`eval-009` の raw sample で meta-call と downstream call の
-両方を確認できた場合だけ、任意の 2 回目の run で ToolSelection / ToolInputAccuracy を追加
-できます。downstream call が Trace にしかない場合は追加せず、3 evaluator の結果と Trace を
-正とします。Conversation / Trace から `sample.tool_calls` の shape を推測しません。
-確認した shape と選択をメモし、Lab 6 でも同じ判断を使います。
+Tool が必要な row では Conversation / Trace を開き、`tool_search` / `call_tool` が選んだ tool と、
+`createTripEstimate` など実際に実行された operation の引数・出力を確認します。
 
 **Completed / Partial でも、全行を正常に採点できたとは限りません。** Error の内容まで確認します。
 
@@ -170,8 +154,7 @@ Tool Search の row は、次の 2 層を分けて記録します。
 - 7 件の synthetic query が実行されている
 - 採点できた行で Evaluator ごとの pass / fail が表示される
 - Error がある場合、保護機能による遮断と、未解消の実行エラーを区別できる
-- Tool が必要な row で tool call と入力値を確認できる
-- Tool Search の meta-call と downstream call を別々に確認できる
+- Tool が必要な row で、選ばれた tool と実 operation の引数・出力を確認できる
 - Fail の row で evaluator の reason を確認できる
 
 次の Lab では同じ dataset と、登録済みの **Contoso Travel Rubric** を使います。
