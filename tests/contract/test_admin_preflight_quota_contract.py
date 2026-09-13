@@ -25,6 +25,8 @@ They assert the behavior this hardening pass requires:
   participant count in the explicitly selected region.
 * `--participant-count` rejects non-positive-integer values before any
   Azure call is made.
+* Alert provider registration is outside the workshop scope; preflight
+  neither queries nor registers it, while retaining telemetry providers.
 
 Requires `bash` and `jq` on PATH; skipped automatically otherwise. The
 administrator utility targets a Bash environment with both tools installed.
@@ -365,16 +367,12 @@ def test_defaults_participant_count_to_one_and_reports_it(
             check["name"] == f"provider:{provider}" and check["status"] == "pass"
             for check in report["checks"]
         )
-    assert any(
-        check["name"] == "optional-provider:Microsoft.AlertsManagement"
-        and check["status"] == "pass"
-        for check in report["checks"]
-    )
+    assert not any("Microsoft.AlertsManagement" in check["name"] for check in report["checks"])
 
 
 @pytest.mark.parametrize("apply", [False, True])
-@pytest.mark.parametrize("state", ["NotRegistered", "Unknown"])
-def test_optional_alert_provider_warns_without_registration(
+@pytest.mark.parametrize("state", ["Registered", "NotRegistered", "Unknown"])
+def test_preflight_omits_alert_provider_but_keeps_telemetry_providers(
     fake_az_bin: Path, tmp_path: Path, apply: bool, state: str
 ) -> None:
     calls_path = tmp_path / "az-calls.txt"
@@ -393,19 +391,16 @@ def test_optional_alert_provider_warns_without_registration(
     )
     assert result.returncode == 0, result.stderr
     report = _report(result)
-    check = next(
-        check
-        for check in report["checks"]
-        if check["name"] == "optional-provider:Microsoft.AlertsManagement"
-    )
-    assert check["status"] == "warn"
-    assert state in check["detail"]
-    assert "--apply does not register this optional provider" in check["detail"]
-    assert "provider register" not in calls_path.read_text(encoding="utf-8")
-    assert not any(
-        check["name"].startswith("region-support:Microsoft.AlertsManagement")
-        for check in report["checks"]
-    )
+    calls = calls_path.read_text(encoding="utf-8")
+    assert "Microsoft.AlertsManagement" not in calls
+    assert "provider register" not in calls
+    assert "provider unregister" not in calls
+    assert not any("Microsoft.AlertsManagement" in check["name"] for check in report["checks"])
+    for provider in ("Microsoft.Insights", "Microsoft.OperationalInsights"):
+        assert any(
+            check["name"] == f"provider:{provider}" and check["status"] == "pass"
+            for check in report["checks"]
+        )
 
 
 def test_aggregate_capacity_scales_with_participant_count(

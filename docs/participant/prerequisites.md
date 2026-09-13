@@ -4,19 +4,20 @@
 
 - 管理者指定の Azure アカウントとサブスクリプション。
 - 専用 RG の作成・削除権限と、その RG 内でロール割り当てができる **Owner 相当の権限**。
-- 英語の画面表示を使える PC のブラウザー。
-- [GitHub Codespaces](https://github.com/codespaces) を利用できる GitHub アカウントと利用枠。
-- Lab 4 用の Skill ZIP・OpenAPI JSON を PC に保存できること。
+- Labs 7〜8 を Codespaces で実施する場合のみ、[GitHub Codespaces](https://github.com/codespaces) を利用できる GitHub アカウントと利用枠。
 
 標準の Codespaces 経路では、PC への CLI・Docker・Python のインストールは不要です。
-Azure と Codespaces の利用枠・組織ポリシーは管理者に確認してもらいます。
+Azure の利用枠・組織ポリシーと、利用する場合は Codespaces の利用枠・組織ポリシーを管理者に確認してもらいます。
 
-## 管理者から受け取るもの
+## テンプレートと共通教材
 
-- 自分専用の RG 名。
-- 既定値を設定済みの `azuredeploy.json` ファイル。
+使用するファイルと参照先を確認します。
+
+- **Lab 1**：[既定値を設定済みの `azuredeploy.json`](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/dev-custom-template/infra/azuredeploy.json)を PC に保存します。
   モデルのバージョンやハッシュを自分で調べて入力する必要はありません。
   既定値の詳細は[管理者向けガイド](../admin/prerequisites.md)を参照してください。
+- **Lab 4**：[共通教材](../../assets/README.md)から Skill ZIP と OpenAPI を取得します。
+  取得方法と使用手順は Lab 4 で確認します。
 
 ## 開始する
 

@@ -4,7 +4,8 @@
 
 1. [管理者前提条件](../docs/admin/prerequisites.md)に従い、権限、Japan East の固定モデル、
    Search Basic、Codespaces の利用枠・ポリシーを確認します。
-2. 同ガイドの公開チェックを済ませたテンプレートと教材の参照先、専用 RG 名を配布します。
+2. 同ガイドの公開チェックを済ませたテンプレートと教材の参照先を配布し、
+   使用するサブスクリプションを案内します。
    参加者にモデル version・image digest・source SHA の手入力は求めません。
 3. ローカル参加者には [Dev Container の前提条件](../docs/participant/environments/local-dev-container.md)を案内します。
 4. 予算・alert、cleanup の担当、失敗時の連絡先を決めます。

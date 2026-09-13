@@ -97,6 +97,13 @@ non-immutable image and source inputs before they can be consumed.
   create an Azure ML workspace, Compute, or permanent workshop Storage / Key Vault.
 - No Cosmos DB, capability host, ACR, virtual network or private endpoint.
 
+Monitoring is for telemetry collection and trace inspection, not workshop alerts. The template
+does not deploy alert rules or notification action groups. `Microsoft.Insights` and
+`Microsoft.OperationalInsights` remain required; `Microsoft.AlertsManagement` is not a workshop
+prerequisite and is neither queried nor registered by `admin-preflight.sh`.
+This does not suppress Azure's separate, default Failure Anomalies alert creation or disable
+existing rules. See [automatic alert handling](../docs/admin/troubleshooting.md#application-insights-の自動アラート).
+
 The six participant grants and the Foundry project / Search identities retain
 their resource-scoped access. Removed execution and distribution resources have
 no leftover role assignments. No storage data role is needed by the bootstrap identity.

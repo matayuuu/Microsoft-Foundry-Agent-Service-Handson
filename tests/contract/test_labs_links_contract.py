@@ -17,10 +17,10 @@ ENVIRONMENTS = REPO_ROOT / "docs" / "participant" / "environments"
 CODESPACES_GUIDE = ENVIRONMENTS / "codespaces.md"
 LOCAL_GUIDE = ENVIRONMENTS / "local-dev-container.md"
 ADMIN_GUIDE = REPO_ROOT / "docs" / "admin" / "prerequisites.md"
-CORE_LABS = [
-    LABS_DIR / name
+PARTICIPANT_PREREQUISITES = REPO_ROOT / "docs" / "participant" / "prerequisites.md"
+CORE_LABS = {
+    int(name.partition("-")[0]): LABS_DIR / name
     for name in (
-        "00-overview.md",
         "01-setup.md",
         "02-prompt-agent.md",
         "03-rag-foundry-iq.md",
@@ -31,7 +31,7 @@ CORE_LABS = [
         "08-hosted-multi-agent.md",
         "09-observability-cleanup.md",
     )
-]
+}
 DOCUMENTS = [
     REPO_ROOT / "README.md",
     REPO_ROOT / "README.en.md",
@@ -135,7 +135,7 @@ def test_local_document_link_resolves(source: Path, target: str) -> None:
 @pytest.mark.parametrize("readme", [REPO_ROOT / "README.md", REPO_ROOT / "README.en.md"])
 def test_readmes_link_all_labs_and_supported_environments(readme: Path) -> None:
     targets = links(readme)
-    for index, lab in enumerate(CORE_LABS):
+    for index, lab in CORE_LABS.items():
         assert lab.is_file()
         assert f"[Lab {index}](labs/{lab.name})" in read(readme)
     for guide in ("custom-template.md", "codespaces.md", "local-dev-container.md"):
@@ -143,7 +143,7 @@ def test_readmes_link_all_labs_and_supported_environments(readme: Path) -> None:
 
 
 def test_core_labs_link_to_next_lab() -> None:
-    for current, following in pairwise(CORE_LABS):
+    for current, following in pairwise(CORE_LABS.values()):
         assert following.name in links(current)
 
 
@@ -197,8 +197,9 @@ def test_public_source_links_use_development_branch_or_published_revision() -> N
                         r"[a-f0-9]{40}", revision
                     )
                     assert (REPO_ROOT / unquote(path)).exists(), target
-    for document in (CORE_LABS[1], ADMIN_GUIDE):
+    for document in (CORE_LABS[1], PARTICIPANT_PREREQUISITES):
         assert any(target.endswith("/infra/azuredeploy.json") for target in links(document))
+    assert "../../assets/README.md" in links(PARTICIPANT_PREREQUISITES)
 
 
 def test_portal_labs_read_arm_outputs_without_requiring_local_context() -> None:

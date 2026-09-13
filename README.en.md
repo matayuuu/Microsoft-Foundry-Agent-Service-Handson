@@ -2,12 +2,19 @@
 
 # Microsoft Foundry Agent Service Hands-on
 
-Build a synthetic Contoso travel and expense assistant in ten labs.
+Build a synthetic Contoso travel and expense assistant in nine labs.
 Explore retrieval, tools, evaluation, optimization, and Hosted Agents.
 
-[**Start with Lab 0**](labs/00-overview.md) ·
+[**Start with Lab 1**](labs/01-setup.md) ·
 [Prerequisites](docs/participant/prerequisites.md) ·
 [Setup guide](docs/participant/environments/custom-template.md)
+
+![Azure architecture of the Contoso travel and expense assistant: Microsoft Foundry, Azure AI Search, Container Apps and monitoring in one dedicated resource group, with Portal and Dev Container clients.](docs/images/azure-architecture.svg)
+
+[Full-size SVG](docs/images/azure-architecture.svg) ·
+[Editable draw.io](docs/diagrams/azure-architecture.drawio) ·
+[Architecture and connection details](docs/architecture.md)
+
 
 ## Workshop flow
 
@@ -30,7 +37,6 @@ The browser-based Codespaces route requires no local Docker or Python installati
 
 | Lab | Topic | Estimate |
 |---|---|---:|
-| [Lab 0](labs/00-overview.md) | Overview and safety | 5 min |
 | [Lab 1](labs/01-setup.md) | Create the environment and verify initialization | — |
 | [Lab 2](labs/02-prompt-agent.md) | Prompt Agent and Azure AI Search | 20 min |
 | [Lab 3](labs/03-rag-foundry-iq.md) | Foundry IQ | 25 min |

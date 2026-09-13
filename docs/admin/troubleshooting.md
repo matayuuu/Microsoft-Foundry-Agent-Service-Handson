@@ -24,14 +24,26 @@
 
 ## Application Insights の自動アラート
 
-`Failure-Anomalies-Alert-Rule-Deployment-*` だけが `MissingSubscriptionRegistration` で失敗し、
-`Microsoft.AlertsManagement` の未登録を示す場合があります。ハンズオン本体の deployment と
-`workshopContext.setup_status` の成否とは分けて確認してください。
+ハンズオンでは **トレース収集・閲覧だけを使い、自動アラートは演習の対象外**とします。
+テンプレートはアラートルールや通知先を作成しません。トレース収集には
+`Microsoft.Insights` と `Microsoft.OperationalInsights` を使い、
+`Microsoft.AlertsManagement` の登録は参加条件に含めません。
+`admin-preflight.sh` もこの provider を検査・警告・登録しません。
 
-自動アラートを利用する場合は、管理者が **Subscriptions > Resource providers** で
-`Microsoft.AlertsManagement` を登録し、対象アラートの再作成を確認します。
-`admin-preflight.sh` はこの任意 provider を警告として報告し、`--apply` でも自動登録しません。
+ただし、これは **Azure 側の既定アラートの自動作成を停止する設定ではありません**。
+Application Insights の作成時には、Azure が Failure Anomalies アラートを別途作成します。
+`Failure-Anomalies-Alert-Rule-Deployment-*` だけが `MissingSubscriptionRegistration` で失敗し、
+`Microsoft.AlertsManagement` の未登録を示した場合は、ハンズオン本体とは分けて確認します。
+本体の deployment が **Succeeded**、`workshopContext.setup_status = complete`、
+さらに Lab 9 で使うトレースが記録・閲覧できることを確認してください。
+
+この演習のために provider を追加登録したり、アラートを再作成したりする必要はありません。
+すでに作成済みのアラートや登録済み provider は、この変更では無効化・削除・登録解除しません。
+既定アラートの通知も止める必要がある場合は、管理者が対象ルールを特定し、別途無効化します。
 履歴を消して失敗を隠したり、参加者・bootstrap identity の権限を広げたりしません。
+
+[既定アラートの作成と管理（Microsoft Learn）](https://learn.microsoft.com/azure/azure-monitor/alerts/proactive-failure-diagnostics#managing-failure-anomalies-alert-rules)
+を参照してください。
 
 ## GitHub assets / Notebook
 

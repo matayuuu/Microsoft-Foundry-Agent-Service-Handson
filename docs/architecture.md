@@ -1,11 +1,66 @@
 # Workshop architecture
 
-![Workshop architecture](images/workshop-architecture.svg)
+![Azure architecture: participant tools, the dedicated resource group, Foundry agents and models, Search-backed Foundry IQ, the Travel Ops API and monitoring.](images/azure-architecture.svg)
 
-Editable source: [workshop-architecture.excalidraw](diagrams/workshop-architecture.excalidraw).
-Learning flow: [SVG](images/workshop-learning-flow.svg) /
-[editable source](diagrams/workshop-learning-flow.excalidraw).
-These explain the design; they are not deployment evidence.
+[Full-size SVG](images/azure-architecture.svg) ·
+[Editable draw.io source](diagrams/azure-architecture.drawio) ·
+[Icon attribution](images/ATTRIBUTION.md#diagrams)
+
+The diagram prioritizes readability: it shows the main service roles, not every resource,
+connection or deployment step. Resource names, model capacities, the account/project hierarchy
+and detailed identity wiring are intentionally left to the sections below. The bottom strip
+summarizes authentication and provisioning rather than resource placement.
+
+It combines template-provisioned services with objects participants create during the labs.
+The **Foundry IQ path is used from Lab 3 onward**; Lab 2's earlier direct Search tool is not shown.
+The boundary is not a VNet, and the diagram is not deployment evidence. Japan East is the
+configured resource location; **GlobalStandard** models do not imply a regional inference boundary.
+
+## Reading the connections
+
+| Path | Meaning |
+|---|---|
+| Solid blue | Service requests: Portal operations, SDK/MCP calls, model inference and tool execution. Responses are omitted for clarity. |
+| Dashed teal | Foundry agent traces to workspace-based Application Insights, and Container Apps environment logs to Log Analytics. |
+
+The Foundry project and model deployments are separate children of the same Foundry account.
+The knowledge base is backed by **Azure AI Search** and is configured through Foundry Portal.
+Search uses its managed identity to call the Foundry models for query planning and embeddings;
+this secondary connection is omitted from the overview.
+
+| Runtime | Runs in | Dependencies |
+|---|---|---|
+| Prompt Agent, Labs 3–6 | Foundry Agent Service | Primary model + Foundry IQ; Toolbox is added in Lab 4 |
+| Plain Agent / Harness, Lab 7 | Codespaces or the local Dev Container | Both call the primary model and Foundry IQ directly; Harness additionally uses Toolbox tools and Skills |
+| Hosted workflow, Lab 8 | Foundry Agent Service, following a source remote build | `intake_agent` → `policy_agent` → `reviewer_agent`; all use the primary model, only `policy_agent` calls Foundry IQ |
+
+The Dev Container's SDK/MCP arrow summarizes Azure access; it does not place the local Harness inside
+Foundry or route its Search calls through a hosted agent. The Lab 8 workflow does **not** call
+Toolbox, Skills or the Travel Ops API. Evaluation and Agent Optimizer use the same `gpt-5.5`
+deployment also used for Foundry IQ query planning.
+
+The OpenAPI hop from Toolbox to the synthetic Travel Ops API uses **Anonymous HTTPS**.
+That exception does not make Foundry, Toolbox or Search anonymous: the workshop uses Microsoft
+Entra ID, the project/runtime identities and scoped RBAC for those services.
+
+## Editing the architecture diagram
+
+Open `docs/diagrams/azure-architecture.drawio` in draw.io / diagrams.net. Resource containers,
+service icons, text and attached connectors are individually editable. The official SVG icons
+are embedded, so the diagram does not depend on externally hosted images.
+
+After an edit, save the `.drawio` source and export **SVG** to
+`docs/images/azure-architecture.svg`. Include a copy of the diagram and embedded images, retain
+the white background, and keep **Formatted Text** and **Word Wrap** disabled for labels so the
+SVG uses native text rather than `foreignObject`. Update the two READMEs and this page together
+if the architecture changes; `infra/main.bicep` and the lab implementations remain the source
+of truth.
+
+The earlier step-oriented views remain available separately:
+[provisioning overview](images/workshop-architecture.svg)
+([Excalidraw source](diagrams/workshop-architecture.excalidraw)) and
+[learning flow](images/workshop-learning-flow.svg)
+([Excalidraw source](diagrams/workshop-learning-flow.excalidraw)).
 
 ## Ownership
 
@@ -36,6 +91,11 @@ One dedicated **Japan East** RG contains:
 `contoso-travel-search` is the AAD Search resource connection.
 `contoso-travel-knowledge-lab-mcp` and `contoso-travel-appinsights` use **Project Managed Identity**.
 Foundry and Search local auth stay disabled; public endpoints remain enabled.
+
+Application Insights and Log Analytics remain in use for trace collection and inspection.
+Automatic alerts are outside the workshop scope; no alert rules or notification groups are
+deployed by this template, and `Microsoft.AlertsManagement` registration is not required.
+Azure's default alert creation is separate; see [the administrator note](admin/troubleshooting.md#application-insights-の自動アラート).
 
 Infrastructure and bootstrap implementation details are in [infra/README.md](../infra/README.md).
 Release defaults and publication checks are in [administrator prerequisites](admin/prerequisites.md).

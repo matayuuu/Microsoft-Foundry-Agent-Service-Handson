@@ -5,7 +5,7 @@ Azure Portal で準備します。この Lab では CLI や Notebook は使い�
 ## 始める前に
 
 - [参加条件](../docs/participant/prerequisites.md)を確認します。
-- 管理者からサブスクリプションと専用 RG 名の指定を受け取ります。
+- 管理者からサブスクリプションの指定を受け取ります。専用 RG は手順 1 で自分で作成します。
   テンプレートの既定値については[管理者向けガイド](../docs/admin/prerequisites.md#2-配布するテンプレートと既定値)を参照できます。
 - 管理者指定の
   [azuredeploy.json](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/dev-custom-template/infra/azuredeploy.json)

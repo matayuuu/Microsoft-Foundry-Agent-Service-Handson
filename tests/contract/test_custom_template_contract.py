@@ -530,6 +530,17 @@ def test_three_models_have_fixed_capacities_versions_and_sequential_dependencies
         previous = model
 
 
+def test_template_does_not_deploy_alert_rules_or_notification_groups(template):
+    types = {item["type"].lower() for item in template["resources"]}
+    assert not any(kind.startswith("microsoft.alertsmanagement/") for kind in types)
+    assert not types & {
+        "microsoft.insights/actiongroups",
+        "microsoft.insights/activitylogalerts",
+        "microsoft.insights/metricalerts",
+        "microsoft.insights/scheduledqueryrules",
+    }
+
+
 def test_monitoring_and_container_api_preserve_existing_settings(template):
     logs = resource(template, LOG_ANALYTICS)
     insights = resource(template, APP_INSIGHTS)
