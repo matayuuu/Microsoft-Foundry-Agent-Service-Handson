@@ -57,6 +57,7 @@ class FakeAdapters:
             result = {
                 "status": "ready",
                 "dataset": {"name": "fixture-dataset", "version": "1"},
+                "optimizer_dataset": {"name": "fixture-optimizer-dataset", "version": "1"},
                 "rubric_evaluator": {"name": "fixture-rubric", "version": "1"},
             }
         return subprocess.CompletedProcess(command, 0, json.dumps(result), "")
@@ -82,6 +83,7 @@ def test_data_preparation_and_validation_gate_the_only_success_output(
     assert not list(repository.rglob("*.zip"))
     assert not (repository / ".workshop" / "toolbox").exists()
     assert "--prepare-only" in runner.commands[2]
+    assert "--optimizer-dataset" in runner.commands[2]
     assert "--participant-object-id" in runner.commands[3]
     assert "storage" not in [argument for command in runner.commands for argument in command]
 
@@ -98,6 +100,8 @@ def test_plan_uses_each_manifest_partition_and_explicit_endpoints(
         assert context["source_base"] in stage.command
     assert stages[2].name == "prepare-evaluation"
     assert "--prepare-only" in stages[2].command
+    optimizer_path = stages[2].command[stages[2].command.index("--optimizer-dataset") + 1]
+    assert Path(optimizer_path).parts[-3:] == ("data", "eval", "optimizer_live_subset.jsonl")
     assert stages[-1].name == "validate-environment"
     assert not any(stage.name == "prepare-portal-assets" for stage in stages)
 

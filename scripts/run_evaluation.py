@@ -13,13 +13,15 @@ retrieved 2026-08-21):
 1. Loads ``data/eval/live_subset.jsonl`` and validates every row against
    ``data/schemas/eval_case.schema.json``.
 2. Uploads it as a Foundry dataset (idempotent: the dataset version is a
-   short hash of the file content, so an unchanged file reuses the same
-   version instead of creating a new one every run).
+    short hash of the file content, so an unchanged file reuses the same
+    version instead of creating a new one every run). During custom-template
+    preparation, it also validates and uploads the Agent Optimizer copy whose
+    rows all contain complete ``ground_truth`` reference answers.
 3. Ensures a hand-authored rubric evaluator exists (``beta.evaluators``,
    manual ``create_version`` -- no LLM generation job, so authoring is free
    and deterministic; see build_rubric_definition()).
-   ``--prepare-only`` stops here; ``scripts/setup.sh`` uses this mode to make
-   the synthetic dataset and rubric available to Labs 5 and 6.
+    ``--prepare-only`` stops here; custom-template bootstrap uses this mode to
+    make both datasets and the rubric available to Labs 5 and 6.
 4. Without ``--prepare-only``, creates an evaluation
    (``client.evals.create``) pairing that rubric with sensible built-in
    evaluators (task adherence, coherence, and one content-safety evaluator).
@@ -87,6 +89,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATASET_PATH = REPO_ROOT / "data" / "eval" / "live_subset.jsonl"
 DEFAULT_SCHEMA_PATH = REPO_ROOT / "data" / "schemas" / "eval_case.schema.json"
 DEFAULT_DATASET_NAME = "contoso-travel-eval-live-subset"
+DEFAULT_OPTIMIZER_DATASET_NAME = "contoso-travel-optimizer-live-subset"
 DEFAULT_RUBRIC_NAME = "contoso-travel-rubric"
 DEFAULT_PASS_THRESHOLD = 0.6
 DEFAULT_BUILTIN_EVALUATORS = (
@@ -169,6 +172,56 @@ def dataset_content_version(dataset_path: Path) -> str:
     """
     digest = hashlib.sha256(dataset_path.read_bytes()).hexdigest()
     return digest[:12]
+
+
+def validate_optimizer_dataset(
+    evaluation_cases: Sequence[dict[str, Any]],
+    optimizer_cases: Sequence[dict[str, Any]],
+) -> None:
+    """Require the optimizer copy to differ only by complete reference answers."""
+    evaluation_ids = [case["id"] for case in evaluation_cases]
+    optimizer_ids = [case["id"] for case in optimizer_cases]
+    if optimizer_ids != evaluation_ids:
+        raise WorkshopContextError(
+            "optimizer dataset must contain the same case ids in the same order as "
+            "the live evaluation subset."
+        )
+
+    for evaluation_case, optimizer_case in zip(evaluation_cases, optimizer_cases, strict=True):
+        case_id = optimizer_case["id"]
+        evaluation_fields = {
+            key: value for key, value in evaluation_case.items() if key != "ground_truth"
+        }
+        optimizer_fields = {
+            key: value for key, value in optimizer_case.items() if key != "ground_truth"
+        }
+        if optimizer_fields != evaluation_fields:
+            raise WorkshopContextError(
+                f"optimizer dataset case {case_id} may differ from the live subset only "
+                "in ground_truth."
+            )
+
+        ground_truth = optimizer_case.get("ground_truth")
+        if not isinstance(ground_truth, str) or not ground_truth.strip():
+            raise WorkshopContextError(
+                f"optimizer dataset case {case_id} requires a nonempty ground_truth."
+            )
+        if ground_truth == optimizer_case["expected_behavior"]:
+            raise WorkshopContextError(
+                f"optimizer dataset case {case_id} ground_truth must be a reference answer, "
+                "not a copy of expected_behavior."
+            )
+
+        missing_citations = [
+            policy_id
+            for policy_id in optimizer_case.get("expected_citations", [])
+            if optimizer_case.get("requires_citation") and policy_id not in ground_truth
+        ]
+        if missing_citations:
+            raise WorkshopContextError(
+                f"optimizer dataset case {case_id} ground_truth is missing citations: "
+                f"{', '.join(missing_citations)}."
+            )
 
 
 def validate_process_evaluator_compatibility(
@@ -552,6 +605,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--dataset-name", default=DEFAULT_DATASET_NAME, help="Foundry dataset name to upload/reuse"
     )
     parser.add_argument(
+        "--optimizer-dataset",
+        type=Path,
+        default=None,
+        help="Optimizer-compatible copy with a nonempty ground_truth on every row",
+    )
+    parser.add_argument(
+        "--optimizer-dataset-name",
+        default=DEFAULT_OPTIMIZER_DATASET_NAME,
+        help="Foundry optimizer dataset name to upload/reuse",
+    )
+    parser.add_argument(
         "--agent-name", default=DEFAULT_AGENT_NAME, help="Prompt agent name to evaluate"
     )
     parser.add_argument(
@@ -638,6 +702,15 @@ def main(argv: list[str] | None = None) -> int:
             judge_deployment = workshop_output(context, "evaluation_model_deployment_name")
         schema = json.loads(args.schema.read_text(encoding="utf-8"))
         cases = load_eval_cases(args.dataset, schema)  # fail before touching Azure
+        if args.optimizer_dataset and not args.prepare_only:
+            raise WorkshopContextError(
+                "--optimizer-dataset is supported only together with --prepare-only."
+            )
+        optimizer_dataset_version = None
+        if args.optimizer_dataset:
+            optimizer_cases = load_eval_cases(args.optimizer_dataset, schema)
+            validate_optimizer_dataset(cases, optimizer_cases)
+            optimizer_dataset_version = dataset_content_version(args.optimizer_dataset)
         if not args.prepare_only:
             validate_process_evaluator_compatibility(cases, builtin_evaluators)
         dataset_version = dataset_content_version(args.dataset)
@@ -656,6 +729,14 @@ def main(argv: list[str] | None = None) -> int:
                 version=dataset_version,
                 file_path=args.dataset,
             )
+            optimizer_dataset = None
+            if args.optimizer_dataset and optimizer_dataset_version:
+                optimizer_dataset = ensure_dataset(
+                    project_client,
+                    name=args.optimizer_dataset_name,
+                    version=optimizer_dataset_version,
+                    file_path=args.optimizer_dataset,
+                )
             rubric_evaluator = ensure_rubric_evaluator(
                 project_client, name=args.rubric_name, desired=desired_rubric
             )
@@ -668,10 +749,20 @@ def main(argv: list[str] | None = None) -> int:
                         "version": rubric_evaluator.version,
                     },
                 }
+                if optimizer_dataset:
+                    prepared["optimizer_dataset"] = {
+                        "name": optimizer_dataset.name,
+                        "version": optimizer_dataset.version,
+                    }
                 if args.output == "json":
                     print(json.dumps(prepared, ensure_ascii=False, indent=2))
                 else:
                     print(f"dataset: {dataset.name} (version {dataset.version})")
+                    if optimizer_dataset:
+                        print(
+                            f"optimizer dataset: {optimizer_dataset.name} "
+                            f"(version {optimizer_dataset.version})"
+                        )
                     print(
                         f"rubric evaluator: {rubric_evaluator.name} "
                         f"(version {rubric_evaluator.version})"

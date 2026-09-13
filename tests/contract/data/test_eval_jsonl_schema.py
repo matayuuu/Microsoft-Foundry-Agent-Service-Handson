@@ -5,9 +5,11 @@ rely on: schema conformance, category coverage, and the master/live_subset
 containment relationship.
 """
 
+import datetime
 import json
 
 import jsonschema
+from travel_api.domain.trip_estimate import estimate_trip
 
 REQUIRED_CATEGORIES = {
     "direct_policy_fact",
@@ -56,6 +58,13 @@ def test_live_subset_jsonl_matches_schema(data_dir):
         jsonschema.validate(instance=case, schema=schema)
 
 
+def test_optimizer_live_subset_jsonl_matches_schema(data_dir):
+    schema = _load_schema(data_dir)
+    cases = _load_jsonl(data_dir / "eval" / "optimizer_live_subset.jsonl")
+    for case in cases:
+        jsonschema.validate(instance=case, schema=schema)
+
+
 def test_master_has_approximately_twelve_cases(data_dir):
     cases = _load_jsonl(data_dir / "eval" / "master.jsonl")
     assert 12 <= len(cases) <= 14, f"expected ~12 master cases, found {len(cases)}"
@@ -93,6 +102,58 @@ def test_live_subset_entries_are_identical_to_master(data_dir):
     live_cases = _load_jsonl(data_dir / "eval" / "live_subset.jsonl")
     for case in live_cases:
         assert case == master_by_id[case["id"]], f"{case['id']} differs between the two files"
+
+
+def test_optimizer_subset_changes_only_ground_truth(data_dir):
+    live_cases = _load_jsonl(data_dir / "eval" / "live_subset.jsonl")
+    optimizer_cases = _load_jsonl(data_dir / "eval" / "optimizer_live_subset.jsonl")
+    assert len(optimizer_cases) == len(live_cases) == 7
+    for live_case, optimizer_case in zip(live_cases, optimizer_cases, strict=True):
+        assert optimizer_case["id"] == live_case["id"]
+        assert {key: value for key, value in optimizer_case.items() if key != "ground_truth"} == {
+            key: value for key, value in live_case.items() if key != "ground_truth"
+        }
+
+
+def test_optimizer_subset_has_complete_reference_answers(data_dir):
+    cases = _load_jsonl(data_dir / "eval" / "optimizer_live_subset.jsonl")
+    for case in cases:
+        ground_truth = case["ground_truth"]
+        assert isinstance(ground_truth, str) and ground_truth.strip(), case["id"]
+        assert ground_truth != case["expected_behavior"], case["id"]
+        if case["requires_citation"]:
+            for policy_id in case["expected_citations"]:
+                assert policy_id in ground_truth, f"{case['id']} ground_truth omits {policy_id}"
+
+
+def test_optimizer_trip_estimate_reference_matches_domain(data_dir):
+    cases = _load_jsonl(data_dir / "eval" / "optimizer_live_subset.jsonl")
+    case = next(case for case in cases if case["id"] == "eval-009")
+    expected_call = case["expected_tool_calls"][0]
+    arguments = expected_call["arguments"]
+    result = estimate_trip(
+        origin_city=arguments["origin_city"],
+        destination_city=arguments["destination_city"],
+        start_date=datetime.date.fromisoformat(arguments["start_date"]),
+        end_date=datetime.date.fromisoformat(arguments["end_date"]),
+        cabin_class=arguments["cabin_class"],
+        traveler_count=arguments["traveler_count"],
+    )
+
+    assert expected_call["tool"] == "createTripEstimate"
+    assert (result.flight_cost, result.lodging_cost, result.meal_cost, result.total_estimate) == (
+        620_000,
+        125_000,
+        36_000,
+        781_000,
+    )
+    for value in (
+        result.flight_cost,
+        result.lodging_cost,
+        result.meal_cost,
+        result.total_estimate,
+    ):
+        assert f"{value:,}" in case["ground_truth"]
 
 
 def test_cases_designed_so_v1_and_v2_outcomes_differ_somewhere(data_dir):

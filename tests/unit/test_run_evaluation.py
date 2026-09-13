@@ -125,6 +125,40 @@ def test_live_subset_fixture_is_itself_schema_valid() -> None:
     assert all("query" in case for case in cases)
 
 
+def test_optimizer_subset_is_complete_and_matches_live_cases() -> None:
+    live_cases = run_evaluation.load_eval_cases(
+        REPO_ROOT / "data" / "eval" / "live_subset.jsonl", REAL_SCHEMA
+    )
+    optimizer_cases = run_evaluation.load_eval_cases(
+        REPO_ROOT / "data" / "eval" / "optimizer_live_subset.jsonl", REAL_SCHEMA
+    )
+
+    run_evaluation.validate_optimizer_dataset(live_cases, optimizer_cases)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("ground_truth", None, "nonempty ground_truth"),
+        ("ground_truth", VALID_CASE["expected_behavior"], "reference answer"),
+        ("query", "different question", "only in ground_truth"),
+    ],
+)
+def test_optimizer_dataset_rejects_invalid_copy(field: str, value: object, message: str) -> None:
+    optimizer_case = dict(VALID_CASE)
+    optimizer_case[field] = value
+
+    with pytest.raises(run_evaluation.WorkshopContextError, match=message):
+        run_evaluation.validate_optimizer_dataset([VALID_CASE], [optimizer_case])
+
+
+def test_optimizer_dataset_requires_expected_citations_in_reference_answer() -> None:
+    optimizer_case = dict(VALID_CASE, ground_truth="国内日帰りの日当は1,500円です。")
+
+    with pytest.raises(run_evaluation.WorkshopContextError, match="policy-per-diem-001"):
+        run_evaluation.validate_optimizer_dataset([VALID_CASE], [optimizer_case])
+
+
 # ---------------------------------------------------------------------------
 # dataset_content_version
 # ---------------------------------------------------------------------------
@@ -533,6 +567,21 @@ def test_parse_args_supports_prepare_only_with_explicit_project_endpoint() -> No
     assert args.project_endpoint == "https://example.services.ai.azure.com/api/projects/workshop"
 
 
+def test_parse_args_supports_optimizer_dataset_for_prepare_only() -> None:
+    args = run_evaluation.parse_args(
+        [
+            "--prepare-only",
+            "--optimizer-dataset",
+            "optimizer.jsonl",
+            "--optimizer-dataset-name",
+            "optimizer-dataset",
+        ]
+    )
+
+    assert args.optimizer_dataset == Path("optimizer.jsonl")
+    assert args.optimizer_dataset_name == "optimizer-dataset"
+
+
 def test_parse_args_runs_evaluation_by_default() -> None:
     args = run_evaluation.parse_args([])
 
@@ -617,6 +666,42 @@ def test_explicit_endpoint_can_run_without_context_when_judge_is_not_needed_from
     args.extend(["--prepare-only"] if prepare_only else ["--judge-deployment", "explicit-judge"])
     assert run_evaluation.main(args) == 0
     assert fake_evaluation_client.get_openai_client.called is not prepare_only
+
+
+def test_prepare_only_uploads_evaluation_and_optimizer_datasets(
+    fake_evaluation_client: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    uploaded_names: list[str] = []
+
+    def fake_ensure_dataset(client: object, *, name: str, version: str, file_path: Path):
+        uploaded_names.append(name)
+        return SimpleNamespace(name=name, version=version, id=f"dataset-{name}")
+
+    monkeypatch.setattr(run_evaluation, "ensure_dataset", fake_ensure_dataset)
+    assert (
+        run_evaluation.main(
+            [
+                "--project-endpoint",
+                "https://example.services.ai.azure.com/api/projects/workshop",
+                "--optimizer-dataset",
+                str(REPO_ROOT / "data" / "eval" / "optimizer_live_subset.jsonl"),
+                "--prepare-only",
+                "--output",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+    result = json.loads(capsys.readouterr().out)
+    assert uploaded_names == [
+        run_evaluation.DEFAULT_DATASET_NAME,
+        run_evaluation.DEFAULT_OPTIMIZER_DATASET_NAME,
+    ]
+    assert result["optimizer_dataset"]["name"] == run_evaluation.DEFAULT_OPTIMIZER_DATASET_NAME
+    assert not fake_evaluation_client.get_openai_client.called
 
 
 def test_missing_evaluation_output_fails_before_azure_calls(

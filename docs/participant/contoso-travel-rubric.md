@@ -35,9 +35,13 @@ Lab 5 では次の値を渡します。
 | Response | `{{sample.output_items}}` | 最終回答と top-level の tool call |
 | Judge model | `gpt-5.5` | rubric に基づく採点 |
 
-この rubric は `ground_truth` や `expected_behavior` を直接入力には使いません。固定した4つの評価軸に対して
-質問と回答を評価します。Tool Search の内側で実行された operation が `sample.output_items` に現れない場合は、
-Conversation / Trace で実際の Tool と引数・出力を確認します。
+Lab 5 の mapping では、この rubric は `ground_truth` や `expected_behavior` を直接入力には使いません。
+固定した4つの評価軸に対して質問と回答を評価します。Tool Search の内側で実行された operation が
+`sample.output_items` に現れない場合は、Conversation / Trace で実際の Tool と引数・出力を確認します。
+
+Lab 6 の Agent Optimizer wizard は列の mapping を変更できないため、Optimizer用datasetでは
+標準列 `ground_truth` を全行に設定します。これは参照回答として使える自然な回答であり、
+採点者向けの `expected_behavior` とは分けて管理します。
 
 ## 登録方法
 
@@ -46,9 +50,10 @@ Lab 1 のカスタムテンプレートに含まれる Deployment Script が
 `prepare-evaluation` stage が [`run_evaluation.py`](../../scripts/run_evaluation.py) を
 `--prepare-only` で呼び出し、次の処理を行います。
 
-1. `contoso-travel-eval-live-subset` dataset をアップロード、または既存版を再利用する
-2. `Contoso Travel Rubric` を作成、または定義が一致する既存版を再利用する
-3. dataset と evaluator の名前・version を bootstrap に返す
+1. Lab 5 用の `contoso-travel-eval-live-subset` をアップロード、または既存版を再利用する
+2. Lab 6 用の `contoso-travel-optimizer-live-subset` をアップロード、または既存版を再利用する
+3. `Contoso Travel Rubric` を作成、または定義が一致する既存版を再利用する
+4. 2つの dataset と evaluator の名前・version を bootstrap に返す
 
 `--prepare-only` では Evaluation run 自体は実行しません。Lab 5 で参加者が Portal から実行します。
 

@@ -1,5 +1,5 @@
 {
-  "corpus_version": "2026.04.2",
+  "corpus_version": "2026.04.3",
   "language": "ja",
   "source_url_base_placeholder": "{{WORKSHOP_SOURCE_BASE}}",
   "chunking": {
@@ -220,6 +220,12 @@
         "path": "eval/live_subset.jsonl",
         "sha256": "aad6d4a08f3a4732e8c6a1738ce458bee68b8015413d875e85f4453fad53fa4f",
         "size_bytes": 7734
+      },
+      {
+        "name": "optimizer_live_subset_jsonl",
+        "path": "eval/optimizer_live_subset.jsonl",
+        "sha256": "cb41354efb4523a5c89907a141116a46938f598ee65c4b155394a878f186259c",
+        "size_bytes": 9491
       }
     ]
   }

@@ -210,6 +210,8 @@ def test_portal_labs_read_arm_outputs_without_requiring_local_context() -> None:
     for index in (3, 5, 6):
         assert "gpt-5.5" in read(CORE_LABS[index])
     assert "Microsoft Entra ID 認証の Azure AI Search connection" in read(CORE_LABS[2])
+    assert "contoso-travel-eval-live-subset" in read(CORE_LABS[5])
+    assert "contoso-travel-optimizer-live-subset" in read(CORE_LABS[6])
 
 
 def test_lab_four_downloads_shared_zip_files_and_replaces_only_the_openapi_server() -> None:

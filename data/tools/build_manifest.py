@@ -31,7 +31,7 @@ import yaml
 
 DATA_DIR = Path(__file__).resolve().parent.parent
 SOURCE_URL_BASE_PLACEHOLDER = "{{WORKSHOP_SOURCE_BASE}}"
-CORPUS_VERSION = "2026.04.2"
+CORPUS_VERSION = "2026.04.3"
 
 CHUNKING = {
     "strategy": "markdown-heading",
@@ -153,6 +153,7 @@ def build_manifest() -> dict[str, Any]:
         files=[
             ("eval_master_jsonl", DATA_DIR / "eval" / "master.jsonl"),
             ("eval_live_subset_jsonl", DATA_DIR / "eval" / "live_subset.jsonl"),
+            ("optimizer_live_subset_jsonl", DATA_DIR / "eval" / "optimizer_live_subset.jsonl"),
         ],
     )
 

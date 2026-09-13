@@ -185,8 +185,9 @@ The context has `schema_version: "2.0"`,
 `provisioning_method: "azure-custom-template"`, `setup_status: "infrastructure-ready"`, subscription,
 RG, location, source base/revision, participant ID, and 24
 `resource_outputs.<key>.value` fields. Bootstrap seeds the two Search indexes,
-prepares the evaluation dataset/rubric, and validates the environment. Only after
-all stages pass does it write `status: complete` and `source_revision` to
+prepares the Lab 5 evaluation dataset, the Lab 6 Agent Optimizer dataset and the
+shared rubric, and validates the environment. Only after all stages pass does it
+write `status: complete` and `source_revision` to
 `AZ_SCRIPTS_OUTPUT_PATH`. It does not build assets, package a participant ZIP, or
 read/write Blob Storage.
 

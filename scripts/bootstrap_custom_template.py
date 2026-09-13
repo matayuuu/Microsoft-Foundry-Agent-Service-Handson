@@ -193,16 +193,14 @@ def plan_initialization(
                 ),
             )
         )
-    datasets = [
-        entry
-        for entry in manifest["evaluation"]["files"]
-        if entry["name"] == "eval_live_subset_jsonl"
-    ]
-    if len(datasets) != 1:
+    datasets = {entry["name"]: entry for entry in manifest["evaluation"]["files"]}
+    required_datasets = {"eval_live_subset_jsonl", "optimizer_live_subset_jsonl"}
+    if not required_datasets <= datasets.keys():
         raise BootstrapError(
-            "local-assets: manifest must identify exactly one live evaluation subset."
+            "local-assets: manifest must identify the live evaluation and optimizer subsets."
         )
-    dataset = datasets[0]
+    evaluation_dataset = datasets["eval_live_subset_jsonl"]
+    optimizer_dataset = datasets["optimizer_live_subset_jsonl"]
     stages.extend(
         (
             Stage(
@@ -213,7 +211,9 @@ def plan_initialization(
                     "--context",
                     context_path,
                     "--dataset",
-                    str(data_path(root, dataset["path"])),
+                    str(data_path(root, evaluation_dataset["path"])),
+                    "--optimizer-dataset",
+                    str(data_path(root, optimizer_dataset["path"])),
                     "--schema",
                     str(root / "data" / "schemas" / "eval_case.schema.json"),
                     "--credential",
@@ -292,10 +292,11 @@ def execute_stage(
                     not isinstance(prepared.get(key), dict)
                     or not prepared[key].get("name")
                     or not prepared[key].get("version")
-                    for key in ("dataset", "rubric_evaluator")
+                    for key in ("dataset", "optimizer_dataset", "rubric_evaluator")
                 ):
                     raise BootstrapError(
-                        "prepare-evaluation: adapter did not confirm the dataset and rubric ready."
+                        "prepare-evaluation: adapter did not confirm both datasets "
+                        "and rubric ready."
                     )
             if stage.name == "validate-environment":
                 report = json_object(result.stdout, stage.name)

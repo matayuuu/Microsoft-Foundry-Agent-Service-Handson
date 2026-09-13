@@ -12,28 +12,6 @@ baseline より良い候補だけを agent に反映します。
 > Agent と tool を dataset の各行で繰り返し実行するため、
 > model と外部 tool の料金が発生します。
 
-## 0. 評価条件を確認する
-
-Lab 5 を実行できた場合は、`sample.output_items` / `sample.tool_calls`、Conversation、Trace の
-メモを確認します。ここでは process evaluator を使わず、登録済みの task-level rubric だけで
-比較します。downstream call が `sample.tool_calls` に flatten されるとは仮定しません。
-
-## 使用する値
-
-Lab 1 のデプロイの **Outputs > resourceOutputs** で
-`evaluation_model_deployment_name` と `optimizer_model_deployment_name` がどちらも
-`value = gpt-5.5` であることを確認します。この output は必須です。欠落している場合は、
-Lab 1 の custom template / Deployment Scripts の model deployment と validation を
-管理者と修復してから続行します。
-
-GPT-5.5 は2026-09-09時点の
-[Agent Optimizer の対応モデル](https://learn.microsoft.com/azure/foundry/agents/concepts/agent-optimizer-overview#models)
-に含まれます。デプロイ済みにもかかわらず Portal に
-**No supported optimization model** と表示される場合は重複したモデルを追加せず、
-講師に共有して対応状況を確認します。参考結果の読み方は
-[optimizer-run.simulated.json](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/dev-custom-template/instructor/completed-run-assets/optimizer-run.simulated.json)
-で確認できます。これは架空の参考資料であり、実行結果ではありません。
-
 ## 1. Optimization wizard を開く
 
 1. **Build > Agents > contoso-travel-assistant** を開きます。
@@ -42,6 +20,10 @@ GPT-5.5 は2026-09-09時点の
 
 ## 2. Target を設定する
 
+Lab 1 のデプロイの **Outputs > resourceOutputs** で、
+`optimizer_model_deployment_name` と `evaluation_model_deployment_name` の値を確認します。
+このハンズオンでは、どちらも `gpt-5.5` です。
+
 **Target** step で次を設定します。
 
 | 項目 | 値 |
@@ -49,7 +31,7 @@ GPT-5.5 は2026-09-09時点の
 | Version | Lab 4 までの変更を保存した最新の version |
 | Optimization model | `optimizer_model_deployment_name` の値（`gpt-5.5`） |
 | Max candidates | `1` |
-| Evaluation model | `optimizer_model_deployment_name` の値（`gpt-5.5`） |
+| Evaluation model | `evaluation_model_deployment_name` の値（`gpt-5.5`） |
 | Compare across models | Off |
 
 両方のモデルに **gpt-5.5** を選びます。`gpt-5.6-luna` と `embedding` は選びません。
@@ -59,9 +41,6 @@ GPT-5.5 は2026-09-09時点の
 
 ![対象 version、2つのモデル、候補数、モデル比較 Off を設定する](../docs/images/lab06-target-settings.png)
 
-**Optimization model** は改善案を作る役、**Evaluation model** は回答を採点する役です。
-この演習では両方に同じ `gpt-5.5` deployment を選びます。
-評価対象の Agent 自体は `gpt-5.6-luna` のままで、ここでは変更しません。
 
 ## 3. Dataset を選択する
 
@@ -70,29 +49,21 @@ GPT-5.5 は2026-09-09時点の
 
 ![Select dataset and criteria に切り替える](../docs/images/lab06-existing-data.png)
 
-2. 右側の一覧で `contoso-travel-eval-live-subset` の行にチェックを付けます。
+2. 右側の一覧で `contoso-travel-optimizer-live-subset` の行にチェックを付けます。
    `skill_...` のデータは選びません。
 3. **Next** を選択します。
 
-`Insufficient traces` が表示されても、既存 dataset を選ぶこの手順では
-トレースを増やすための追加実行は不要です。
-
-live subset は常に 7 件で、明確に無関係な out-of-scope case を含みます。Web Search と
-Code Interpreter を呼ぶ case は含まれないため、process evaluator の限定対応に影響されません。
-現在情報を Web Search で調べる master case は、固定 fact ではなく出典 URL と取得日時を
-task-level/custom rubric/Trace で確認する対象であり、Optimizer の live subset には追加しません。
+この dataset は Lab 5 と同じ 7 件の質問に、Optimizer が必要とする参照回答
+（`ground_truth`）をすべて設定したものです。
 
 ## 4. Criteria を選択する
 
-**Criteria** では、Lab 1 で登録したカスタム評価器
-**[Contoso Travel Rubric](../docs/participant/contoso-travel-rubric.md)** の行にチェックを付け、
-**Next** を選択します。この演習では、ほかの評価器は追加しません。
+1. **Criteria** で、Lab 1 が登録した
+   **[Contoso Travel Rubric](../docs/participant/contoso-travel-rubric.md)** を選択します。
+2. ほかの評価器は追加せず、**Next** を選択します。
 
-この rubric は、規程準拠、引用、Tool 利用、対象範囲と安全上の制約という固定の 4 評価軸で
-回答を task-level で採点します。Tool Search の `tool_search` / `call_tool` の選択と、その内側の
-実 operation の正確さを 1 つの process score として扱いません。候補ごとの Conversation / Trace で
-2 層を確認します。Code Interpreter や Web Search を使う別 dataset に ToolInputAccuracy 等を
-適用しないでください。
+この評価器は、規程への準拠、引用、Tool の利用、対象範囲と安全性の 4 項目で回答を採点します。
+実際に選ばれた Tool とその引数・出力は、候補ごとの Conversation / Trace で確認します。
 
 ![Optimizer の custom rubric 選択](../docs/images/lab06-optimizer-criteria.png)
 

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:contoso:travel-workshop:eval-case",
   "title": "Travel Ops evaluation case",
-  "description": "Schema for one line of data/eval/master.jsonl or data/eval/live_subset.jsonl. Defines the exact columns evaluators and the optimizer read, including separate Tool Search meta-calls and underlying operations. Designed to contrast a naive v1 prompt-only agent against an improved v2 agent (Foundry IQ + tools) on the same question set.",
+  "description": "Schema for one line of data/eval/master.jsonl, data/eval/live_subset.jsonl, or data/eval/optimizer_live_subset.jsonl. Defines the exact columns evaluators and the optimizer read, including separate Tool Search meta-calls and underlying operations. The optimizer subset uses the same seven cases as the live subset but requires a nonempty ground_truth for every row. Designed to contrast a naive v1 prompt-only agent against an improved v2 agent (Foundry IQ + tools) on the same question set.",
   "type": "object",
   "required": [
     "id",
@@ -46,7 +46,7 @@
     },
     "ground_truth": {
       "type": ["string", "null"],
-      "description": "Optional reference answer or fact used for string/semantic-similarity graders. Omitted or null when the case is graded purely on behavior (e.g. refusal, clarification)."
+      "description": "Reference answer used by evaluators and Agent Optimizer. It may be null in master/live_subset behavior-only cases, but must be a nonempty natural reference answer in optimizer_live_subset."
     },
     "expected_citations": {
       "type": "array",
