@@ -22,6 +22,17 @@
 部分リソースも確認します。ログの保持・再試行・一時実行基盤の詳細は
 [infra/README.md](../../infra/README.md) を参照してください。
 
+## Application Insights の自動アラート
+
+`Failure-Anomalies-Alert-Rule-Deployment-*` だけが `MissingSubscriptionRegistration` で失敗し、
+`Microsoft.AlertsManagement` の未登録を示す場合があります。ハンズオン本体の deployment と
+`workshopContext.setup_status` の成否とは分けて確認してください。
+
+自動アラートを利用する場合は、管理者が **Subscriptions > Resource providers** で
+`Microsoft.AlertsManagement` を登録し、対象アラートの再作成を確認します。
+`admin-preflight.sh` はこの任意 provider を警告として報告し、`--apply` でも自動登録しません。
+履歴を消して失敗を隠したり、参加者・bootstrap identity の権限を広げたりしません。
+
 ## GitHub assets / Notebook
 
 | 症状 | 確認すること |
@@ -29,7 +40,7 @@
 | assets が取得できない | 配布参照先が公開され、bootstrap / 共通教材の revision が互換か |
 | Skill を登録できない | PC の ZIP を選び、直下に `SKILL.md` があるか |
 | OpenAPI が別 API を呼ぶ | `servers[0].url` が本人の `travelApiBaseUrl` と一致するか |
-| カーネルが出ない | Dev Container の post-create が成功したか。既存のホスト環境を変更しない |
+| カーネルが出ない | **Select Kernel > Jupyter Kernel...** と post-create の成功を確認。既存のホスト環境を変更しない |
 | CLI 認証エラー | Notebook と同じコンテナーで本人が Azure CLI にサインインしたか |
 | context 取得が失敗 | subscription / RG、成功した schema `2.0` の `workshopContext`、読み取り権限を確認 |
 | deployment 候補が複数 | 対象を確認してから、管理者が `configure_workshop.py --deployment <name>` を指定。推測しない |

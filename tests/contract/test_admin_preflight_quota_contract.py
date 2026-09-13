@@ -74,6 +74,10 @@ ALL_ARGS=("$@")
 sub1="${1:-}"
 sub2="${2:-}"
 
+if [[ -n "${FAKE_AZ_CALLS_FILE:-}" ]]; then
+  printf '%s\n' "${ALL_ARGS[*]}" >> "${FAKE_AZ_CALLS_FILE}"
+fi
+
 case "${sub1} ${sub2}" in
   "account show")
     echo "{\"id\": \"${FAKE_SUBSCRIPTION_ID:-sub-0000}\", " \
@@ -361,6 +365,47 @@ def test_defaults_participant_count_to_one_and_reports_it(
             check["name"] == f"provider:{provider}" and check["status"] == "pass"
             for check in report["checks"]
         )
+    assert any(
+        check["name"] == "optional-provider:Microsoft.AlertsManagement"
+        and check["status"] == "pass"
+        for check in report["checks"]
+    )
+
+
+@pytest.mark.parametrize("apply", [False, True])
+@pytest.mark.parametrize("state", ["NotRegistered", "Unknown"])
+def test_optional_alert_provider_warns_without_registration(
+    fake_az_bin: Path, tmp_path: Path, apply: bool, state: str
+) -> None:
+    calls_path = tmp_path / "az-calls.txt"
+    result = _run_admin_preflight(
+        fake_az_bin,
+        tmp_path,
+        ["--format", "json", *(["--apply"] if apply else [])],
+        {
+            "FAKE_AZ_CALLS_FILE": str(calls_path),
+            "FAKE_PROVIDER_MICROSOFT_ALERTSMANAGEMENT": state,
+            "FAKE_MODELS_EASTUS2": _write_json(tmp_path, "models.json", FULL_MODELS_FIXTURE),
+            "FAKE_USAGE_EASTUS2": _write_json(
+                tmp_path, "usage.json", _usage_fixture_with_headroom(100.0)
+            ),
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    report = _report(result)
+    check = next(
+        check
+        for check in report["checks"]
+        if check["name"] == "optional-provider:Microsoft.AlertsManagement"
+    )
+    assert check["status"] == "warn"
+    assert state in check["detail"]
+    assert "--apply does not register this optional provider" in check["detail"]
+    assert "provider register" not in calls_path.read_text(encoding="utf-8")
+    assert not any(
+        check["name"].startswith("region-support:Microsoft.AlertsManagement")
+        for check in report["checks"]
+    )
 
 
 def test_aggregate_capacity_scales_with_participant_count(

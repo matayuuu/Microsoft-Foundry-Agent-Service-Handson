@@ -28,7 +28,7 @@ Lab 1 の初期化と、Lab 7 の共通環境・`notebooks/00-setup.ipynb` を�
 
 1. Codespaces またはローカル Dev Container の VS Code で
    [`notebooks/08-hosted-agent.ipynb`](../notebooks/08-hosted-agent.ipynb) を開きます。
-2. kernel に **Python (Foundry Hosted Agent)** を選択します。
+2. **Select Kernel > Jupyter Kernel... > Python (Foundry Hosted Agent)** を選択します。
    `foundry-hosted-agent` venv（Python 3.13）を使います。
 3. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばしません。
 

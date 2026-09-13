@@ -43,7 +43,8 @@ Toolbox へ登録しただけの状態と、Agent が実際に利用した状態
 3. VS Code の Explorer で
    [`notebooks/07-agent-framework-harness.ipynb`](../notebooks/07-agent-framework-harness.ipynb)
    を開きます。
-4. kernel に **Python (Foundry Hosted Agent)**（`foundry-hosted-agent`、Python 3.13）を選択します。
+4. **Select Kernel > Jupyter Kernel...** で
+   **Python (Foundry Hosted Agent)**（`foundry-hosted-agent`、Python 3.13）を選択します。
 5. 説明を読み、上から 1 cell ずつ実行します。エラーの cell を飛ばしません。
 
 Notebook・source・scripts はリポジトリに揃っています。手動で集めたりアップロードしたりしません。

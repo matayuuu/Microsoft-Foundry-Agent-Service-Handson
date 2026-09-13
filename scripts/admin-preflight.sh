@@ -256,6 +256,16 @@ for provider in "${REQUIRED_PROVIDERS[@]}"; do
   fi
 done
 
+# App Insights can create this auxiliary alert outside the workshop template.
+# Keep the check informational; --apply registers required providers only.
+alerts_provider="Microsoft.AlertsManagement"
+alerts_state="$(az provider show --namespace "${alerts_provider}" --subscription "${SUBSCRIPTION_ID}" --query registrationState -o tsv 2>/dev/null || echo "Unknown")"
+if [[ "${alerts_state}" == "Registered" ]]; then
+  add_check "optional-provider:${alerts_provider}" "pass" "Registered for the optional Application Insights failure-anomalies alert."
+else
+  add_check "optional-provider:${alerts_provider}" "warn" "Registration state is '${alerts_state}'. Application Insights may fail to create its automatic Failure-Anomalies alert even when the workshop deployment succeeds. Ask a subscription administrator to review registration if this alert is wanted; --apply does not register this optional provider."
+fi
+
 # ---------------------------------------------------------------------------
 # Regional resource-type availability for the explicitly selected region
 # ---------------------------------------------------------------------------

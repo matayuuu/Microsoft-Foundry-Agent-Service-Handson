@@ -33,7 +33,9 @@ az login --use-device-code
 ### 3. 初回 Notebook で接続先を取得する
 
 1. [`notebooks/00-setup.ipynb`](../../../notebooks/00-setup.ipynb) を開きます。
-2. 右上のカーネル選択で **Python (Foundry Workshop)** を選びます。
+2. 右上の **Select Kernel > Jupyter Kernel... > Python (Foundry Workshop)** を選びます。
+   最近使った候補だけが表示される場合は、**Select Another Kernel...** から進みます。
+   「おすすめ」ではなく、この Notebook 指定のカーネルを選んでください。
 3. **subscription ID** と **RG 名**に、Lab 1 で使った 2 値を入力し、セルを上から実行します。
 4. `.workshop/context.json` が作成され、対象 RG と `setup_status = complete` を確認できれば完了です。
 
@@ -52,6 +54,8 @@ Dev Container の post-create が、チェックアウト外の `~/.venvs/` に�
 
 依存関係を混在させず、各 Notebook 指定のカーネルを使います。post-create は Azure に認証・デプロイしません。
 VS Code の Notebook を使うため、Jupyter サーバーや公開ポートの追加は不要です。
+出力が **Output is truncated** で省略された場合は、その出力の **scrollable element** を選びます。
+確認のために実行セルを再送しないでください。
 
 [Lab 7](../../../labs/07-agent-framework-harness.md) へ進みます。
 終了時は [Lab 9](../../../labs/09-observability-cleanup.md) の順に保存・削除してください。

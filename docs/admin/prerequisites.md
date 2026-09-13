@@ -15,6 +15,8 @@
 
 - Search **Basic**、Container Apps、Deployment Scripts が利用可能なこと。
   実行基盤の要件は [infra/README.md](../../infra/README.md) を参照します。
+- Application Insights の自動アラートも利用する場合は、`Microsoft.AlertsManagement` の登録を
+  管理者が事前に確認します。未登録時の扱いは[自動アラートの確認](troubleshooting.md#application-insights-の自動アラート)を参照します。
 - GitHub Codespaces の利用枠と組織ポリシー、GitHub / GHCR / package sources への到達性を確認します。
   ローカル参加者は [Dev Container の前提条件](../participant/environments/local-dev-container.md)を満たすこと。
 

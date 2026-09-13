@@ -126,7 +126,10 @@ Foundry IQ MCP と App Insights の **Project Managed Identity** connections と
 ![policy index を選択する](../docs/images/lab03-ai-search-picker.png)
 
 5. Agent に戻ったら **Select a search index** が `contoso-travel-policy` であることを
-  確認し、**Save** を選択します。
+  確認します。
+6. Azure AI Search の **Actions > Parameters** で **Search type = Semantic**、
+  **Retrieved documents = 5** にします。設定欄を閉じ、**Save** を選択します。
+  既定の Simple のままにせず、作成済み index の semantic configuration を使います。
 
 ![接続した index を確認して保存する](../docs/images/lab03-search-attached.png)
 

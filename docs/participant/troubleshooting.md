@@ -10,7 +10,8 @@
 | デプロイ・初期化が失敗する | RG の **Deployments** と Deployment Scripts の **Logs** を確認。リージョン・モデルを変えず、管理者へ連絡 |
 | モデルや接続先が見つからない | Lab 1 の **Outputs > resourceOutputs** にある自分のプロジェクトを開いているか確認 |
 | Codespace を作れない | GitHub アカウント、利用枠、組織の Codespaces ポリシーを確認 |
-| カーネルが表示されない | Dev Container の post-create 完了を確認し、VS Code のカーネル一覧を更新。[準備ガイド](environments/codespaces.md)参照 |
+| カーネルが表示されない | **Select Kernel > Jupyter Kernel...** を確認。そこにもない場合は post-create の完了と[準備ガイド](environments/codespaces.md)を確認 |
+| Notebook の出力が省略される | **Output is truncated** の **scrollable element** を選ぶ。セルを再実行して確認しない |
 | Notebook で認証エラー | コンテナーの Terminal で Azure CLI にサインインしたか確認。Portal のログインだけでは使えません |
 | 初回設定で対象が見つからない・曖昧になる | subscription ID / RG 名と **Succeeded** の deployment を確認。複数候補は管理者へ相談し、推測で選びません |
 | 接続先の不一致で初回設定が止まる | 既存の `.workshop/context.json` と今回の対象を確認。別環境の設定を上書きして続けません |
@@ -26,9 +27,13 @@ JSON 全体を **OpenAPI 3.0+ schema** に貼り付けます。
 
 ## 引用リンク
 
+Lab 2 は Azure AI Search の **Actions > Parameters** で **Search type = Semantic**、
+**Retrieved documents = 5** を確認します。回答の金額だけでなく、適用条件と根拠資料も照合します。
 検索結果の URL が Search 自体を開く場合は、`source_url` を管理者に確認してもらいます。
 Foundry IQ の `mcp://searchindex/...` は内部の引用 ID です。
 Web ページとして開くのではなく、**Traces** の文書 ID と教材の規程を照合します。
+Portal の回答に `cite` の内部記号がそのまま残る場合は、引用表示の不一致として記録し、
+**Traces** の取得文書と元資料を確認します。検索設定だけで表示が直るとは限らず、成功扱いにしません。
 
 ## 評価と最適化
 
