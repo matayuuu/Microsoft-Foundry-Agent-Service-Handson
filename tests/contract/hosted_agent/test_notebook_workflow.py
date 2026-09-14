@@ -10,11 +10,14 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
+import agent_framework
+import agent_framework.foundry as agent_framework_foundry
+import azure.identity
 import IPython.display
 import pytest
-import travel_agents
 import workflow
 from agent_framework import WorkflowViz
 from fakes import (
@@ -34,6 +37,11 @@ NOTEBOOK_PATH = REPO_ROOT / "notebooks" / "08-hosted-agent.ipynb"
 class _Credential:
     def __init__(self) -> None:
         self.closed = False
+        self.scopes: list[str] = []
+
+    def get_token(self, scope: str) -> SimpleNamespace:
+        self.scopes.append(scope)
+        return SimpleNamespace(token="synthetic-token")
 
     def close(self) -> None:
         self.closed = True
@@ -82,14 +90,6 @@ def notebook_namespace(
     )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "path", sys.path.copy())
-    for name in (
-        "WORKSHOP_CREDENTIAL_MODE",
-        "FOUNDRY_PROJECT_ENDPOINT",
-        "FOUNDRY_MODEL",
-        "AZURE_AI_SEARCH_SERVICE_ENDPOINT",
-        "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME",
-    ):
-        monkeypatch.delenv(name, raising=False)
 
     def check_kernel(spec: runtime.EnvironmentSpec) -> None:
         assert spec == runtime.HOSTED_ENVIRONMENT
@@ -97,20 +97,26 @@ def notebook_namespace(
     monkeypatch.setattr(runtime, "require_current_runtime", check_kernel)
     credential = _Credential()
     chat_client.include_policy_tool_events = True
-    monkeypatch.setattr(travel_agents, "create_credential", lambda: credential)
-    monkeypatch.setattr(
-        travel_agents,
-        "create_chat_client",
-        lambda supplied: chat_client if supplied is credential else None,
-    )
-    monkeypatch.setattr(
-        travel_agents,
-        "create_foundry_iq_tool",
-        lambda supplied: _policy_lookup if supplied is credential else None,
-    )
+    captured_chat_client: dict[str, Any] = {}
+    captured_iq_tool: dict[str, Any] = {}
+
+    monkeypatch.setattr(azure.identity, "AzureCliCredential", lambda: credential)
+
+    def create_chat_client(**kwargs: Any) -> ScriptedChatClient:
+        captured_chat_client.update(kwargs)
+        return chat_client
+
+    def create_iq_tool(**kwargs: Any) -> Any:
+        captured_iq_tool.update(kwargs)
+        return _policy_lookup
+
+    monkeypatch.setattr(agent_framework_foundry, "FoundryChatClient", create_chat_client)
+    monkeypatch.setattr(agent_framework, "MCPStreamableHTTPTool", create_iq_tool)
     displayed: list[Any] = []
     monkeypatch.setattr(IPython.display, "display", displayed.append)
     return {
+        "captured_chat_client": captured_chat_client,
+        "captured_iq_tool": captured_iq_tool,
         "credential": credential,
         "displayed": displayed,
         "policy_tool": _policy_lookup,
@@ -143,11 +149,23 @@ def test_notebook_runs_three_normal_agents_in_sequential_order(
     }
     assert notebook_namespace["policy_actions"] == {"knowledge_base_retrieve"}
     assert notebook_namespace["answer"] == REVIEWER_RESPONSE
+    assert notebook_namespace["SAMPLE_REQUEST"] == workflow.SAMPLE_REQUEST
+    assert notebook_namespace["SIMULATION_NOTICE"] == workflow.SIMULATION_NOTICE
     assert [call["messages"] for call in chat_client.calls] == [
-        [workflow.SAMPLE_REQUEST],
-        [workflow.SAMPLE_REQUEST, INTAKE_RESPONSE],
-        [workflow.SAMPLE_REQUEST, INTAKE_RESPONSE, POLICY_RESPONSE],
+        [notebook_namespace["SAMPLE_REQUEST"]],
+        [notebook_namespace["SAMPLE_REQUEST"], INTAKE_RESPONSE],
+        [notebook_namespace["SAMPLE_REQUEST"], INTAKE_RESPONSE, POLICY_RESPONSE],
     ]
+    captured_client = notebook_namespace["captured_chat_client"]
+    assert captured_client["project_endpoint"] == notebook_namespace["project_endpoint"]
+    assert captured_client["model"] == notebook_namespace["model_deployment"]
+    assert captured_client["credential"] is notebook_namespace["credential"]
+    assert captured_client["middleware"] == [notebook_namespace["request_pacer"]]
+    captured_iq = notebook_namespace["captured_iq_tool"]
+    assert captured_iq["url"] == notebook_namespace["foundry_iq_url"]
+    assert captured_iq["header_provider"] is notebook_namespace["search_headers"]
+    assert captured_iq["allowed_tools"] == ["knowledge_base_retrieve"]
+    assert captured_iq["approval_mode"] == "never_require"
     deployed = workflow.build_workflow(
         chat_client=ScriptedChatClient(),
         foundry_iq_tool=_policy_lookup,
@@ -182,6 +200,9 @@ def test_notebook_uses_normal_policy_agent_before_building_workflow() -> None:
     assert "policy_agent" in text
     assert "POLICY_AGENT_INSTRUCTIONS" in text
     assert "knowledge_base_retrieve" in text
+    assert "import travel_agents" not in text
+    assert "FoundryChatClient(" in text
+    assert "MCPStreamableHTTPTool(" in text
     assert "travel_harness_agent" not in text
     assert "build_environment_harness_agent" not in text
     assert "intermediate_output_from" in text

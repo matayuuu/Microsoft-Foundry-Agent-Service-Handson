@@ -63,6 +63,9 @@ NOTEBOOKS = {
     "08-hosted-agent.ipynb": {
         "kernel": "foundry-hosted-agent",
         "required_text": [
+            "AzureCliCredential",
+            "FoundryChatClient",
+            "MCPStreamableHTTPTool",
             "chat_client.as_agent",
             "policy_agent",
             "POLICY_AGENT_INSTRUCTIONS",
@@ -142,6 +145,28 @@ def test_harness_notebook_uses_agent_framework_api_directly() -> None:
         "standard_agent = Agent(",
         "FoundryToolbox(",
         "create_harness_agent(",
+    ):
+        assert direct_api in code
+
+
+def test_hosted_notebook_uses_agent_framework_api_directly() -> None:
+    notebook = json.loads(
+        (REPO_ROOT / "notebooks" / "08-hosted-agent.ipynb").read_text(encoding="utf-8")
+    )
+    code = "\n".join(
+        "".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"
+    )
+
+    assert "import travel_agents" not in code
+    for direct_api in (
+        "AzureCliCredential(",
+        "FoundryChatClient(",
+        "MCPStreamableHTTPTool(",
+        "INTAKE_AGENT_INSTRUCTIONS =",
+        "POLICY_AGENT_INSTRUCTIONS =",
+        "REVIEWER_AGENT_INSTRUCTIONS =",
+        "chat_client.as_agent(",
+        "SequentialBuilder(",
     ):
         assert direct_api in code
 

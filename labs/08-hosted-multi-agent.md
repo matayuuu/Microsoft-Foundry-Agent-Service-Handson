@@ -5,6 +5,11 @@
 Microsoft Agent Framework の通常 Agent を 3 つ作り、順番に処理する workflow として
 Microsoft Foundry に deploy します。
 
+Notebook では Workshop 独自の Agent factory を使いません。`AzureCliCredential`、
+`FoundryChatClient`、`MCPStreamableHTTPTool`、3 Agent の instructions、
+`chat_client.as_agent()`、`SequentialBuilder` を直接記述し、組み立て順を確認します。
+deploy 対象の `src/hosted-agent/` は、同じ構成を再利用しやすい module に分けています。
+
 ```text
 intake_agent -> policy_agent -> reviewer_agent
 ```
@@ -38,11 +43,13 @@ Lab 1 の初期化と、Lab 7 の共通環境・`notebooks/00-setup.ipynb` を�
 Notebook は次の順に進みます。
 
 1. `.workshop/context.json` の `resource_outputs.<key>.value` から model、Search、Foundry IQ の接続先を読む
-2. 3 つの通常 Agent を作る
-3. `SequentialBuilder` で実行順を固定する
-4. `WorkflowViz` と Graphviz で実際の graph を表示する
-5. 合成の規程質問を実行し、途中回答と reviewer の最終回答を比較する
-6. Azure を使わない contract test を実行する
+2. Azure CLI credential、共有 chat client、Foundry IQ MCP tool を直接作る
+3. instructions を読み、3 つの通常 Agent を作る
+4. `SequentialBuilder` で実行順を固定する
+5. `WorkflowViz` と Graphviz で実際の graph を表示する
+6. 合成の規程質問を実行し、途中回答と reviewer の最終回答を比較する
+7. Notebook と deploy source の instructions / request が一致することを確認する
+8. Azure を使わない contract test を実行する
 
 Graphviz が使える場合、次の 3 participant が順に接続された SVG が表示されます。
 
