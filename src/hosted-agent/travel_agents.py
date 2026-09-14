@@ -74,7 +74,7 @@ Web Search を実行しないでください。ユーザーが計画を承認し
 確認事項を示してください。
 """.strip()
 
-PLAIN_AGENT_INSTRUCTIONS = """
+STANDARD_AGENT_INSTRUCTIONS = """
 あなたは Contoso 社内向けの出張・経費アシスタントです。
 社内規程に関する質問は Foundry IQ を使って調べ、回答に根拠を付けてください。
 確認できない値を推測せず、検索結果にない場合は情報が見つからないと伝えてください。
@@ -229,17 +229,17 @@ def create_toolbox(
     )
 
 
-def build_plain_travel_agent(
+def build_standard_travel_agent(
     *,
     chat_client: Any,
     foundry_iq_tool: Any,
 ) -> Agent[Any]:
-    """Build the beginner Agent that has one Foundry IQ tool."""
+    """Build the standard Agent that has one Foundry IQ tool."""
     return Agent(
         client=chat_client,
         name="travel_policy_agent",
         description="Answers Contoso travel-policy questions with Foundry IQ.",
-        instructions=PLAIN_AGENT_INSTRUCTIONS,
+        instructions=STANDARD_AGENT_INSTRUCTIONS,
         tools=[foundry_iq_tool],
     )
 

@@ -48,7 +48,11 @@ NOTEBOOKS = {
     "07-agent-framework-harness.ipynb": {
         "kernel": "foundry-hosted-agent",
         "required_text": [
-            "build_plain_travel_agent",
+            "AzureCliCredential",
+            "FoundryChatClient",
+            "MCPStreamableHTTPTool",
+            "Agent(",
+            "FoundryToolbox",
             "create_harness_agent",
             "Foundry IQ",
             "Toolbox",
@@ -120,6 +124,26 @@ def test_notebooks_use_only_shared_container_and_current_context(filename: str) 
     assert "setup_dev_environment.py" not in code
     assert "az login" not in code
     assert "get-access-token" not in code
+
+
+def test_harness_notebook_uses_agent_framework_api_directly() -> None:
+    notebook = json.loads(
+        (REPO_ROOT / "notebooks" / "07-agent-framework-harness.ipynb").read_text(encoding="utf-8")
+    )
+    code = "\n".join(
+        "".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"
+    )
+
+    assert "import travel_agents" not in code
+    for direct_api in (
+        "AzureCliCredential(",
+        "FoundryChatClient(",
+        "MCPStreamableHTTPTool(",
+        "standard_agent = Agent(",
+        "FoundryToolbox(",
+        "create_harness_agent(",
+    ):
+        assert direct_api in code
 
 
 def test_hosted_notebook_builds_and_tests_before_deployment_guidance() -> None:

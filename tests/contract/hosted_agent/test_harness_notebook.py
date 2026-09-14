@@ -12,8 +12,9 @@ from types import SimpleNamespace
 from typing import Any
 
 import agent_framework
+import agent_framework.foundry as agent_framework_foundry
+import azure.identity
 import pytest
-import travel_agents
 from agent_framework import AgentSession, get_agent_mode
 
 from scripts.lib import workshop_runtime as runtime
@@ -25,6 +26,11 @@ NOTEBOOK_PATH = REPO_ROOT / "notebooks" / "07-agent-framework-harness.ipynb"
 class _Credential:
     def __init__(self) -> None:
         self.closed = False
+        self.scopes: list[str] = []
+
+    def get_token(self, scope: str) -> SimpleNamespace:
+        self.scopes.append(scope)
+        return SimpleNamespace(token="synthetic-token")
 
     def close(self) -> None:
         self.closed = True
@@ -38,12 +44,12 @@ class _Response:
         ]
 
 
-class _PlainAgent:
+class _StandardAgent:
     def __init__(self) -> None:
         self.requests: list[str] = []
         self.closed = False
 
-    async def __aenter__(self) -> _PlainAgent:
+    async def __aenter__(self) -> _StandardAgent:
         return self
 
     async def __aexit__(self, *_: Any) -> None:
@@ -121,13 +127,14 @@ async def _execute_notebook(namespace: dict[str, Any]) -> None:
             await result
 
 
-def test_notebook_builds_plain_then_harness_agent_with_shared_resources(
+def test_notebook_builds_standard_then_harness_agent_with_direct_framework_wiring(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    source = tmp_path / "src" / "hosted-agent"
-    source.mkdir(parents=True)
-    source.joinpath("travel_agents.py").write_text("# marker\n", encoding="utf-8")
+    tmp_path.joinpath("pyproject.toml").write_text("[project]\nname = 'test'\n", encoding="utf-8")
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    scripts.joinpath("configure_workshop.py").write_text("# marker\n", encoding="utf-8")
     context_dir = tmp_path / ".workshop"
     context_dir.mkdir()
     context_dir.joinpath("context.json").write_text(
@@ -136,15 +143,6 @@ def test_notebook_builds_plain_then_harness_agent_with_shared_resources(
     )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "path", sys.path.copy())
-    for name in (
-        "WORKSHOP_CREDENTIAL_MODE",
-        "FOUNDRY_PROJECT_ENDPOINT",
-        "FOUNDRY_MODEL",
-        "AZURE_AI_SEARCH_SERVICE_ENDPOINT",
-        "AZURE_AI_SEARCH_KNOWLEDGE_BASE_NAME",
-        "TOOLBOX_NAME",
-    ):
-        monkeypatch.delenv(name, raising=False)
 
     def check_kernel(spec: runtime.EnvironmentSpec) -> None:
         assert spec == runtime.HOSTED_ENVIRONMENT
@@ -152,47 +150,46 @@ def test_notebook_builds_plain_then_harness_agent_with_shared_resources(
     monkeypatch.setattr(runtime, "require_current_runtime", check_kernel)
 
     credential = _Credential()
-    plain_agent = _PlainAgent()
+    standard_agent = _StandardAgent()
     harness_agent = _HarnessAgent()
     toolbox = _Toolbox()
-    plain_chat_client = object()
+    standard_chat_client = object()
     harness_chat_client = object()
-    chat_clients = iter([plain_chat_client, harness_chat_client])
+    chat_clients = iter([standard_chat_client, harness_chat_client])
     iq_tools: list[object] = []
+    captured_clients: list[dict[str, Any]] = []
+    captured_iq_tools: list[dict[str, Any]] = []
+    captured_standard: dict[str, Any] = {}
+    captured_toolbox: dict[str, Any] = {}
     captured_harness: dict[str, Any] = {}
 
-    monkeypatch.setattr(travel_agents, "create_credential", lambda: credential)
-    monkeypatch.setattr(
-        travel_agents,
-        "create_chat_client",
-        lambda supplied: next(chat_clients) if supplied is credential else None,
-    )
+    monkeypatch.setattr(azure.identity, "AzureCliCredential", lambda: credential)
 
-    def create_iq_tool(supplied: object) -> object:
-        assert supplied is credential
+    def create_chat_client(**kwargs: Any) -> object:
+        captured_clients.append(kwargs)
+        return next(chat_clients)
+
+    monkeypatch.setattr(agent_framework_foundry, "FoundryChatClient", create_chat_client)
+
+    def create_iq_tool(**kwargs: Any) -> object:
         tool = object()
         iq_tools.append(tool)
+        captured_iq_tools.append(kwargs)
         return tool
 
-    monkeypatch.setattr(travel_agents, "create_foundry_iq_tool", create_iq_tool)
-    monkeypatch.setattr(
-        travel_agents,
-        "build_plain_travel_agent",
-        lambda **kwargs: (
-            plain_agent
-            if kwargs
-            == {
-                "chat_client": plain_chat_client,
-                "foundry_iq_tool": iq_tools[-1],
-            }
-            else None
-        ),
-    )
-    monkeypatch.setattr(
-        travel_agents,
-        "create_toolbox",
-        lambda supplied: toolbox if supplied is credential else None,
-    )
+    monkeypatch.setattr(agent_framework, "MCPStreamableHTTPTool", create_iq_tool)
+
+    def create_standard_agent(**kwargs: Any) -> _StandardAgent:
+        captured_standard.update(kwargs)
+        return standard_agent
+
+    monkeypatch.setattr(agent_framework, "Agent", create_standard_agent)
+
+    def create_toolbox(*args: Any, **kwargs: Any) -> _Toolbox:
+        captured_toolbox.update({"args": args, **kwargs})
+        return toolbox
+
+    monkeypatch.setattr(agent_framework_foundry, "FoundryToolbox", create_toolbox)
 
     def create_harness_agent(**kwargs: Any) -> _HarnessAgent:
         captured_harness.update(kwargs)
@@ -203,8 +200,25 @@ def test_notebook_builds_plain_then_harness_agent_with_shared_resources(
 
     asyncio.run(_execute_notebook(namespace))
 
+    assert len(captured_clients) == 2
+    for client in captured_clients:
+        assert client["project_endpoint"] == namespace["project_endpoint"]
+        assert client["model"] == namespace["model_deployment"]
+        assert client["credential"] is credential
+        assert client["middleware"] == [namespace["request_pacer"]]
+
     assert len(iq_tools) == 2
-    assert plain_agent.requests and "片道12時間" in plain_agent.requests[0]
+    for iq_tool in captured_iq_tools:
+        assert iq_tool["url"] == namespace["foundry_iq_url"]
+        assert iq_tool["allowed_tools"] == ["knowledge_base_retrieve"]
+        assert iq_tool["header_provider"] is namespace["search_headers"]
+        assert iq_tool["approval_mode"] == "never_require"
+
+    assert captured_standard["client"] is standard_chat_client
+    assert captured_standard["tools"] == [iq_tools[0]]
+    assert captured_standard["name"] == "travel_policy_agent"
+    assert "Foundry IQ" in captured_standard["instructions"]
+    assert standard_agent.requests and "片道12時間" in standard_agent.requests[0]
     assert harness_agent.requests[0] == namespace["complex_request"]
     assert "この計画を承認します" in harness_agent.requests[1]
     assert namespace["execute_actions"] == [
@@ -222,10 +236,17 @@ def test_notebook_builds_plain_then_harness_agent_with_shared_resources(
     assert captured_harness["mode_provider"] is namespace["mode_provider"]
     assert captured_harness["disable_web_search"] is True
     assert captured_harness["loop_max_iterations"] == 6
+    assert captured_toolbox == {
+        "args": (credential,),
+        "name": namespace["toolbox_name"],
+        "url": namespace["toolbox_url"],
+        "load_tools": True,
+        "approval_mode": "never_require",
+    }
     assert toolbox.skills_options == {
         "disable_load_skill_approval": True,
         "disable_read_skill_resource_approval": True,
     }
-    assert plain_agent.closed is True
+    assert standard_agent.closed is True
     assert harness_agent.closed is True
     assert credential.closed is True

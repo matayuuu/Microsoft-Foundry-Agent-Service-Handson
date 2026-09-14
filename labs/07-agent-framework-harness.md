@@ -11,6 +11,10 @@ Notebook で次の 2 つを順に作ります。
 2. **Harness Agent**: Foundry IQ を残したまま、Lab 4 の Toolbox tools と Skills を追加し、
    複雑な依頼を plan / todos / execute に分解して処理する
 
+この Lab では Workshop 独自の Agent factory を使いません。`AzureCliCredential`、
+`FoundryChatClient`、`MCPStreamableHTTPTool`、`Agent`、`FoundryToolbox`、
+`create_harness_agent` を Notebook で直接 import・生成し、各引数の役割を確認します。
+
 Lab 4 で公開した Skills は、この Lab で初めて `load_skill` により本文を読み込みます。
 Toolbox へ登録しただけの状態と、Agent が実際に利用した状態の違いを実行記録で確認します。
 
