@@ -42,9 +42,9 @@ Tool Search を有効にすると、最初から全 tool 定義をモデルへ�
 
 | ファイル | 用途 |
 |---|---|
-| [travel-estimation.zip](https://raw.githubusercontent.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/dev-custom-template/assets/skills/travel-estimation.zip) | 見積もり Skill |
-| [preapproval-simulation.zip](https://raw.githubusercontent.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/dev-custom-template/assets/skills/preapproval-simulation.zip) | 承認シミュレーション Skill |
-| [travel-ops.openapi.json](https://raw.githubusercontent.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/dev-custom-template/assets/openapi/travel-ops.openapi.json) | OpenAPI の共通定義 |
+| [travel-estimation.zip](https://raw.githubusercontent.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/main/assets/skills/travel-estimation.zip) | 見積もり Skill |
+| [preapproval-simulation.zip](https://raw.githubusercontent.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/main/assets/skills/preapproval-simulation.zip) | 承認シミュレーション Skill |
+| [travel-ops.openapi.json](https://raw.githubusercontent.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/main/assets/openapi/travel-ops.openapi.json) | OpenAPI の共通定義 |
 
 各 Skill ZIP の直下には `SKILL.md` があります。`SKILL.md` 単体ではなく ZIP を選んでください。
 ブラウザーの file picker は手元の PC を参照します。

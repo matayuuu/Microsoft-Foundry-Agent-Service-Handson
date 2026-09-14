@@ -8,7 +8,7 @@ Azure Portal で準備します。この Lab では CLI や Notebook は使い�
 - 管理者からサブスクリプションの指定を受け取ります。専用 RG は手順 1 で自分で作成します。
   テンプレートの既定値については[管理者向けガイド](../docs/admin/prerequisites.md#2-配布するテンプレートと既定値)を参照できます。
 - 管理者指定の
-  [azuredeploy.json](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/dev-custom-template/infra/azuredeploy.json)
+   [azuredeploy.json](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/main/infra/azuredeploy.json)
   を PC に保存します。Web ページではなく JSON 本体を保存してください。
 
 モデルのバージョン、イメージのハッシュ、教材の SHA は設定済みです。

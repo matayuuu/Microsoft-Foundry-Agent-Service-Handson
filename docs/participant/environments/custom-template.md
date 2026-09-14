@@ -19,4 +19,4 @@
 | ノートブックの準備（標準） | [Codespaces](codespaces.md) |
 | ローカルで受講する場合 | [同じ Dev Container を使う](local-dev-container.md) |
 | 終了時の片付け | [Lab 9](../../../labs/09-observability-cleanup.md) |
-| 詳細な構成・権限 | [infra/README.md](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/dev-custom-template/infra/README.md) |
+| 詳細な構成・権限 | [infra/README.md](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/main/infra/README.md) |

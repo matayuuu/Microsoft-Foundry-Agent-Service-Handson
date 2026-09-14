@@ -5,10 +5,10 @@
 
 ## 1. Codespace を作成する
 
-1. [教材リポジトリ](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/tree/dev-custom-template)
-   を開き、ブランチが `dev-custom-template` であることを確認します。
+1. [教材リポジトリ](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/tree/main)
+   を開き、ブランチが `main` であることを確認します。
 2. **Code > Codespaces** を開き、作成ボタン
-   （**Create codespace on dev-custom-template** または **＋**）を選びます。
+   （**Create codespace on main** または **＋**）を選びます。
 3. ブラウザー版 VS Code が開き、Dev Container の作成と `postCreateCommand` の完了を待ちます。
 4. Explorer に `notebooks/`、`scripts/`、`src/` があることを確認します。
    フォルダーのアップロードや、コードの個別ダウンロードは不要です。

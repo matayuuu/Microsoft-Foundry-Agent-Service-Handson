@@ -13,7 +13,7 @@ Azure の利用枠・組織ポリシーと、利用する場合は Codespaces �
 
 使用するファイルと参照先を確認します。
 
-- **Lab 1**：[既定値を設定済みの `azuredeploy.json`](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/dev-custom-template/infra/azuredeploy.json)を PC に保存します。
+- **Lab 1**：[既定値を設定済みの `azuredeploy.json`](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/main/infra/azuredeploy.json)を PC に保存します。
   モデルのバージョンやハッシュを自分で調べて入力する必要はありません。
   既定値の詳細は[管理者向けガイド](../admin/prerequisites.md)を参照してください。
 - **Lab 4**：[共通教材](../../assets/README.md)から Skill ZIP と OpenAPI を取得します。

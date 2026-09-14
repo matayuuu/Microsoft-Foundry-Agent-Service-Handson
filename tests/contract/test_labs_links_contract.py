@@ -180,7 +180,7 @@ def test_lab_one_creates_rg_then_deploys_defaults_and_waits_for_initialization()
         assert output in lab
 
 
-def test_public_source_links_use_development_branch_or_published_revision() -> None:
+def test_public_source_links_use_main_or_published_revision() -> None:
     prefixes = (
         f"https://github.com/{REPOSITORY}/blob/",
         f"https://github.com/{REPOSITORY}/tree/",
@@ -193,9 +193,7 @@ def test_public_source_links_use_development_branch_or_published_revision() -> N
                     revision, _, path = (
                         urlsplit(target).path.removeprefix(urlsplit(prefix).path).partition("/")
                     )
-                    assert revision == "dev-custom-template" or re.fullmatch(
-                        r"[a-f0-9]{40}", revision
-                    )
+                    assert revision == "main" or re.fullmatch(r"[a-f0-9]{40}", revision)
                     assert (REPO_ROOT / unquote(path)).exists(), target
     for document in (CORE_LABS[1], PARTICIPANT_PREREQUISITES):
         assert any(target.endswith("/infra/azuredeploy.json") for target in links(document))

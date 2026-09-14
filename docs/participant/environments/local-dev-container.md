@@ -16,7 +16,7 @@ Codespaces と**同じ `.devcontainer`、Notebook、カーネル**を使いま�
 1. 教材を clone し、VS Code で開きます。
 
    ```text
-   git clone --branch dev-custom-template https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson.git
+   git clone --branch main https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson.git
    code Microsoft-Foundry-Agent-Service-Handson
    ```
 

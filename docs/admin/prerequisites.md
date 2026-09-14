@@ -63,7 +63,7 @@
 | `bootstrapRunId` | `1`。初期化を意図的に再実行するときだけ変更 |
 
 具体的な値を含む全既定値と更新手順は、
-[構成ガイドの Template parameters](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/dev-custom-template/infra/README.md#template-parameters)
+[構成ガイドの Template parameters](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/main/infra/README.md#template-parameters)
 を参照してください。
 
 ### 配布内容を更新する場合
@@ -75,7 +75,7 @@
 5. `azuredeploy.parameters.example.json` と関連文書を同期します。
 6. `azuredeploy.json` を再生成して配布します。
 
-開発中のリンクには `dev-custom-template` を使います。開催用の参照先は、公開確認後の値に固定してください。
+配布リンクには `main` を使います。再現性が必要なbootstrapの参照先は、公開確認後のcommit SHAに固定してください。
 最新版を選ぶのは配布時です。実行時に `latest` やブランチ名へ自動解決しないでください。
 
 > [!IMPORTANT]
@@ -102,5 +102,5 @@
 > 合成データだけを使用し、削除対象は各参加者の専用 RG に限定してください。
 
 構成、権限、初期化処理の詳細は、
-[infra/README.md](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/dev-custom-template/infra/README.md)
+[infra/README.md](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/main/infra/README.md)
 を参照してください。
