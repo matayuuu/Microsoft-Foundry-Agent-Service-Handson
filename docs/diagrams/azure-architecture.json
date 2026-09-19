@@ -1,0 +1,49 @@
+{
+  "title": "Foundry Agent Service と検索・業務 API の接続",
+  "subtitle": "1 / 2  基盤: カスタムテンプレート | Agent・Foundry IQ・Toolbox: Labs 2–4 で作成 | Basic Agent Setup / 公開エンドポイント",
+  "footer": "ソース確認: 2026-09-19 | 実行中デプロイの成否・Portal 操作の通し実行は未確認。通信の応答は省略。根拠: docs/development/architecture.md",
+  "notes": "依頼: 1枚目にAzure AI Search、Foundry IQ、Travel Ops APIをそれぞれ記載し、Foundry Agent Serviceとの接続を示す。Codespacesは対象外のまま。2枚目は参加者のAzure Portal操作とカスタムテンプレート内部処理を分ける。\n図はカスタムテンプレートの基盤と、Labs 2–4で追加する論理機能を区別する。Agent Service内はPrompt Agent contoso-travel-assistant。Lab 2はAzure AI Searchのpolicy indexを直接検索する。Lab 3は直接検索ツールをRemoveし、Knowledge base contoso-travel-knowledge-labに切り替える。この2経路は同時有効ではない。Foundry IQはAzure AI Search上のKnowledge baseとして同じ検索サービスの枠に置き、2つのindexed knowledge sourceからpolicy/approval indexを参照する。Mediumの検索計画はgpt-5.5を使用する。初期データの埋め込みはSearchサービスではなくbootstrap_data.pyがOpenAIクライアントで生成するため、Search→モデルの埋め込み通信は描かない。\nLab 4はKnowledgeを残し、Agent→ToolboxをMCP / Project Managed Identityで接続。Toolbox→Travel Ops APIのみOpenAPI / Anonymous HTTPS。APIはContainer Apps上の合成データ用FastAPIで、health、per-diem、trip-estimates、preapprovalsの4操作。APIへの直接接続と誤認させない。Tool Search、Skills、Code Interpreter、条件付きWeb Searchの内部詳細は省略。FoundryのトレースはApplication Insights、API環境ログはLog Analytics。GlobalStandardの推論処理はJapan Eastに限定されない。\n確認したソース: infra/main.bicep:113–318,526–589; labs/02-prompt-agent.md:90–121; labs/03-rag-foundry-iq.md:25–93; labs/04-tools-toolbox.md:87–125,178–205; scripts/create_toolbox.py:83–132,403–513; scripts/connect_toolbox.py:37–63; scripts/bootstrap_data.py:1068–1107; src/travel-api/travel_api/adapters/api/routes.py:49–145。Azure実環境への操作は行っていない。",
+  "width": 1800,
+  "height": 1160,
+  "groups": [
+    {"id": "clients", "label": "参加者の操作", "kind": "external", "x": 48, "y": 144, "w": 288, "h": 848},
+    {"id": "azure", "label": "専用 RG / Japan East（リソース配置先） / 枠は VNet ではありません", "kind": "region", "x": 376, "y": 144, "w": 1376, "h": 848},
+    {"id": "account", "label": "Microsoft Foundry account", "kind": "logical", "x": 416, "y": 208, "w": 760, "h": 568, "parent": "azure"},
+    {"id": "project", "label": "Project: contoso-travel", "kind": "logical", "x": 440, "y": 264, "w": 408, "h": 480, "parent": "account"},
+    {"id": "search-service", "label": "Azure AI Search サービス（基盤はテンプレート）", "kind": "logical", "x": 1200, "y": 240, "w": 512, "h": 480, "parent": "azure"},
+    {"id": "api-host", "label": "Container Apps environment（テンプレート）", "kind": "logical", "x": 1200, "y": 728, "w": 512, "h": 216, "parent": "azure"}
+  ],
+  "nodes": [
+    {"id": "participant", "label": "参加者", "symbol": "person", "x": 120, "y": 216, "w": 144, "h": 112, "parent": "clients"},
+    {"id": "portal", "label": "Foundry Portal", "detail": "Prompt Agent を設定・対話", "icon": "10783-icon-service-Browser.svg", "x": 64, "y": 340, "w": 256, "h": 136, "parent": "clients"},
+    {"id": "agent", "label": "Foundry Agent Service", "detail": "Prompt Agent（Lab 2 で作成）\ncontoso-travel-assistant", "icon": "038470523-icon-service-Foundry-Agent-Service.svg", "x": 464, "y": 336, "w": 320, "h": 144, "parent": "project"},
+    {"id": "toolbox", "label": "Toolbox / Skills", "detail": "contoso-travel-toolbox\nLab 4 で作成 / OpenAPI tool", "symbol": "interface", "x": 472, "y": 592, "w": 304, "h": 136, "parent": "project"},
+    {"id": "models", "label": "Foundry Models", "detail": "gpt-5.6-luna / gpt-5.5\ntext-embedding-3-small", "icon": "038470614-icon-service-Foundry-Models.svg", "x": 904, "y": 332, "w": 232, "h": 152, "parent": "account"},
+    {"id": "iq", "label": "Foundry IQ", "detail": "Knowledge base（Lab 3 で作成）\ncontoso-travel-knowledge-lab", "icon": "038470497-icon-service-Azure-AI-Foundry-IQ.svg", "x": 1248, "y": 336, "w": 304, "h": 144, "parent": "search-service"},
+    {"id": "search", "label": "Azure AI Search\n検索インデックス", "detail": "contoso-travel-policy\ncontoso-travel-approval", "icon": "10044-icon-service-Cognitive-Search.svg", "x": 1248, "y": 544, "w": 304, "h": 152, "parent": "search-service"},
+    {"id": "api", "label": "Travel Ops API\nAzure Container Apps", "detail": "日当照会・見積もり・承認シミュレーション / 合成データ", "icon": "02884-icon-service-Worker-Container-App.svg", "x": 1224, "y": 776, "w": 448, "h": 152, "parent": "api-host"},
+    {"id": "insights", "label": "Application Insights", "detail": "Agent のトレース", "icon": "00012-icon-service-Application-Insights.svg", "x": 528, "y": 816, "w": 256, "h": 128, "parent": "azure"},
+    {"id": "logs", "label": "Log Analytics", "detail": "保存先 / 保持 30 日", "icon": "00009-icon-service-Log-Analytics-Workspaces.svg", "x": 888, "y": 816, "w": 256, "h": 128, "parent": "azure"}
+  ],
+  "edges": [
+    {"id": "user-portal", "source": "participant", "target": "portal", "label": "", "kind": "data", "source_anchor": [0.5, 1], "target_anchor": [0.5, 0]},
+    {"id": "portal-agent", "source": "portal", "target": "agent", "label": "設定・対話", "kind": "data", "label_offset": [0, -20]},
+    {"id": "agent-search", "source": "agent", "target": "search", "label": "Lab 2: 直接検索（Lab 3 で解除）", "kind": "data", "source_anchor": [0.5, 0], "target_anchor": [1, 0.5], "waypoints": [[624, 312], [864, 312], [864, 192], [1656, 192], [1656, 620]], "label_position": -0.12, "label_offset": [100, 30]},
+    {"id": "agent-model", "source": "agent", "target": "models", "label": "推論", "kind": "data", "label_offset": [0, -20]},
+    {"id": "agent-iq", "source": "agent", "target": "iq", "label": "Lab 3 以降: MCP / 規程検索", "kind": "data", "source_anchor": [0.5, 1], "target_anchor": [0, 0.5], "waypoints": [[624, 520], [1184, 520], [1184, 408]], "label_offset": [48, -20]},
+    {"id": "iq-search", "source": "iq", "target": "search", "label": "2 sources", "kind": "data", "source_anchor": [0.5, 1], "target_anchor": [0.5, 0], "label_offset": [66, 0]},
+    {"id": "iq-planning", "source": "iq", "target": "models", "label": "検索計画 / gpt-5.5", "kind": "data", "source_anchor": [0.5, 0], "target_anchor": [1, 0.5], "waypoints": [[1400, 304], [1160, 304], [1160, 408]], "label_position": -0.2, "label_offset": [0, 16]},
+    {"id": "agent-toolbox", "source": "agent", "target": "toolbox", "label": "MCP / Project MI", "kind": "data", "source_anchor": [0.5, 1], "target_anchor": [0.5, 0], "label_position": 0.4, "label_offset": [110, 0]},
+    {"id": "api-logs", "source": "api", "target": "logs", "label": "環境ログ", "kind": "management", "source_anchor": [0.5, 1], "target_anchor": [1, 0.5], "waypoints": [[1448, 968], [1184, 968], [1184, 880]], "label_offset": [0, 0]},
+    {"id": "toolbox-api", "source": "toolbox", "target": "api", "label": "OpenAPI / HTTPS（匿名）", "kind": "data", "source_anchor": [1, 0.5], "target_anchor": [0, 0.5], "waypoints": [[960, 660], [960, 752], [1168, 752], [1168, 852]], "label_position": 0.35, "label_offset": [-96, -20]},
+    {"id": "agent-traces", "source": "agent", "target": "insights", "label": "トレース", "kind": "management", "source_anchor": [0.5, 1], "target_anchor": [0, 0.5], "waypoints": [[624, 496], [448, 496], [448, 880]], "label_position": 0.5, "label_offset": [48, 0]},
+    {"id": "trace-store", "source": "insights", "target": "logs", "label": "保存先", "kind": "management", "label_offset": [0, -20]}
+  ],
+  "texts": [
+    {"id": "model-scope", "text": "モデルは account の子。\nProject の子ではありません。", "x": 872, "y": 552, "w": 288, "h": 48, "font_size": 14, "parent": "account"},
+    {"id": "global-scope", "text": "GlobalStandard:\n推論は Japan East に限定しない", "x": 880, "y": 604, "w": 280, "h": 48, "font_size": 14, "color": "#64748B", "parent": "account"},
+    {"id": "client-scope", "text": "環境作成: Azure Portal\nAgent 設定: Foundry Portal\nデプロイ手順は 2 枚目", "x": 72, "y": 752, "w": 248, "h": 88, "font_size": 15, "parent": "clients"},
+    {"id": "search-switch", "text": "Lab 2 と Lab 3 以降の検索経路は切り替えです。同時有効ではありません。\nFoundry IQ は同じ Azure AI Search 上の論理機能。独立した検索サービスではありません。", "x": 48, "y": 1008, "w": 856, "h": 56, "font_size": 14},
+    {"id": "api-boundary", "text": "API は Toolbox 経由で呼び出します。匿名認証は Toolbox → API の区間だけです。\nTool Search・Skills・組み込みツールの内部処理、評価・最適化、RBAC の全定義は省略。", "x": 944, "y": 1008, "w": 808, "h": 56, "font_size": 14}
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "source_url": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+  "downloaded_at_utc": "2026-09-19T07:46:12.775638+00:00",
+  "archive_sha256": "921594ccd1bf3d9c0a1bd7b6d924e050551a59342f2b353bb74bdcf761c35141",
+  "licensing_notice_url": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+  "notice": "MicrosoftのAzureアイコン利用条件を確認してください。ファイルは改変していません。",
+  "svg_count": 11,
+  "files": [
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/analytics/00009-icon-service-Log-Analytics-Workspaces.svg",
+      "path": "00009-icon-service-Log-Analytics-Workspaces.svg",
+      "bytes": 1295,
+      "sha256": "7a244a8d7260e84be5c904185db7b04994fe6ed345e2b224163bc5f7e3d97ce0"
+    },
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/devops/00012-icon-service-Application-Insights.svg",
+      "path": "00012-icon-service-Application-Insights.svg",
+      "bytes": 2320,
+      "sha256": "36c73dea8b1598fbfff84890a2b409600f1339eec8c1bf1a896439e9da8f9dca"
+    },
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/other/02884-icon-service-Worker-Container-App.svg",
+      "path": "02884-icon-service-Worker-Container-App.svg",
+      "bytes": 3169,
+      "sha256": "b53c7e6b7af75b25c04231a7dff85074f0c32cc1c306376350c0c8df0cb64417"
+    },
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/ai + machine learning/036509415-icon-service-Foundry-Project.svg",
+      "path": "036509415-icon-service-Foundry-Project.svg",
+      "bytes": 2348,
+      "sha256": "152187174d7d632cd91fd7d17b37316c423e008a84a889241163af832c8c3dec"
+    },
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/ai + machine learning/038470497-icon-service-Azure-AI-Foundry-IQ.svg",
+      "path": "038470497-icon-service-Azure-AI-Foundry-IQ.svg",
+      "bytes": 4281,
+      "sha256": "245e33416ecc1c745bfff6f72ebf1ffa04cfee1cdd0c1b1b8970d0844409c9c7"
+    },
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/ai + machine learning/038470523-icon-service-Foundry-Agent-Service.svg",
+      "path": "038470523-icon-service-Foundry-Agent-Service.svg",
+      "bytes": 3284,
+      "sha256": "aedb65eeb06c1d4f3d57568edd2e8e7205065589ae8ceba4513a2fd21b4053ca"
+    },
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/ai + machine learning/038470614-icon-service-Foundry-Models.svg",
+      "path": "038470614-icon-service-Foundry-Models.svg",
+      "bytes": 5358,
+      "sha256": "9c671f141cb0e19b62e004628183ed8711ad16ec3b2e56b14c3cd035d5fac711"
+    },
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/general/10007-icon-service-Resource-Groups.svg",
+      "path": "10007-icon-service-Resource-Groups.svg",
+      "bytes": 1746,
+      "sha256": "4d2b2eacb37735849d2e556074ac8564f92fada70672b40985c77ea666e82977"
+    },
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/general/10009-icon-service-Templates.svg",
+      "path": "10009-icon-service-Templates.svg",
+      "bytes": 2271,
+      "sha256": "0954b8e97393268d70a32c7979b39d19625f9fddd21411e41efa601799f4e9ca"
+    },
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/ai + machine learning/10044-icon-service-Cognitive-Search.svg",
+      "path": "10044-icon-service-Cognitive-Search.svg",
+      "bytes": 1146,
+      "sha256": "f7af1213ce089236593835cb5564d6d3f01358cba6488fe562aa8bbc8adc3b38"
+    },
+    {
+      "archive_entry": "Azure_Public_Service_Icons/Icons/general/10783-icon-service-Browser.svg",
+      "path": "10783-icon-service-Browser.svg",
+      "bytes": 914,
+      "sha256": "d08afad9e64b5f69d5689bc831aefe7619150ba0a80583651bb5d75e4c033630"
+    }
+  ]
+}

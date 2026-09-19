@@ -9,10 +9,11 @@
 [参加条件](docs/participant/prerequisites.md) ·
 [準備ガイド](docs/participant/environments/custom-template.md)
 
-![Contoso 出張・経費アシスタントの Azure 構成図。専用 RG 内の Microsoft Foundry、Azure AI Search、Container Apps、監視基盤と、Portal・Dev Container の接続を示す。](docs/images/azure-architecture.svg)
+![カスタムテンプレートの基盤と、Labs 2〜4 で設定する Foundry Agent Service、Azure AI Search、Foundry IQ、Toolbox 経由の Travel Ops API の接続。](docs/images/azure-architecture-01.png)
 
-[拡大表示（SVG）](docs/images/azure-architecture.svg) ·
-[編集用 draw.io](docs/diagrams/azure-architecture.drawio) ·
+[拡大表示（PNG）](docs/images/azure-architecture-01.png) ·
+[編集用 PowerPoint（2枚）](docs/diagrams/azure-architecture.pptx) ·
+[デプロイと初期化の流れ](docs/images/azure-architecture-02.png) ·
 [構成と通信経路の詳細](docs/development/architecture.md)
 
 ## 進め方

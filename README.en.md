@@ -9,10 +9,11 @@ Explore retrieval, tools, evaluation, optimization, and Hosted Agents.
 [Prerequisites](docs/participant/prerequisites.md) ·
 [Setup guide](docs/participant/environments/custom-template.md)
 
-![Azure architecture of the Contoso travel and expense assistant: Microsoft Foundry, Azure AI Search, Container Apps and monitoring in one dedicated resource group, with Portal and Dev Container clients.](docs/images/azure-architecture.svg)
+![Custom-template infrastructure and the connections configured in Labs 2–4: Foundry Agent Service, Azure AI Search, Foundry IQ, and Travel Ops API through Toolbox.](docs/images/azure-architecture-01.png)
 
-[Full-size SVG](docs/images/azure-architecture.svg) ·
-[Editable draw.io](docs/diagrams/azure-architecture.drawio) ·
+[Full-size PNG](docs/images/azure-architecture-01.png) ·
+[Editable PowerPoint (2 slides)](docs/diagrams/azure-architecture.pptx) ·
+[Deployment and initialization flow](docs/images/azure-architecture-02.png) ·
 [Architecture and connection details](docs/development/architecture.md)
 
 

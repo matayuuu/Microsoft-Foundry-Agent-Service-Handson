@@ -1,0 +1,42 @@
+{
+  "title": "参加者の操作とカスタムテンプレートの内部処理",
+  "subtitle": "2 / 2  参加者は Azure Portal で開始・完了確認 | リソース配置と初期化・検証は Azure 側で実行",
+  "footer": "ソース確認: 2026-09-19 | 灰色は操作・処理の順序、紫は依存関係。図は論理フローで、全リソースの逐次実行を意味しません。Azure 実環境の成否は未確認。",
+  "notes": "依頼: 2枚目を「Azure Portal から参加者にて実行」と「カスタムテンプレートの内部処理」に分け、リポジトリ内のソースと照合する。\n参加者の操作は専用RGを手動作成、azuredeploy.jsonを読み込み、Subscriptionと既存RGを選んで既定値のままCreate、全体SucceededとworkshopContext.setup_status=completeを確認すること。初期化用CLIやPythonを参加者PCで実行しない。\n内部の基盤リソース・接続・RBACはBicepの依存関係に従って作成され、全体を逐次実行する指定ではない。ただしFoundryのproject→primary→evaluation→embeddingのPUTは直列化される。Deployment Scriptsは必要なモデル、Search、全接続、必要なRBACの完了後に開始。専用UAMIを使用する。固定sourceRevisionのGitHubアーカイブを取得し、独立Python環境を準備する。bootstrap_custom_template.pyはmanifest/schema/checksum検証後に、Search policy、Search approval、prepare-evaluation、validate-environmentの順で実行する。\n初期データの埋め込みはbootstrap_data.pyがOpenAIクライアントで生成しSearchへ登録する。run_evaluation.pyの--prepare-onlyは2 datasetsとrubricを登録してreturnし、評価・最適化ジョブは実行しない。検証はcontext、主要リソース、対象参加者のFoundry Userロール、API health、Searchのスキーマと件数。対象参加者としてすべてのサービスを呼び出す通し試験ではない。全段階成功後のみstatus completeをAZ_SCRIPTS_OUTPUT_PATHへ書き出す。途中失敗は完了出力を作らずARM側も失敗。補助ACI/Storageは成功時片付け、失敗時保持1日、実行上限1時間。初期化用UAMIは専用RG削除まで保持。\n根拠: labs/01-setup.md:15–55; infra/main.bicep:113–318,526–709; scripts/bootstrap-custom-template.sh:30–57,66–160; scripts/bootstrap_custom_template.py:163–251,263–339,365–401; scripts/bootstrap_data.py:1068–1107; scripts/run_evaluation.py:724–771; scripts/validate_environment.py:471–591。\n固定sourceRevision 05bd80776c0091ae03d8cfae9312a14b0db00b5f とHEAD 79ffae8の初期化5ファイルを比較。run_evaluation.pyのdocstring内参照パス以外に差分はなく、図示した処理は同じ。実デプロイの証跡ではない。",
+  "width": 1800,
+  "height": 1160,
+  "groups": [
+    {"id": "participant-actions", "label": "Azure Portal から参加者にて実行", "kind": "external", "x": 48, "y": 144, "w": 1704, "h": 264},
+    {"id": "template-internal", "label": "カスタムテンプレートの内部処理", "kind": "logical", "x": 48, "y": 472, "w": 1704, "h": 544}
+  ],
+  "nodes": [
+    {"id": "create-rg", "label": "① 専用 RG を手動作成", "detail": "Resource groups > Create\nJapan East / 他の用途と分離", "icon": "10007-icon-service-Resource-Groups.svg", "x": 72, "y": 216, "w": 288, "h": 160, "parent": "participant-actions"},
+    {"id": "load-template", "label": "② テンプレートを読み込み", "detail": "Deploy a custom template\nLoad file: azuredeploy.json", "icon": "10009-icon-service-Templates.svg", "x": 496, "y": 216, "w": 288, "h": 160, "parent": "participant-actions"},
+    {"id": "start", "label": "③ 既存 RG を選んで開始", "detail": "Subscription / Resource group\n既定値を維持 → Create", "icon": "10783-icon-service-Browser.svg", "x": 920, "y": 216, "w": 304, "h": 160, "parent": "participant-actions"},
+    {"id": "confirm", "label": "④ 全体の成功と出力を確認", "detail": "Succeeded / Outputs\nworkshopContext.setup_status = complete", "icon": "10783-icon-service-Browser.svg", "x": 1368, "y": 216, "w": 320, "h": 160, "parent": "participant-actions"},
+    {"id": "resources", "label": "基盤リソースを作成", "detail": "Foundry / 3 モデル / Search\nAPI / 監視 / 初期化 UAMI", "symbol": "generic", "x": 96, "y": 568, "w": 320, "h": 144, "parent": "template-internal"},
+    {"id": "connections", "label": "接続・RBAC を設定", "detail": "各リソースの依存関係に従う\n参加者 / サービス / 初期化 ID", "symbol": "interface", "x": 520, "y": 568, "w": 320, "h": 144, "parent": "template-internal"},
+    {"id": "bootstrap", "label": "Deployment Scripts", "detail": "必要リソース・接続・RBAC の後\nAzureCLI / 専用 UAMI", "symbol": "interface", "x": 944, "y": 568, "w": 320, "h": 144, "parent": "template-internal"},
+    {"id": "source", "label": "固定ソースを取得・確認", "detail": "GitHub SHA / 独立 Python 環境\nmanifest・checksum を検証", "symbol": "generic", "x": 1368, "y": 568, "w": 320, "h": 144, "parent": "template-internal"},
+    {"id": "seed", "label": "Search に初期データを投入", "detail": "Python で埋め込みを生成\npolicy → approval の 2 index", "icon": "10044-icon-service-Cognitive-Search.svg", "x": 96, "y": 816, "w": 320, "h": 144, "parent": "template-internal"},
+    {"id": "evaluation", "label": "Foundry 評価教材を準備", "detail": "2 datasets / 共通 rubric を登録\n--prepare-only / ジョブ実行なし", "icon": "036509415-icon-service-Foundry-Project.svg", "x": 520, "y": 816, "w": 320, "h": 144, "parent": "template-internal"},
+    {"id": "validation", "label": "環境・権限を検証", "detail": "主要リソース / Foundry User\nAPI health / Search スキーマ・件数", "symbol": "generic", "x": 944, "y": 816, "w": 320, "h": 144, "parent": "template-internal"},
+    {"id": "outputs", "label": "ARM Outputs を返す", "detail": "全段階成功後にだけ complete\n接続情報と URL / 秘密を含まない", "symbol": "interface", "x": 1368, "y": 816, "w": 320, "h": 144, "parent": "template-internal"}
+  ],
+  "edges": [
+    {"id": "rg-load", "source": "create-rg", "target": "load-template", "label": "", "kind": "management"},
+    {"id": "load-start", "source": "load-template", "target": "start", "label": "", "kind": "management"},
+    {"id": "start-resources", "source": "start", "target": "resources", "label": "デプロイを開始", "kind": "management", "source_anchor": [0.5, 1], "target_anchor": [0.5, 0], "waypoints": [[1072, 440], [440, 440], [440, 536], [256, 536]], "label_position": -0.2, "label_offset": [0, -18]},
+    {"id": "resource-dependencies", "source": "resources", "target": "connections", "label": "依存先", "kind": "association", "label_offset": [0, -20]},
+    {"id": "connections-bootstrap", "source": "connections", "target": "bootstrap", "label": "準備完了", "kind": "management", "label_offset": [0, -20]},
+    {"id": "bootstrap-source", "source": "bootstrap", "target": "source", "label": "", "kind": "management"},
+    {"id": "source-seed", "source": "source", "target": "seed", "label": "初期化処理を順に実行", "kind": "management", "source_anchor": [0.5, 1], "target_anchor": [0.5, 0], "waypoints": [[1528, 760], [256, 760]], "label_offset": [0, -18]},
+    {"id": "seed-evaluation", "source": "seed", "target": "evaluation", "label": "", "kind": "management"},
+    {"id": "evaluation-validation", "source": "evaluation", "target": "validation", "label": "", "kind": "management"},
+    {"id": "validation-outputs", "source": "validation", "target": "outputs", "label": "全て pass", "kind": "management", "label_offset": [0, -20]},
+    {"id": "outputs-confirm", "source": "outputs", "target": "confirm", "label": "", "kind": "management", "source_anchor": [1, 0.5], "target_anchor": [1, 0.5], "waypoints": [[1712, 888], [1712, 296]]}
+  ],
+  "texts": [
+    {"id": "cleanup-note", "text": "補助 ACI / Storage: 成功時削除・失敗時保持 1 日 | 実行上限 1 時間 | 初期化専用 UAMI は RG 削除まで保持 | 途中失敗は complete を返さない", "x": 80, "y": 976, "w": 1632, "h": 24, "font_size": 14, "parent": "template-internal"}
+  ]
+}

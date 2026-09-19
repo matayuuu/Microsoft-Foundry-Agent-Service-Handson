@@ -27,5 +27,8 @@
 
 ## 構成図と教材開発
 
-[構成図](images/azure-architecture.svg)と[画像・アイコンの出典](images/ATTRIBUTION.md)を参照できます。
+[構成図](images/azure-architecture-01.png)、
+[デプロイと初期化の流れ](images/azure-architecture-02.png)、
+[編集用 PowerPoint](diagrams/azure-architecture.pptx)、
+[画像・アイコンの出典](images/ATTRIBUTION.md)を参照できます。
 教材を変更する方は [開発者向けガイド](development/README.md) へ進んでください。

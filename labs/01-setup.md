@@ -2,6 +2,16 @@
 
 Azure Portal で準備します。この Lab では CLI や Notebook は使いません。
 
+## 全体の流れ
+
+上段は参加者が Azure Portal で行う操作、下段はカスタムテンプレートの内部処理です。
+下段の処理は Azure 側で実行されます。リソースの作成だけでなく、データの準備と検証を含めた
+全体の成功を確認してから、次の Lab に進みます。
+
+![参加者による専用 RG の作成、テンプレートの読み込み・実行・完了確認と、Azure 側で行うリソース配置、データ準備、環境検証、接続情報の出力。](../docs/images/azure-architecture-02.png)
+
+[拡大表示（PNG）](../docs/images/azure-architecture-02.png)
+
 ## 始める前に
 
 - [参加条件](../docs/participant/prerequisites.md)を確認します。
