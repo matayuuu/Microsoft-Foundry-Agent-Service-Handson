@@ -13,7 +13,7 @@ Explore retrieval, tools, evaluation, optimization, and Hosted Agents.
 
 [Full-size SVG](docs/images/azure-architecture.svg) ·
 [Editable draw.io](docs/diagrams/azure-architecture.drawio) ·
-[Architecture and connection details](docs/architecture.md)
+[Architecture and connection details](docs/development/architecture.md)
 
 
 ## Workshop flow
@@ -27,6 +27,8 @@ Explore retrieval, tools, evaluation, optimization, and Hosted Agents.
 3. **Labs 7–8**: Use [GitHub Codespaces](docs/participant/environments/codespaces.md),
    sign in to Azure in the container, and enter your subscription ID and RG name in the setup notebook.
    The [local Dev Container](docs/participant/environments/local-dev-container.md) uses the same steps.
+   Lab 7 runs Plain Agent and Harness Agent inside the Dev Container for comparison.
+   Lab 8 builds a separate sequential workflow and deploys it as a Hosted Agent.
 4. **Lab 9**: Save/export your results, delete Hosted Agents, stop/delete your Codespace,
    then delete only your dedicated RG and verify its removal.
 
@@ -37,7 +39,7 @@ The browser-based Codespaces route requires no local Docker or Python installati
 
 | Lab | Topic | Estimate |
 |---|---|---:|
-| [Lab 1](labs/01-setup.md) | Create the environment and verify initialization | — |
+| [Lab 1](labs/01-setup.md) | Create the environment and verify initialization | [Check the event schedule](#schedule-and-preparation) |
 | [Lab 2](labs/02-prompt-agent.md) | Prompt Agent and Azure AI Search | 20 min |
 | [Lab 3](labs/03-rag-foundry-iq.md) | Foundry IQ | 25 min |
 | — | Break | 10 min |
@@ -48,9 +50,29 @@ The browser-based Codespaces route requires no local Docker or Python installati
 | [Lab 8](labs/08-hosted-multi-agent.md) | Hosted Agent workflow | 30 min |
 | [Lab 9](labs/09-observability-cleanup.md) | Traces and cleanup | 20 min |
 
-[Administrator checklist and models](docs/admin/prerequisites.md) ·
-[Architecture](docs/architecture.md) ·
-[Troubleshooting](docs/participant/troubleshooting.md)
+## Schedule and preparation
+
+The estimates total **220 minutes (3 hours 40 minutes), including the break and excluding Lab 1**.
+Use these as planning estimates, not measured end-to-end timings for the current configuration.
+For scheduling purposes, Lab 1 is treated as not measured here and is excluded from that total.
+Evaluation, optimization, deployment waits, and troubleshooting can change the actual finish time.
+
+Check the event announcement to learn whether Lab 1 is performed in advance or on the day.
+Complete Lab 1's initialization checks before starting Lab 2.
+Organizers should use a live rehearsal to budget setup time and contingency.
+For advance provisioning, they should also communicate costs, retention, and cleanup ownership.
+See the [instructor scheduling guide](instructor/README.md#開催時間の計画).
+
+## Documentation by audience
+
+| Audience | References |
+|---|---|
+| Participants | [Documentation index](docs/README.md), [troubleshooting](docs/participant/troubleshooting.md), [costs and cleanup](docs/participant/costs-and-cleanup.md) |
+| Administrators and instructors | [Prerequisites and models](docs/admin/prerequisites.md), [instructor guide](instructor/README.md) |
+| Workshop developers | [Developer guide](docs/development/README.md), [architecture](docs/development/architecture.md) |
+
+Japanese is the source language for the documentation. This README is the explicit English edition;
+the linked guides are maintained in Japanese.
 
 > [!IMPORTANT]
 > Use synthetic data only; never share or save credentials or tokens.

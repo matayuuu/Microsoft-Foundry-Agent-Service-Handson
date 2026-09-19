@@ -1,4 +1,4 @@
-# completed-run-assets — SIMULATED / REFERENCE 参考資料
+# 架空の実行結果と参考資料
 
 ## これは何か
 

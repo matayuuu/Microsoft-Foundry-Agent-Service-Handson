@@ -2,7 +2,7 @@
 
 ## この文書の位置づけ
 
-このラボは**本編の所要時間に含まれません**。[architecture.md](../../docs/architecture.md)
+このラボは**本編の所要時間に含まれません**。[ハンズオンの構成](../../docs/development/architecture.md)
 の方針どおり、本ハンズオンの core custom template は Microsoft Fabric の容量・ワークスペース・
 ontology・data agent を一切作成しません。ここで説明する手順は、**別途 Fabric 容量とワーク
 スペースを持つ組織**が、本編の Contoso 出張・経費シナリオを Fabric IQ 経由で Foundry agent に

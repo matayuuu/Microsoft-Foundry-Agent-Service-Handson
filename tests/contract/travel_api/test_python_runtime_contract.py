@@ -13,4 +13,4 @@ def test_travel_api_uses_python_312_across_package_container_and_docs() -> None:
 
     assert 'requires-python = ">=3.12,<3.13"' in pyproject
     assert "FROM python:3.12-slim-bookworm" in dockerfile
-    assert "Requires Python 3.12." in readme
+    assert "Python 3.12 が必要です。" in readme

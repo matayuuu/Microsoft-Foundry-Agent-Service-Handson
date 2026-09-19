@@ -63,7 +63,7 @@
 | `bootstrapRunId` | `1`。初期化を意図的に再実行するときだけ変更 |
 
 具体的な値を含む全既定値と更新手順は、
-[構成ガイドの Template parameters](https://github.com/matayuuu/Microsoft-Foundry-Agent-Service-Handson/blob/main/infra/README.md#template-parameters)
+[テンプレートのパラメーター](../../infra/README.md#テンプレートのパラメーター)
 を参照してください。
 
 ### 配布内容を更新する場合

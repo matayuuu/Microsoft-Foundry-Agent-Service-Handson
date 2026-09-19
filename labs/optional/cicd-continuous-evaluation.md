@@ -1,35 +1,36 @@
-# Optional — CI/CD と継続的評価
+# 追加演習：CI/CD と継続的評価
 
 ## ゴール
 
-Portal で検証済みの Hosted Agent source と evaluation assets を、GitHub Actions の
-review / deploy / evaluate gate に接続する設計を学びます。本編 resources は手動作成済み RG への
-Bicep / ARM template が管理するため、workflow は infrastructure と data-plane deployment を分離します。
-この付録は参加者の RG 手動作成 / custom template / GitHub 共通教材の利用を置き換えません。
+Portal で検証済みの Hosted Agent のソースと評価教材を、GitHub Actions の
+レビュー・デプロイ・評価の承認段階へ接続する設計を学びます。
+本編のリソースは手動作成済み RG への Bicep / ARM テンプレートで管理するため、
+ワークフローはインフラとエージェントのデプロイを分離します。
+この付録は、参加者の RG 手動作成、カスタムテンプレート、GitHub 共通教材の利用を置き換えません。
 
-## Security baseline
+## セキュリティの前提
 
-- long-lived client secret ではなく GitHub OIDC / workload identity federation
-- environment approval と least-privilege resource scopes
-- logs / artifacts に token、device code、`.workshop/context.json` を保存しない
-- production data を synthetic evaluation dataset へコピーしない
-- immutable source revision と Hosted Agent version を記録
+- 長期間有効なクライアントシークレットではなく、GitHub OIDC とワークロード ID フェデレーションを使います。
+- 環境ごとの承認と、対象リソースに限定した最小権限を設定します。
+- ログ・成果物にトークン、デバイスコード、`.workshop/context.json` を保存しません。
+- 本番データを合成の評価データセットへコピーしません。
+- 固定したソースのリビジョンと Hosted Agent のバージョンを記録します。
 
-## Suggested gates
+## 推奨する確認・承認の順序
 
-1. Markdown / contract / unit validation
-2. target resource names、project endpoint、model deployments、connections の read-only check
-3. human approval
-4. Hosted Agent data-plane deployment
-5. 7-row synthetic smoke evaluation
-6. scoreだけでなく errors / reasons / traces を review
-7. approved version promotion
+1. Markdown、契約テスト、単体テストを確認します。
+2. 対象リソース名、プロジェクトのエンドポイント、モデルのデプロイ、接続を読み取り専用で確認します。
+3. 担当者の承認を得ます。
+4. Hosted Agent をデプロイします。
+5. 7 件の合成データで基本動作を評価します。
+6. スコアに加え、エラー・理由・トレースを確認します。
+7. 承認したバージョンを昇格します。
 
-template が定義した scoped RBAC や resource settings を pipeline が勝手に拡張しないようにします。
-評価と deployment は課金対象です。同一 run の再送を避け、retention と concurrency を制限します。
+テンプレートが定義した RBAC やリソース設定を、パイプラインが無断で拡張しないようにします。
+評価とデプロイには料金が発生します。同じ実行の重複送信を避け、保持期間と同時実行数を制限します。
 
-## Cleanup
+## 片付け
 
-workflow が作成した Hosted Agent versions、evaluation runs、federated credentials、
-environment secrets/variables を inventory し、不要なものを削除します。本編の Lab 9 では
-optional subscription / organization objects まで削除されません。
+ワークフローが作成した Hosted Agent のバージョン、評価実行、フェデレーション資格情報、
+環境のシークレット・変数を一覧化し、不要なものを削除します。
+本編の Lab 9 では、追加のサブスクリプションや組織単位のオブジェクトまで削除されません。

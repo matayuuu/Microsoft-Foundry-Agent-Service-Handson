@@ -12,10 +12,16 @@ from urllib.parse import unquote, urlsplit
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+COPILOT_INSTRUCTIONS = REPO_ROOT / ".github" / "copilot-instructions.md"
 LABS_DIR = REPO_ROOT / "labs"
 ENVIRONMENTS = REPO_ROOT / "docs" / "participant" / "environments"
 CODESPACES_GUIDE = ENVIRONMENTS / "codespaces.md"
 LOCAL_GUIDE = ENVIRONMENTS / "local-dev-container.md"
+LEGACY_GUIDE = ENVIRONMENTS / "cloud-shell.md"
+HISTORY_START = (
+    "<details>\n<summary>旧手順の履歴資料</summary>\n\n<!-- historical-content:start -->\n"
+)
+HISTORY_END = "<!-- historical-content:end -->\n</details>\n"
 ADMIN_GUIDE = REPO_ROOT / "docs" / "admin" / "prerequisites.md"
 PARTICIPANT_PREREQUISITES = REPO_ROOT / "docs" / "participant" / "prerequisites.md"
 CORE_LABS = {
@@ -32,6 +38,14 @@ CORE_LABS = {
         "09-observability-cleanup.md",
     )
 }
+AI_GUIDANCE = [REPO_ROOT / "AGENTS.md", COPILOT_INSTRUCTIONS]
+DEVELOPMENT_DIR = REPO_ROOT / "docs" / "development"
+DEVELOPER_DOCUMENTS = [
+    REPO_ROOT / ".devcontainer" / "README.md",
+    REPO_ROOT / "infra" / "README.md",
+    REPO_ROOT / "src" / "travel-api" / "README.md",
+    REPO_ROOT / "assets" / "README.md",
+]
 DOCUMENTS = [
     REPO_ROOT / "README.md",
     REPO_ROOT / "README.en.md",
@@ -89,8 +103,19 @@ def assert_in_order(text: str, steps: tuple[str, ...]) -> None:
         position = index + len(step)
 
 
+def current_document_text(path: Path, text: str) -> str:
+    if (
+        path == LEGACY_GUIDE
+        and text.count(HISTORY_START) == 1
+        and text.count(HISTORY_END) == 1
+        and text.endswith(HISTORY_END)
+    ):
+        return text.partition(HISTORY_START)[0]
+    return text
+
+
 def read(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+    return current_document_text(path, path.read_text(encoding="utf-8"))
 
 
 def links(path: Path) -> list[str]:
@@ -100,7 +125,7 @@ def links(path: Path) -> list[str]:
 def local_links() -> list[tuple[Path, str]]:
     return [
         (path, target)
-        for path in DOCUMENTS
+        for path in [*DOCUMENTS, *AI_GUIDANCE, *DEVELOPER_DOCUMENTS]
         for target in links(path)
         if not urlsplit(target).scheme
     ]
@@ -154,6 +179,185 @@ def test_documents_do_not_reintroduce_retired_handoffs(path: Path) -> None:
         assert retired not in text, f"{path.relative_to(REPO_ROOT)} retains {retired}"
 
 
+def test_history_filter_is_limited_to_the_explicit_legacy_section() -> None:
+    current = "# 現行手順への案内\n"
+    archived = f"{current}{HISTORY_START}scripts/setup.sh\n{HISTORY_END}"
+    assert current_document_text(LEGACY_GUIDE, archived) == current
+    assert current_document_text(CODESPACES_GUIDE, archived) == archived
+    for malformed in (
+        archived.replace(HISTORY_START, ""),
+        archived.replace(HISTORY_END, ""),
+        archived + "scripts/setup.sh\n",
+        archived.replace(HISTORY_START, HISTORY_START * 2),
+    ):
+        assert current_document_text(LEGACY_GUIDE, malformed) == malformed
+
+
+def test_legacy_guide_preserves_history_and_routes_to_supported_guides() -> None:
+    source = LEGACY_GUIDE.read_text(encoding="utf-8")
+    assert source.count(HISTORY_START) == source.count(HISTORY_END) == 1
+    assert source.endswith(HISTORY_END)
+    current = read(LEGACY_GUIDE)
+    for token in ("履歴資料", "現行構成では使用しません", "リンク", "保証"):
+        assert token in current
+    for target in ("custom-template.md", "codespaces.md", "local-dev-container.md"):
+        assert target in links(LEGACY_GUIDE)
+
+
+def test_runbook_covers_every_lab_and_distinguishes_incomplete_runs() -> None:
+    runbook = REPO_ROOT / "instructor" / "runbook.md"
+    text = read(runbook)
+    for lab in CORE_LABS.values():
+        assert f"../labs/{lab.name}" in links(runbook)
+    for token in (
+        "全Lab",
+        "同一revision",
+        "Partial",
+        "未完了",
+        "未実施",
+        "中断",
+        "評価ジョブ",
+        "最適化ジョブ",
+        "plan",
+        "execute",
+        "todos",
+        "cleanup",
+    ):
+        assert token in text
+    assert "代表操作を確認" not in text
+    instructions = read(COPILOT_INSTRUCTIONS)
+    assert "../instructor/runbook.md" in links(COPILOT_INSTRUCTIONS)
+    for token in ("全Lab", "同一revision", "未完了", "未実施", "中断", "事前に了承"):
+        assert token in instructions
+    assert "representative labs" not in instructions
+
+
+def test_repository_documentation_language_policy_preserves_explicit_english_version() -> None:
+    instructions = read(COPILOT_INSTRUCTIONS)
+    for token in ("docs/", "日本語", "README.en.md", "UI", "識別子"):
+        assert token in instructions
+
+
+def test_agents_routes_to_github_without_duplicating_the_moved_policies() -> None:
+    agents = read(REPO_ROOT / "AGENTS.md")
+    assert ".github/copilot-instructions.md" in links(REPO_ROOT / "AGENTS.md")
+    for token in ("## 文書の言語と正本", "## Portal E2E", "全Lab", "README.en.md"):
+        assert token not in agents
+
+
+def test_documentation_layout_separates_audiences() -> None:
+    for name in ("README.md", "architecture.md", "feature-support-matrix.md"):
+        assert (DEVELOPMENT_DIR / name).is_file()
+        assert not (REPO_ROOT / ".github" / "development" / name).exists()
+    for name in ("architecture.md", "feature-support-matrix.md"):
+        assert not (REPO_ROOT / "docs" / name).exists()
+    assert (REPO_ROOT / "docs" / "participant" / "costs-and-cleanup.md").is_file()
+    assert not (REPO_ROOT / "docs" / "costs-and-cleanup.md").exists()
+    for target in ("docs/README.md", "docs/development/README.md", "instructor/README.md"):
+        assert target in links(REPO_ROOT / "README.md")
+        assert target in links(REPO_ROOT / "README.en.md")
+    for target in ("architecture.md", "feature-support-matrix.md", "../../infra/README.md"):
+        assert target in links(DEVELOPMENT_DIR / "README.md")
+    assert "development/README.md" in links(REPO_ROOT / "docs" / "README.md")
+    for target in ("../docs/development/README.md", "../docs/development/architecture.md"):
+        assert target in links(COPILOT_INSTRUCTIONS)
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    [
+        "AGENTS.md",
+        ".devcontainer/README.md",
+        "docs/development/README.md",
+        "docs/development/architecture.md",
+        "docs/development/feature-support-matrix.md",
+        "docs/README.md",
+        "docs/images/ATTRIBUTION.md",
+        "infra/README.md",
+        "instructor/README.md",
+        "labs/optional/README.md",
+    ],
+)
+def test_basic_documentation_has_japanese_titles(relative_path: str) -> None:
+    title = read(REPO_ROOT / relative_path).splitlines()[0]
+    assert title.startswith("# ")
+    assert re.search(r"[ぁ-んァ-ヶ一-鿿]", title)
+
+
+def test_developer_quickstart_covers_setup_validation_and_change_ownership() -> None:
+    guide = read(DEVELOPMENT_DIR / "README.md")
+    for token in (
+        "Dev Containers: Reopen in Container",
+        "postCreateCommand",
+        "WORKSHOP_MANAGEMENT_PYTHON",
+        "WORKSHOP_HOSTED_PYTHON",
+        "make lint",
+        "make test-hosted",
+        "make assets-check",
+        "make bicep-validate",
+        "make validate",
+        "変更対象",
+        "正本",
+        "実環境",
+    ):
+        assert token in guide
+    workflow = read(REPO_ROOT / ".github" / "workflows" / "validate.yml")
+    pinned_install = re.search(r"az bicep install --version v[\d.]+", workflow)
+    assert pinned_install and pinned_install.group() in guide
+    targets = {
+        target
+        for match in re.finditer(r"^([\w -]+):", read(REPO_ROOT / "Makefile"), re.MULTILINE)
+        for target in match.group(1).split()
+    }
+    for match in re.finditer(r"^make ([\w -]+)$", guide, re.MULTILINE):
+        assert set(match.group(1).split()) <= targets
+
+
+@pytest.mark.parametrize("name", ["README.md", "README.en.md"])
+def test_agenda_distinguishes_planning_estimates_from_setup_time(name: str) -> None:
+    path = REPO_ROOT / name
+    text = read(path)
+    durations = [
+        int(value)
+        for value in re.findall(r"^\|[^|]+\|[^|]+\|\s*(\d+)\s*(?:分|min)\s*\|", text, re.M)
+    ]
+    assert len(durations) == 9
+    total_pattern = r"合計(\d+)分" if name == "README.md" else r"total \*\*(\d+) minutes"
+    declared_total = re.search(total_pattern, text)
+    assert declared_total and int(declared_total.group(1)) == sum(durations)
+    assert "instructor/README.md" in links(path)
+    for token in (
+        ("Lab 1", "未計測", "開催案内", "事前", "当日")
+        if name == "README.md"
+        else ("Lab 1", "not measured", "event announcement", "in advance", "on the day")
+    ):
+        assert token in text
+
+
+def test_readmes_distinguish_local_harness_from_separate_hosted_workflow() -> None:
+    japanese = read(REPO_ROOT / "README.md")
+    english = read(REPO_ROOT / "README.en.md")
+    assert "Lab 7ではPlain AgentとHarness AgentをDev Container内で実行" in japanese
+    assert "Lab 8では別の順次実行ワークフロー" in japanese
+    assert "Lab 7 runs Plain Agent and Harness Agent inside the Dev Container" in english
+    assert "Lab 8 builds a separate sequential workflow" in english
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        REPO_ROOT / "AGENTS.md",
+        DEVELOPMENT_DIR / "architecture.md",
+        DEVELOPMENT_DIR / "feature-support-matrix.md",
+    ],
+)
+def test_overviews_reference_capacity_source_without_duplicating_numbers(path: Path) -> None:
+    assert not re.search(r"\d+K TPM", read(path))
+    assert any(
+        target.endswith("docs/admin/prerequisites.md#モデルの利用枠") for target in links(path)
+    )
+
+
 def test_lab_one_creates_rg_then_deploys_defaults_and_waits_for_initialization() -> None:
     lab = read(CORE_LABS[1])
     assert_in_order(
@@ -194,7 +398,16 @@ def test_public_source_links_use_main_or_published_revision() -> None:
                         urlsplit(target).path.removeprefix(urlsplit(prefix).path).partition("/")
                     )
                     assert revision == "main" or re.fullmatch(r"[a-f0-9]{40}", revision)
-                    assert (REPO_ROOT / unquote(path)).exists(), target
+                    resolved = REPO_ROOT / unquote(path)
+                    assert resolved.exists(), target
+                    if (
+                        revision == "main"
+                        and resolved.suffix == ".md"
+                        and urlsplit(target).fragment
+                    ):
+                        assert unquote(urlsplit(target).fragment) in markdown_anchors(
+                            read(resolved)
+                        ), f"{document.relative_to(REPO_ROOT)} -> missing anchor {target}"
     for document in (CORE_LABS[1], PARTICIPANT_PREREQUISITES):
         assert any(target.endswith("/infra/azuredeploy.json") for target in links(document))
     assert "../../assets/README.md" in links(PARTICIPANT_PREREQUISITES)

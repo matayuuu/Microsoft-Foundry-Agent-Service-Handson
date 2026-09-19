@@ -158,7 +158,7 @@ def test_is_external_link_classifies_correctly() -> None:
     assert is_external_link("http://example.com") is True
     assert is_external_link("mailto:someone@example.com") is True
     assert is_external_link("#section") is True
-    assert is_external_link("../../docs/architecture.md") is False
+    assert is_external_link("../../docs/development/architecture.md") is False
     assert is_external_link("work-iq.md") is False
     assert is_external_link("../../README.md#core-と-optional-の境界") is False
 

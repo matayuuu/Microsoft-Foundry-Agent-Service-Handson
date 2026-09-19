@@ -1,6 +1,6 @@
 # 管理者向けトラブルシューティング
 
-## Template / quota / Policy
+## テンプレート・利用枠・ポリシー
 
 - 手動作成した専用 RG を選択し、`infra/azuredeploy.json` 本体を **Load file** で読み込んだか確認します。
 - RG の **Deployments / Activity log** で失敗した operation、provider registration、lock、
@@ -8,7 +8,7 @@
 - Bicep と生成 JSON の一致、確認済みモデル・image・source の既定値を
   [配布ガイド](prerequisites.md)と照合します。別リージョン・モデルに切り替えません。
 
-## Bootstrap
+## 初期化処理
 
 1. Deployment Scripts の **Overview / Logs** で、source 取得、依存関係、
    Search seed、評価データ・rubric の準備、validation のどこが失敗したかを特定します。
@@ -45,7 +45,7 @@ Application Insights の作成時には、Azure が Failure Anomalies アラー�
 [既定アラートの作成と管理（Microsoft Learn）](https://learn.microsoft.com/azure/azure-monitor/alerts/proactive-failure-diagnostics#managing-failure-anomalies-alert-rules)
 を参照してください。
 
-## GitHub assets / Notebook
+## GitHub の共通教材と Notebook
 
 | 症状 | 確認すること |
 |---|---|
@@ -61,7 +61,7 @@ Application Insights の作成時には、Azure が Failure Anomalies アラー�
 操作は [Codespaces の共通手順](../participant/environments/codespaces.md#共通手順)を使います。
 API key、手動 token の注入、認証情報の共有で代替しません。
 
-## Cleanup failure
+## 削除に失敗した場合
 
 [Lab 9](../../labs/09-observability-cleanup.md) の順に、保存、Hosted Agent versions の削除、
 Codespace の停止・削除を確認してから、Azure Portal で本人の専用 RG を削除します。
