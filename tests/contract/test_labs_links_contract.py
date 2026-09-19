@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
 import xml.etree.ElementTree as ET
 from itertools import pairwise
 from pathlib import Path
@@ -202,6 +204,31 @@ def test_legacy_guide_preserves_history_and_routes_to_supported_guides() -> None
         assert token in current
     for target in ("custom-template.md", "codespaces.md", "local-dev-container.md"):
         assert target in links(LEGACY_GUIDE)
+
+
+def test_formatter_preserves_history_but_formats_current_sources(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_bytes((REPO_ROOT / "pyproject.toml").read_bytes())
+    archived = tmp_path / LEGACY_GUIDE.relative_to(REPO_ROOT)
+    archived.parent.mkdir(parents=True)
+    original = LEGACY_GUIDE.read_bytes()
+    archived.write_bytes(original)
+    current_guide = tmp_path / CODESPACES_GUIDE.relative_to(REPO_ROOT)
+    current_guide.write_text("```python\nvalue=1\n```\n", encoding="utf-8")
+    current_code = tmp_path / "current.py"
+    current_code.write_text("value=1\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "ruff", "format", "--no-cache", "."],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert archived.read_bytes() == original
+    assert current_guide.read_text(encoding="utf-8") == "```python\nvalue = 1\n```\n"
+    assert current_code.read_text(encoding="utf-8") == "value = 1\n"
 
 
 def test_runbook_covers_every_lab_and_distinguishes_incomplete_runs() -> None:

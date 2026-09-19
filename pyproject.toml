@@ -48,3 +48,7 @@ extend-exclude = [".venv", "artifacts", "dist"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.format]
+# 履歴資料の原文を保持するため、このファイルだけを自動整形から除外します。
+exclude = ["docs/participant/environments/cloud-shell.md"]

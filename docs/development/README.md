@@ -104,8 +104,15 @@ AIに常時適用する短い規則は `.github/copilot-instructions.md` に置�
 例えば文書を変更した場合は、コンテナー内で次を実行します。
 
 ```bash
+"$WORKSHOP_MANAGEMENT_PYTHON" -m ruff check .
+"$WORKSHOP_MANAGEMENT_PYTHON" -m ruff format --check .
 "$WORKSHOP_MANAGEMENT_PYTHON" -m pytest -q tests/contract/test_labs_links_contract.py tests/contract/test_optional_labs_links_contract.py
 ```
+
+整形確認は変更した Python ファイルだけでなく、Markdown 内のコード例も含むリポジトリ全体を対象にします。
+履歴資料 `cloud-shell.md` だけは原文保持のため、
+[pyproject.toml](../../pyproject.toml) で Ruff の自動整形から除外しています。
+現行文書・コードの整形確認や、履歴資料の冒頭にある現行手順へのリンク確認は維持します。
 
 モデル名・容量・接続名などの固定値は Bicep を正本とします。
 人が読む数値一覧はインフラ説明と管理者の配布条件で維持し、AGENTS・構成概要・対応範囲はそこへ参照を張ります。
