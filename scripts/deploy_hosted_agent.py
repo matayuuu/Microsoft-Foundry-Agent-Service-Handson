@@ -4,7 +4,7 @@
 Deploys the Microsoft Agent Framework Hosted Agent in ``src/hosted-agent/`` to
 the workshop's Microsoft Foundry project, used in labs/08-hosted-multi-agent.md.
 
-What this does, per docs/architecture.md (Azure Portal owns control-plane
+What this does, per docs/development/architecture.md (Azure Portal owns control-plane
 resources; Python SDK wrappers own Foundry data-plane objects) and the current
 ``azure-ai-projects`` source-code remote-build contract
 (``AIProjectClient.agents.create_version_from_code``, inspected directly from

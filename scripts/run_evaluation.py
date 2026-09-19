@@ -5,7 +5,7 @@ Runs an agent-target Microsoft Foundry evaluation against the deployed
 ``contoso-travel-assistant`` Prompt Agent. The core Lab 5 uses the Foundry
 Portal; this adapter remains available for repeatable automation and CI.
 
-What this does, per docs/architecture.md and the OpenAI-compatible Evals API
+What this does, per docs/development/architecture.md and the OpenAI-compatible Evals API
 that ``azure-ai-projects``/``openai`` expose on a Foundry project
 (https://learn.microsoft.com/azure/foundry/observability/how-to/evaluate-agent,
 retrieved 2026-08-21):

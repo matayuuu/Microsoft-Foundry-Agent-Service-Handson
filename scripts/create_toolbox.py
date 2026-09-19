@@ -302,7 +302,7 @@ def fetch_openapi_spec(
     """Fetch the live OpenAPI 3.1 document from the deployed Travel Ops API.
 
     Fetched live (never vendored into this repo) so the toolbox always
-    reflects the actually-deployed API image, per docs/architecture.md's
+    reflects the actually-deployed API image, per docs/development/architecture.md's
     "single source of truth" rule for the Travel Ops API contract.
     """
     if max_attempts < 1:

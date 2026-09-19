@@ -138,7 +138,7 @@ Foundry portal 上の run history で確認できます。preview 機能のた�
 
 - 本節で扱った 3 つの機能はいずれも **preview** であり、SLA の対象外です。
 - 本ラボのコード・設定例は実際の外部通信・実際の Azure リソース作成を伴いません。
-- 実際に有効化する場合は、[docs/costs-and-cleanup.md](../../docs/costs-and-cleanup.md) の
+- 実際に有効化する場合は、[費用と片付け](../../docs/participant/costs-and-cleanup.md) の
   コスト方針と、組織のデータガバナンス方針の両方を確認してください。
 
 ## 公式参照

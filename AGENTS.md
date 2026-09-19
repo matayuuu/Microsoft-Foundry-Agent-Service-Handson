@@ -1,81 +1,80 @@
-# AGENTS.md
+# 開発エージェント向けガイド
 
-## Project
+## プロジェクトの概要
 
-Japanese Microsoft Foundry Agent Service workshop using Azure Portal custom-template
-provisioning and a shared Codespaces/local Dev Container. Keep current English UI labels.
+日本語の Microsoft Foundry Agent Service ハンズオンです。
+環境作成には Azure Portal のカスタムテンプレートを使い、Codespaces とローカルで
+同じ Dev Container を共有します。画面の英語 UI ラベルは正式表記を維持します。
 
-## Ownership
+## AI開発ガイド
 
-- Azure Portal: participant manually creates exactly one dedicated workload resource
-  group before running the custom template. Select that existing group in the template.
-- Bicep/ARM: Foundry account/project, fixed model deployments, Search, monitoring,
-  Container Apps API and scoped RBAC/connections. It creates no resource groups,
-  Azure ML workspace, or permanent workshop Storage/Key Vault.
-- Deployment Scripts: a dedicated user-assigned identity runs Python setup adapters for
-  Search documents, evaluation assets and validation, then returns non-secret ARM context.
-- GitHub: common Skill ZIPs, OpenAPI template, Notebooks, and Python source.
-- Foundry Portal: Prompt Agent, Foundry IQ, Toolbox, evaluation, optimizer, traces.
-- Codespaces / local Dev Container: Labs 7/8 notebooks and Hosted Agent data-plane work.
-- Canonical context key: `.workshop/context.json` → `resource_outputs`.
+文書の言語方針と実環境検証の判断基準は、
+[Copilot 向け開発指示](.github/copilot-instructions.md) に従います。
+構成・設計・実装ごとの資料は [開発者向けガイド](docs/development/README.md) を参照します。
 
-## Provisioning invariants
+## 責務の分担
 
-- Bicep is the source of truth; commit its generated Portal-ready ARM JSON.
-- Prepopulate all parameters with release defaults; participants select only their
-  subscription and existing RG. Keep the self-deployment participant override empty.
-- No Terraform or Cloud Shell provisioning, cleanup, or fallback implementation.
-- Use administrator-verified model versions and immutable source/image revisions.
-  Update Bicep defaults, the parameter example, and documentation together at release.
-  Capacity or policy failures must stop deployment, not silently select another region/model.
-- Pass the intended participant object ID into RBAC and validation. The bootstrap
-  managed identity is not the participant and must not use signed-in-user Graph lookup.
-- Keep bootstrap idempotent, retries bounded, and failures visible in the deployment.
-- No environment-specific participant ZIP or Blob handoff. Shared Skill ZIPs and
-  Hosted source-code archives remain necessary for their respective API formats.
-- Only expose completed, non-secret workshop context after initialization succeeds.
-- Temporary Deployment Scripts ACI/Storage use success cleanup and finite failure retention.
-  The dedicated bootstrap identity and its scoped grants remain until workload cleanup.
+- Azure Portal では、参加者がテンプレートの実行前に専用リソースグループ（RG）を
+  1 個手動作成し、テンプレートでその既存 RG を選択します。
+- Bicep / ARM は、Foundry アカウント・プロジェクト、固定モデル、Search、監視基盤、
+  Container Apps API、対象を限定した RBAC・接続を管理します。
+  RG、Azure ML ワークスペース、恒久的な演習用 Storage / Key Vault は作成しません。
+- Deployment Scripts は専用のユーザー割り当て ID で Python の初期化処理を実行し、
+  Search データと評価教材を準備・検証して、秘密を含まない ARM の接続情報を返します。
+- GitHub は共通 Skill ZIP、OpenAPI テンプレート、Notebook、Python ソースを保持します。
+- Foundry Portal は Prompt Agent、Foundry IQ、Toolbox、評価、最適化、トレースの操作に使います。
+- Codespaces / ローカル Dev Container は Labs 7〜8 の Notebook と Hosted Agent の操作に使います。
+- 接続情報の正規キーは `.workshop/context.json` の `resource_outputs` です。
 
-## Development environment invariants
+## 環境作成で守る条件
 
-- Use the same Dev Container in Codespaces and local VS Code/Docker.
-- Keep Python 3.12 management and Python 3.13 Hosted SDK environments separate.
-- Store container environments outside the repository; never overwrite host `.venv` folders.
-- Post-create prepares dependencies/kernels only; it must not authenticate or provision Azure.
-- After personal Azure CLI sign-in, `notebooks/00-setup.ipynb` reads the successful
-  deployment using subscription ID and RG name and writes `.workshop/context.json`.
-- Labs 7/8 use **Python (Foundry Hosted Agent)**.
-- Management actions explicitly use the management interpreter, not the Hosted SDK.
-- Common OpenAPI needs only its server URL replaced with the participant's API endpoint.
+- Bicep を正本とし、生成した Portal 用 ARM JSON もコミット対象に含めます。
+- 全パラメーターにリリース既定値を設定し、参加者はサブスクリプションと既存 RG だけを選びます。
+  本人がデプロイする場合、参加者 ID の上書き値は空欄にします。
+- Terraform / Cloud Shell による環境作成、片付け、代替実装は追加しません。
+- 管理者が確認したモデルバージョンと、固定したソース・イメージのリビジョンを使います。
+  リリース時は Bicep の既定値、パラメーター例、文書を同時更新します。
+  容量やポリシーの問題ではデプロイを停止し、別リージョン・モデルへ自動で切り替えません。
+- 対象参加者のオブジェクト ID を RBAC と検証へ渡します。初期化用マネージド ID と参加者は別です。
+  初期化処理が Microsoft Graph でサインイン中のユーザーを検索する方法は使いません。
+- 初期化は冪等にし、再試行回数を制限し、デプロイ上で失敗を確認できるようにします。
+- 環境固有の参加者用 ZIP や Blob による受け渡しは追加しません。
+  共通 Skill ZIP と Hosted 用ソースコードアーカイブは、それぞれの API 形式に必要です。
+- 初期化の成功後にだけ、完了済みで秘密を含まない接続情報を公開します。
+- Deployment Scripts の一時的な ACI / Storage は成功時に片付け、失敗時の保持期間を制限します。
+  初期化専用 ID と対象を限定した権限は、演習環境を削除するまで維持します。
 
-## Fixed service constraints
+## 開発環境で守る条件
 
-- Foundry project `contoso-travel`, Basic Agent Setup.
-- `gpt-5.6-luna` 40K TPM; `gpt-5.5` 100K TPM;
-  `embedding` / `text-embedding-3-small` 40K TPM.
-- Connection `contoso-travel-search` is the AAD Search resource connection.
-  `contoso-travel-knowledge-lab-mcp` and `contoso-travel-appinsights` use Project
-  Managed Identity.
-- Public endpoints, Foundry/Search local auth disabled, system identities, scoped RBAC.
-- A dedicated user-assigned identity is used only for deployment bootstrap.
-- No Cosmos DB, Agent capability host, ACR, or private networking.
+- Codespaces とローカルの VS Code / Docker で同じ Dev Container を使います。
+- Python 3.12 の管理環境と Python 3.13 の Hosted SDK 環境を分離します。
+- コンテナーの仮想環境はリポジトリの外に置き、ホストの `.venv` を上書きしません。
+- 作成後処理は依存関係とカーネルの準備に限定し、Azure の認証や環境作成を行いません。
+- 本人の Azure CLI サインイン後、`notebooks/00-setup.ipynb` がサブスクリプション ID と RG 名から
+  成功したデプロイを読み取り、`.workshop/context.json` を保存します。
+- Labs 7〜8 は **Python (Foundry Hosted Agent)** を使います。
+- 管理操作は Hosted SDK ではなく、管理用インタープリターを明示的に呼び出します。
+- 共通 OpenAPI はサーバー URL だけを本人の API エンドポイントへ置き換えます。
 
-## Safety and cleanup
+## サービスの固定条件
 
-Use synthetic data only. Never expose credentials, tokens, device codes, or state.
-Save notebooks; remove Hosted Agent versions; stop/delete the test Codespace; delete the
-dedicated workload RG in Azure Portal and verify deletion. Deleting a deployment record
-does not delete its resources. Do not delete unrelated local containers, data, or environments.
+- Foundry プロジェクトは `contoso-travel`、構成は Basic Agent Setup です。
+- モデル名・容量・接続名の正本は [Bicep](infra/main.bicep) です。
+  数値は [管理者向けのモデル利用枠](docs/admin/prerequisites.md#モデルの利用枠)、
+  接続名と認証方式は [接続スキーマ](infra/README.md#接続スキーマの例外) を確認します。
+  推測で値を変更せず、リリース時は関連する生成物・文書も同期します。
+- 公開エンドポイント、システム割り当て ID、対象を限定した RBAC を使い、
+  Foundry / Search のローカル認証は無効にします。
+- 専用のユーザー割り当て ID は、デプロイ時の初期化にだけ使います。
+- Cosmos DB、Agent capability host、ACR、プライベートネットワークは本編に含めません。
 
-Never delete existing user state, caches, or unrelated Azure resources when removing old
-implementation files. Keep credential/state exclusions even after retiring the old tools.
-Participant docs must never include capacity scheduling schemes.
+## 安全性と終了処理
 
-## Portal E2E
+合成データだけを使い、資格情報、トークン、デバイスコード、状態ファイルを公開しません。
+Notebook の保存、Hosted Agent のバージョン削除、検証用 Codespace の停止・削除の後、
+Azure Portal で専用 RG を削除して完了を確認します。
+デプロイ履歴の削除ではリソースは消えません。無関係なローカルコンテナー、データ、環境は削除対象外です。
 
-Real E2E uses the actual Azure Portal, Foundry Portal, and Codespaces/VS Code Notebook UI.
-Confirm target, costs, and personal authentication before creating test resources.
-Exercise RG creation, template deployment, common-material access, representative labs,
-redeployment, and cleanup. Do not treat CI or simulated fixtures as live UI evidence.
-Keep account-specific parameters and non-secret evidence outside the repository.
+旧実装のファイルを撤去する際も、既存ユーザーの状態、キャッシュ、無関係な Azure リソースを保持します。
+旧ツールの廃止後も資格情報・状態ファイルの除外設定を維持します。
+参加者向け文書に容量割り当ての調整手順を含めません。

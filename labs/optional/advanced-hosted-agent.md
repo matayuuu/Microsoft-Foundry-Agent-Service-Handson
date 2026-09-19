@@ -65,7 +65,7 @@ ACR connection をスキャンし、候補として提示します。ACR connect
 > [!NOTE]
 > ACR を「private」（`publicNetworkAccess: Disabled` などのネットワーク分離）にするかどうかは、
 > このレジストリ選択の話とは独立した論点です。本ハンズオンは
-> [architecture.md](../../docs/architecture.md) の構成どおり VNet
+> [ハンズオンの構成](../../docs/development/architecture.md) の説明どおり VNet
 > インジェクション・private endpoint を扱わないため、private ACR の構成は本ラボの scope 外
 > です。
 
@@ -158,7 +158,7 @@ Skill の読み込みと API 呼び出しを別々に確認してください。
   では削除されません。別名で作成した agent は、その名前を明示して個別に削除してください。
 - ACR にコンテナイメージを push した場合、そのイメージ自体は ACR のリポジトリに残ります。
   本編の custom template は ACR を作成・管理しません
-  （[architecture.md](../../docs/architecture.md)）。bring-your-own の ACR を使った場合は
+  （[ハンズオンの構成](../../docs/development/architecture.md)）。bring-your-own の ACR を使った場合は
   イメージの所有者と削除を確認します。共有 registry 全体を削除しないでください。
 
 ## 公式参照

@@ -1,0 +1,40 @@
+# Copilot 向け開発指示
+
+このRepositoryで蓄積するAI向けの開発規則は `.github/` 配下に置きます。
+構成・設計・開発手順の正本は [開発者向けガイド](../docs/development/README.md) とその参照先です。
+変更前に対象の資料を確認し、仕様を変更した場合は同じ変更で正本も更新します。
+AI向け指示には仕様を複製せず、必要な文書への参照を置きます。
+
+## 文書の言語と正本
+
+- README、`AGENTS.md`、`.github/`、`docs/`、`instructor/`、`labs/`、
+  各コンポーネントの README の説明・見出しは日本語を正とします。公式製品名、UIラベル、
+  識別子、ファイル名、コード、コマンドは正式表記を維持します。
+- `README.en.md` は明示的な英語版として維持し、日本語版と構成・手順の変更を揃えます。
+- 現行手順は [README](../README.md) と
+  [環境準備ガイド](../docs/participant/environments/custom-template.md)、
+  構成の説明は [ハンズオンの構成](../docs/development/architecture.md) を参照します。
+  同じ責務を持つ文書を新設する前に、既存の正本を更新します。
+- 旧手順を保持する場合は履歴資料と明記し、冒頭に現行手順への参照を置きます。
+  履歴内のコマンドやリンクは現在の操作根拠に使いません。
+
+## 文書の配置
+
+- 参加者向け資料は `docs/participant/`、管理者向け資料は `docs/admin/`、
+  演習は `labs/`、講師向け資料は `instructor/` に置きます。
+- 人とAIが参照する横断的な構成・設計・開発知識は `docs/development/` に置きます。
+  実装に隣接する README はその場所で維持し、開発者向けガイドから参照します。
+- 新規作成・移動時は読者別の案内ページと相対リンクを同時に更新し、同じ正本を複製しません。
+
+## 実環境検証の判断基準
+
+実環境の通し検証はAzure Portal、Foundry Portal、Codespaces / VS Code Notebookの
+実画面で行い、開始前に対象・課金・本人認証を確認します。
+受入条件は [講師向けrunbook](../instructor/runbook.md) を正とし、全Lab（1〜9）、
+再デプロイ、cleanupを同一revisionで確認します。修正後は最初から通し直します。
+評価・最適化ジョブの実行をデータ登録確認で代替せず、Harnessはplanとexecute、
+Hosted Agentはdeploy後の応答まで確認します。
+
+未完了・未実施・中断を成功と区別し、検証範囲の縮小は事前に了承を得ます。
+CIやsimulated fixtureは実画面の成功根拠にしません。Lab変更時はrunbookも更新し、
+アカウント固有の値と秘密を含まない実行証跡はRepository外に保持します。

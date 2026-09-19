@@ -9,6 +9,9 @@
 テンプレートでは **Subscription** と作成済みの **Resource group** だけを選び、
 その他は既定値のまま進めます。本人のデプロイでは **Participant Object Id Override** は空欄です。
 
+Cloud ShellとJupyterLabを使う旧ガイドは履歴資料です。現行の環境作成はこのガイド、
+Labs 7〜8の実行環境は下表のCodespacesまたはローカルDev Containerを参照してください。
+
 | 確認したいこと | 参照先 |
 |---|---|
 | 参加前に必要なもの | [参加条件](../prerequisites.md) |
