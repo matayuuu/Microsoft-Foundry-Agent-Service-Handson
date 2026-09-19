@@ -12,6 +12,29 @@
 [Copilot 向け開発指示](.github/copilot-instructions.md) に従います。
 構成・設計・実装ごとの資料は [開発者向けガイド](docs/development/README.md) を参照します。
 
+## ディレクトリと検証の入口
+
+作業ルートは、この `AGENTS.md` と `Makefile` がある Git リポジトリです。
+親フォルダーの作業用ファイルや依存関係を、このリポジトリの構成に含めません。
+
+| 場所 | 役割 |
+|---|---|
+| `src/travel-api/` | Python 3.12 の FastAPI。HTTP adapter → application → domain の依存方向 |
+| `src/hosted-agent/` | Python 3.13 の Hosted Agent。起動処理とワークフロー |
+| `scripts/`、`scripts/lib/` | 管理・初期化処理と共通の接続情報・実行環境処理 |
+| `notebooks/` | 参加者の操作入口。SDK 環境と管理操作を分離 |
+| `infra/` | Bicep 正本、生成 ARM、パラメーター例 |
+| `data/`、`assets/` | 合成教材・スキーマ・Skill ソースと生成 ZIP / OpenAPI |
+| `tests/unit/`、`tests/contract/`、`tests/runtime/` | 単体・契約テスト、初期化イメージの検証 |
+| `.devcontainer/`、`.github/workflows/` | 共通開発環境、検証 CI と API イメージの公開 |
+| `docs/`、`labs/`、`instructor/` | 読者別の資料、演習、講師の受入条件 |
+
+セットアップと検証コマンドの実行場所・環境は
+[開発者向けガイド](docs/development/README.md#初めて開発する場合) を正本とします。
+`make` の手順は Dev Container 内の Bash 用です。Windows ホストの Python や
+リポジトリ内の `.venv` を、管理用・Hosted 用の両環境と同一視しません。
+対象別の規約は [AI設定の一覧](docs/development/README.md#ai設定の責務) から確認します。
+
 ## 責務の分担
 
 - Azure Portal では、参加者がテンプレートの実行前に専用リソースグループ（RG）を

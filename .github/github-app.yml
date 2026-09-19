@@ -1,0 +1,5 @@
+instructions: |
+  作業ルートは AGENTS.md と Makefile のあるリポジトリです。
+  AGENTS.md を入口に、.github/copilot-instructions.md と対象パスの
+  .github/instructions/*.instructions.md を確認してください。
+  開発環境と検証手順の正本は docs/development/README.md です。

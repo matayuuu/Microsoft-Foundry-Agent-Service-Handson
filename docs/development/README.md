@@ -88,6 +88,30 @@ AIに常時適用する短い規則は `.github/copilot-instructions.md` に置�
 参加者・管理者向けの操作説明は `docs/participant/`・`docs/admin/`、
 講師の開催・検証手順は `instructor/` が正本です。
 
+## AI設定の責務
+
+| 設定 | 役割 |
+|---|---|
+| [AGENTS.md](../../AGENTS.md) | ディレクトリの地図、検証入口、環境とサービスの固定条件 |
+| [共通Instructions](../../.github/copilot-instructions.md) | 文書の正本、変更・テスト・安全性・完了条件 |
+| [Python](../../.github/instructions/python.instructions.md) | 管理用・API・Hosted の実行環境、型、依存方向、I/O 境界 |
+| [テスト](../../.github/instructions/testing.instructions.md) | 単体・契約・ランタイム検証と外部 I/O の分離 |
+| [CI](../../.github/instructions/ci.instructions.md) | ワークフローと Makefile の整合、検証と公開の権限分離 |
+| [インフラ](../../.github/instructions/infra.instructions.md) | Bicep・生成 ARM・初期化の変更条件 |
+| [Notebook](../../.github/instructions/notebooks.instructions.md) | カーネル、管理操作、保存内容と Lab の整合 |
+| [GitHub Copilot app](../../.github/github-app.yml) | 上記の正本への案内。自動実行スクリプトは設定しません |
+
+パス別 Instructions は各ファイルの `applyTo` に一致する変更に適用します。
+GitHub Copilot app の設定は内容を確認して承認するまで適用されません。
+親フォルダーではなく、この Git リポジトリをプロジェクトとして開いて使います。
+設定ファイルの存在と、各クライアント・セッションでの読み込み確認は区別してください。
+
+既存の pytest、Ruff、コンテナー検証、Bicep の生成物検証を再利用します。
+専用の静的型検査は現行の Makefile / CI にはありません。型注釈や Ruff の検査を
+静的型検査の代替として報告しません。
+独立した責務を増やさないため、追加の Custom Agent、リポジトリ固有 Skill、
+Hooks / MCP、重複する設計文書は置きません。
+
 ## 変更対象と確認先
 
 変更した種類に応じて、正本と関連文書・生成物を同じ変更に含めます。
