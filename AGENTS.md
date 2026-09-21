@@ -11,6 +11,8 @@
 文書の言語方針と実環境検証の判断基準は、
 [Copilot 向け開発指示](.github/copilot-instructions.md) に従います。
 構成・設計・実装ごとの資料は [開発者向けガイド](docs/development/README.md) を参照します。
+着手時は [AIと進める変更](docs/development/README.md#aiと進める変更) で、
+履歴と現行仕様の照合、変更範囲、検証と提出の到達点を確認します。
 
 ## ディレクトリと検証の入口
 

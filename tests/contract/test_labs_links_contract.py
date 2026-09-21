@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 import pytest
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COPILOT_INSTRUCTIONS = REPO_ROOT / ".github" / "copilot-instructions.md"
@@ -40,7 +41,8 @@ CORE_LABS = {
         "09-observability-cleanup.md",
     )
 }
-AI_GUIDANCE = [REPO_ROOT / "AGENTS.md", COPILOT_INSTRUCTIONS]
+PATH_INSTRUCTIONS = sorted((REPO_ROOT / ".github" / "instructions").rglob("*.instructions.md"))
+AI_GUIDANCE = [REPO_ROOT / "AGENTS.md", COPILOT_INSTRUCTIONS, *PATH_INSTRUCTIONS]
 DEVELOPMENT_DIR = REPO_ROOT / "docs" / "development"
 DEVELOPER_DOCUMENTS = [
     REPO_ROOT / ".devcontainer" / "README.md",
@@ -144,19 +146,94 @@ def markdown_anchors(text: str) -> set[str]:
     return anchors
 
 
+def assert_local_link_resolves(source: Path, target: str) -> None:
+    parsed = urlsplit(target)
+    resolved = (source.parent / unquote(parsed.path)).resolve() if parsed.path else source
+    assert resolved.is_file(), f"{source} -> {target}"
+    if parsed.fragment and resolved.suffix == ".md":
+        assert unquote(parsed.fragment) in markdown_anchors(read(resolved)), (
+            f"{source} -> missing anchor {target}"
+        )
+
+
+def instruction_patterns(text: str) -> list[str]:
+    match = re.fullmatch(r"---\n(.*?)\n---\n(.+)", text, re.DOTALL)
+    assert match and match.group(2).strip(), "expected frontmatter and instruction body"
+    metadata = yaml.safe_load(match.group(1))
+    assert isinstance(metadata, dict), "frontmatter must be a mapping"
+    for key in ("description", "applyTo"):
+        assert isinstance(metadata.get(key), str) and metadata[key].strip(), (
+            f"expected nonempty {key}"
+        )
+    patterns = [pattern.strip() for pattern in metadata["applyTo"].split(",")]
+    assert all(patterns), "applyTo must not contain empty patterns"
+    return patterns
+
+
 @pytest.mark.parametrize(
     ("source", "target"),
     local_links(),
     ids=[f"{path.relative_to(REPO_ROOT)}::{target}" for path, target in local_links()],
 )
 def test_local_document_link_resolves(source: Path, target: str) -> None:
-    parsed = urlsplit(target)
-    resolved = (source.parent / unquote(parsed.path)).resolve() if parsed.path else source
-    assert resolved.is_file(), f"{source.relative_to(REPO_ROOT)} -> {target}"
-    if parsed.fragment and resolved.suffix == ".md":
-        assert unquote(parsed.fragment) in markdown_anchors(read(resolved)), (
-            f"{source.relative_to(REPO_ROOT)} -> missing anchor {target}"
-        )
+    assert_local_link_resolves(source, target)
+
+
+@pytest.mark.parametrize("target", ["missing.md", "guide.md#missing", "#missing"])
+def test_local_link_contract_rejects_broken_targets(tmp_path: Path, target: str) -> None:
+    source = tmp_path / "instructions.md"
+    source.write_text("# Instructions\n", encoding="utf-8")
+    (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
+    with pytest.raises(AssertionError, match=re.escape(target)):
+        assert_local_link_resolves(source, target)
+
+
+@pytest.mark.parametrize("target", ["guide.md#guide", "#instructions"])
+def test_local_link_contract_accepts_existing_headings(tmp_path: Path, target: str) -> None:
+    source = tmp_path / "instructions.md"
+    source.write_text("# Instructions\n", encoding="utf-8")
+    (tmp_path / "guide.md").write_text("# Guide\n", encoding="utf-8")
+    assert_local_link_resolves(source, target)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "# No frontmatter\n",
+        '---\ndescription: Guide\napplyTo: "**/*.md"\n# No closing delimiter\n',
+        '---\napplyTo: "**/*.md"\n---\n# Missing description\n',
+        "---\ndescription: Guide\n---\n# Missing applyTo\n",
+        '---\ndescription: Guide\napplyTo: ""\n---\n# Empty applyTo\n',
+        '---\ndescription: Guide\napplyTo: ["*.md"]\n---\n# Not a string\n',
+        '---\ndescription: Guide\napplyTo: "*.md,"\n---\n# Empty pattern\n',
+        '---\ndescription: Guide\napplyTo: "**/*.md"\n---\n',
+        "---\n- not-a-mapping\n---\n# Invalid metadata\n",
+        "---\ndescription: [\n---\n# Malformed YAML\n",
+    ],
+)
+def test_instruction_contract_rejects_invalid_frontmatter(text: str) -> None:
+    with pytest.raises((AssertionError, yaml.YAMLError)):
+        instruction_patterns(text)
+
+
+def test_instruction_contract_accepts_multiple_patterns() -> None:
+    text = '---\ndescription: Guide\napplyTo: "**/*.md, docs/images/**"\n---\n# Guide\n'
+    assert instruction_patterns(text) == ["**/*.md", "docs/images/**"]
+
+
+def test_path_instructions_are_discovered_and_linked_from_developer_guide() -> None:
+    assert PATH_INSTRUCTIONS, "expected repository-specific path instructions"
+    guide = DEVELOPMENT_DIR / "README.md"
+    targets = {
+        (guide.parent / urlsplit(target).path).resolve()
+        for target in links(guide)
+        if not urlsplit(target).scheme
+    }
+    checked_sources = {source for source, _ in local_links()}
+    for path in PATH_INSTRUCTIONS:
+        instruction_patterns(read(path))
+        assert path.resolve() in targets, f"developer guide does not link to {path.name}"
+        assert path in checked_sources, f"no documentation links checked for {path.name}"
 
 
 @pytest.mark.parametrize("readme", [REPO_ROOT / "README.md", REPO_ROOT / "README.en.md"])

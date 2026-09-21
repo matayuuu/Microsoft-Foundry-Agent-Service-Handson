@@ -99,6 +99,7 @@ AIに常時適用する短い規則は `.github/copilot-instructions.md` に置�
 | [CI](../../.github/instructions/ci.instructions.md) | ワークフローと Makefile の整合、検証と公開の権限分離 |
 | [インフラ](../../.github/instructions/infra.instructions.md) | Bicep・生成 ARM・初期化の変更条件 |
 | [Notebook](../../.github/instructions/notebooks.instructions.md) | カーネル、管理操作、保存内容と Lab の整合 |
+| [文書・画像](../../.github/instructions/documentation.instructions.md) | 入力値と成功条件の説明、実画面と構成図、出典・編集元・掲載画像の整合 |
 | [GitHub Copilot app](../../.github/github-app.yml) | 上記の正本への案内。自動実行スクリプトは設定しません |
 
 パス別 Instructions は各ファイルの `applyTo` に一致する変更に適用します。
@@ -112,6 +113,31 @@ GitHub Copilot app の設定は内容を確認して承認するまで適用さ�
 独立した責務を増やさないため、追加の Custom Agent、リポジトリ固有 Skill、
 Hooks / MCP、重複する設計文書は置きません。
 
+## AIと進める変更
+
+AIへの依頼は、この Git リポジトリ内の変更を単位に進めます。
+ローカルの開発履歴は不足や判断理由を探す材料であり、現行仕様や検証結果の正本ではありません。
+
+1. **到達点を決める。** 変更の目的・対象・非対象、ローカル検証までか実環境検証までかを確認します。
+   現在のブランチと未コミット差分を読み、共有作業や進行中の変更を保護します。
+   親フォルダーの作業ファイルを追加したり、依頼なしにブランチを切り替えたりしません。
+2. **根拠を照合する。** 対象の実装・テスト・現在の文書を読みます。
+   履歴を参照する場合はユーザーの決定と当時のAgentの報告を区別し、後の決定による撤回も確認します。
+   未確認の製品仕様や過去の成功報告を、そのまま現在の要件・対応状況にしません。
+3. **変更をつなぐ。** [変更対象と確認先](#変更対象と確認先) から、同時に更新する文書・生成物・テストを選びます。
+   例えば Python の対応範囲は依存定義、CI、コンテナーで照合し、モデルの変更は用途別の対応を確認します。
+   既存の検証で足りる場合は再利用し、新しい検査には壊した入力を拒否するテストも用意します。
+4. **結果を分けて確認する。** 変更に対応する最小の検査から始め、必要な全体検証へ進みます。
+   実行環境・コマンド・対象 revision・件数・スキップと未実施範囲を区別します。
+   実環境では [runbook](../../instructor/runbook.md#実環境検証の範囲) を使い、
+   待機の打ち切りを SDK のタイムアウトと混同せず、依頼された範囲を独断で縮小しません。
+5. **再発防止だけを残す。** 実装と照合できた規則は対象の Instructions、設計の理由は既存の構成文書、
+   検査できる不変条件はテストに反映します。会話ログのコピーや、一度の失敗を一般化した禁止事項は増やしません。
+   実行証跡は秘密・個人情報を除いてリポジトリ外に保持し、次の開発者に必要な恒久情報だけを共有します。
+
+過去の課金・認証・デプロイ・削除・push・mergeへの了承は、今回の操作への了承ではありません。
+変更の提出方法と完了判定は [変更の提出と完了判定](#変更の提出と完了判定) に従います。
+
 ## 変更対象と確認先
 
 変更した種類に応じて、正本と関連文書・生成物を同じ変更に含めます。
@@ -120,6 +146,8 @@ Hooks / MCP、重複する設計文書は置きません。
 | 変更対象 | 正本 | 同時に更新・確認するもの | 作業中の検証 |
 |---|---|---|---|
 | 文書・配置・案内 | 読者に対応する既存の Markdown | README、資料一覧、相対リンク、英語版 README。Lab の受入条件が変わる場合は runbook | 管理用 Python で `tests/contract/test_labs_links_contract.py` と `tests/contract/test_optional_labs_links_contract.py` |
+| AI向け指示 | `AGENTS.md`、共通・パス別 Instructions | このガイドの一覧、適用対象、参照先。会話履歴ではなく現行の実装と照合 | 管理用 Python で `tests/contract/test_labs_links_contract.py`。利用するクライアントでも検出と適用対象を確認 |
+| 構成図・画面画像 | [構成図の編集元](architecture.md#構成図の編集)、実際の UI | 編集用ファイル、掲載 PNG、日英 README、関連 Lab、[出典](../images/ATTRIBUTION.md)。旧図は現行の正本に戻さない | 管理用 Python で `tests/contract/test_architecture_diagrams_contract.py` と文書リンク検査。掲載画像と編集用ファイルの表示は別に目視確認 |
 | モデル・権限・初期化・テンプレート | [main.bicep](../../infra/main.bicep) と [初期化スクリプト](../../scripts/bootstrap_custom_template.py)・[実行ラッパー](../../scripts/bootstrap-custom-template.sh) | パラメーター例、生成 ARM、[インフラ説明](../../infra/README.md)、[管理者の配布条件](../../docs/admin/prerequisites.md)。公開済みのソース・イメージを先に確認 | `make bicep-build` → `make bicep-validate`。管理用 Python で `tests/contract/test_custom_template_contract.py` と `tests/unit/test_bootstrap*` |
 | API・規程・共通教材 | [API ソースの案内](../../src/travel-api/README.md)、[規程データ（例）](../../data/policies/01-general-policy.md)、[Skill ソース（例）](../../data/skills/travel-estimation/SKILL.md) | [生成ツール](../../scripts/build_common_assets.py) による共通 ZIP / OpenAPI、関連 Lab、公開イメージのダイジェスト | 管理用 Python で `tests/unit/travel_api`、`tests/contract/travel_api`、`tests/unit/data`、`tests/contract/data`。`make assets` → `make assets-check` |
 | Notebook・Harness・Hosted ワークフロー | [Lab 8 の Notebook](../../notebooks/08-hosted-agent.ipynb)、[Hosted ソースの案内](../../src/hosted-agent/README.md) | Labs 7〜8、カーネルの指定、runbook。必要に応じて公開するソースのリビジョン | `make test-hosted`。管理用 Python で `tests/contract/test_notebooks_contract.py` |
@@ -137,6 +165,9 @@ Hooks / MCP、重複する設計文書は置きません。
 履歴資料 `cloud-shell.md` だけは原文保持のため、
 [pyproject.toml](../../pyproject.toml) で Ruff の自動整形から除外しています。
 現行文書・コードの整形確認や、履歴資料の冒頭にある現行手順へのリンク確認は維持します。
+文書リンク検査には共通・パス別 Instructions の相対リンクと Markdown の見出しも含めます。
+パス別 Instructions は YAML frontmatter と開発者ガイドからの導線も検査します。
+クライアントによる指示の検出・適用や、本文に記載した製品動作の実証を代替する検査ではありません。
 
 モデル名・容量・接続名などの固定値は Bicep を正本とします。
 人が読む数値一覧はインフラ説明と管理者の配布条件で維持し、AGENTS・構成概要・対応範囲はそこへ参照を張ります。
@@ -145,3 +176,21 @@ Hooks / MCP、重複する設計文書は置きません。
 
 実環境の受入条件と全 Lab の通し検証は [講師向けrunbook](../../instructor/runbook.md) を参照します。
 静的検証の成功、実環境で確認した結果、未実施の範囲を分けて報告してください。
+
+## 変更の提出と完了判定
+
+ブランチ・提出先・PRの利用は依頼と既存運用を確認します。
+commit、push、PR作成、merge、公開は別の操作であり、AI設定の更新だけでは実行しません。
+共有ファイルはステージ直前にも再読し、依頼外の変更を混ぜません。
+
+| 段階 | 確認する根拠 |
+|---|---|
+| ローカル変更 | 対象の差分、検証した環境・コマンド・件数。依存不足によるスキップ、未実施、失敗を成功に数えません。 |
+| PR・リモート CI | 対象 head SHA と対応する run、[検証ワークフロー](../../.github/workflows/validate.yml) の必要な job・step の成功、必要なレビュー。別 revision の成功や、インストール失敗後のスキップで代替しません。 |
+| merge・配布 | merge後の SHA、配布するソース・イメージの revision と公開結果。APIの公開は [専用ワークフロー](../../.github/workflows/publish-travel-api.yml) と承認範囲に従います。 |
+| 実環境・通し検証 | 同一 revision の Lab・実行環境ごとの結果、再デプロイ、cleanup。過去の画像、登録済みデータ、simulated fixture、CI成功を完走の証拠にしません。 |
+
+PRを使う場合は対象のブランチルール・required checks・レビュー条件を確認し、承認された場合だけmergeします。
+ルールを読み取れない場合は不明とし、この文書やCIファイルを追加しただけで設定済みとは扱いません。
+報告ではローカルの変更、ローカルのコミット、リモートへの反映を区別します。
+依頼に含まれない後続段階は対象外、依頼に含まれるが実施できない段階は未完了として、必要な確認を示します。
