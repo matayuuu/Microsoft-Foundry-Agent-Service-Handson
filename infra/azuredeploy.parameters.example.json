@@ -25,6 +25,9 @@
     },
     "bootstrapRunId": {
       "value": "1"
+    },
+    "enableBootstrapPolicyExclusion": {
+      "value": true
     }
   }
 }

@@ -35,6 +35,10 @@ CodespacesとローカルDev Containerの結果は分け、片方の成功を他
    `infra/azuredeploy.json` を読み込み、**Save** 後に作成済み RG を選択。
 3. Subscription / RG 以外は既定値。本人の実行は **Participant Object Id Override** が空欄、
    **Bootstrap Run Id** が `1` のまま **Review + create > Create**。
+   **Enable Bootstrap Policy Exclusion** の既定値 **true** は承認済みのハンズオン環境向け。
+   承認されていない環境や除外が不要な環境では **false** に変更し、有効時・無効時を区別して記録する。
+   有効時は除外タグが Deployment Script と補助 Storage / ACI に渡り、
+   RG・Foundry・Search などに付かないことも確認する。
 4. Search seed、評価データ・rubric、validation を含む全体が **Succeeded**、
    `workshopContext.setup_status = complete` になることを確認。
 5. `resourceOutputs`、`travelApiBaseUrl`、`foundryPortalUrl` が本人の環境を指すことを確認。

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
+from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 
@@ -76,6 +77,7 @@ PARAMETERS = {
     "sourceRevision",
     "participantObjectIdOverride",
     "bootstrapRunId",
+    "enableBootstrapPolicyExclusion",
 }
 TOKEN = re.compile(r"\s*('(?:[^']|'')*'|[A-Za-z_$][\w$#]*|\d+|[(),.\[\]])")
 
@@ -206,7 +208,7 @@ class InputFailure(ValueError):
 
 
 class InputExpressions:
-    """Evaluate only pure input guards, not Azure resources or provider behavior."""
+    """Evaluate pure input guards and tags, not Azure resources or provider behavior."""
 
     def __init__(self, template, **parameters):
         self.template = template
@@ -261,6 +263,8 @@ class InputExpressions:
             "startswith": lambda value, prefix: value.lower().startswith(prefix.lower()),
             "tolower": str.lower,
             "format": lambda value, *parts: value.format(*parts),
+            "createobject": lambda *values: dict(zip(values[::2], values[1::2], strict=True)),
+            "union": lambda left, right: left | right,
         }
         assert name in functions, f"Unsupported input function: {name}"
         return functions[name](*args)
@@ -310,11 +314,16 @@ def test_template_is_compiled_resource_group_only_with_an_exact_inventory(templa
 def test_exact_parameter_boundary_and_release_defaults(template):
     parameters = template["parameters"]
     assert parameters.keys() == PARAMETERS
-    assert all(item["type"] == "string" for item in parameters.values())
+    assert parameters["enableBootstrapPolicyExclusion"]["type"] == "bool"
+    assert parameters["enableBootstrapPolicyExclusion"]["defaultValue"] is True
+    string_parameters = {
+        name: item for name, item in parameters.items() if name != "enableBootstrapPolicyExclusion"
+    }
+    assert all(item["type"] == "string" for item in string_parameters.values())
     assert parameters["location"]["allowedValues"] == ["japaneast"]
     assert parameters["location"]["defaultValue"] == "japaneast"
     assert {name for name, value in parameters.items() if "defaultValue" in value} == PARAMETERS
-    for name, item in parameters.items():
+    for name, item in string_parameters.items():
         value = item["defaultValue"]
         assert isinstance(value, str)
         assert item.get("minLength", 0) <= len(value) <= item.get("maxLength", len(value))
@@ -731,6 +740,45 @@ def test_connections_preserve_the_complete_preview_wire_contract(template):
         == 2
     )
     assert re.search(r"\bany\s*\(", source) is None
+
+
+def assert_bootstrap_policy_tag_scope(template: dict, enabled: bool) -> None:
+    inputs = InputExpressions(template, enableBootstrapPolicyExclusion=enabled)
+    common_tags = inputs.variable("tags")
+    assert "SecurityControl" not in common_tags
+    for item in template["resources"]:
+        if "tags" not in item:
+            continue
+        actual = inputs.evaluate(node(item["tags"]))
+        expected = dict(common_tags)
+        if item["type"] == SCRIPT and enabled:
+            expected["SecurityControl"] = "Ignore"
+        assert actual == expected, f"Unexpected policy tags on {item['type']}"
+
+
+def test_bootstrap_policy_exclusion_is_enabled_by_default(template) -> None:
+    inputs = InputExpressions(template)
+    common_tags = inputs.variable("tags")
+    assert "SecurityControl" not in common_tags
+    assert inputs.evaluate(node(resource(template, SCRIPT)["tags"])) == common_tags | {
+        "SecurityControl": "Ignore"
+    }
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_bootstrap_policy_exclusion_is_configurable_and_scoped(template, enabled: bool) -> None:
+    assert_bootstrap_policy_tag_scope(template, enabled)
+
+
+@pytest.mark.parametrize("target", ["common_tags", "foundry"])
+def test_bootstrap_policy_exclusion_contract_rejects_tag_leaks(template, target: str) -> None:
+    changed = deepcopy(template)
+    if target == "common_tags":
+        changed["variables"]["tags"]["SecurityControl"] = "Ignore"
+    else:
+        resource(changed, FOUNDRY)["tags"] = resource(changed, SCRIPT)["tags"]
+    with pytest.raises(AssertionError):
+        assert_bootstrap_policy_tag_scope(changed, True)
 
 
 def test_bootstrap_has_a_dedicated_identity_and_bounded_data_initialization(template):

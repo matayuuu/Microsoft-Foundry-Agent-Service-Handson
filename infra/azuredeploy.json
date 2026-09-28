@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "3150412189267918458"
+      "templateHash": "6949988381390616715"
     },
     "description": "Deploy the Foundry workshop into the dedicated resource group already created in Azure Portal."
   },
@@ -80,6 +80,13 @@
       "maxLength": 64,
       "metadata": {
         "description": "Stable bootstrap rerun identifier. Keep unchanged for normal redeployment; change deliberately to repeat initialization. It does not change resource names."
+      }
+    },
+    "enableBootstrapPolicyExclusion": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enabled by default for hands-on environments approved to use SecurityControl=Ignore. Set false when this exclusion is not permitted or needed. Tags only the bootstrap Deployment Script and its automatically generated Storage/ACI, not the resource group or other workshop resources."
       }
     }
   },
@@ -686,7 +693,7 @@
       "apiVersion": "2023-08-01",
       "name": "[variables('names').bootstrap]",
       "location": "[parameters('location')]",
-      "tags": "[variables('tags')]",
+      "tags": "[if(parameters('enableBootstrapPolicyExclusion'), union(variables('tags'), createObject('SecurityControl', 'Ignore')), variables('tags'))]",
       "kind": "AzureCLI",
       "identity": {
         "type": "UserAssigned",

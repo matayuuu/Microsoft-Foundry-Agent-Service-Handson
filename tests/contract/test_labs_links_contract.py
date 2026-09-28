@@ -647,6 +647,7 @@ def test_model_defaults_match_generated_template() -> None:
         "互換",
         "participantObjectIdOverride",
         "bootstrapRunId",
+        "enableBootstrapPolicyExclusion",
     ):
         assert token in admin
 

@@ -28,7 +28,7 @@ RG やサブスクリプションスコープのデプロイ・ロール割り�
 
 ## テンプレートのパラメーター
 
-8 個すべてのパラメーターに `main.bicep` でリリース既定値を設定し、`azuredeploy.json` に反映します。
+9 個すべてのパラメーターに `main.bicep` でリリース既定値を設定し、`azuredeploy.json` に反映します。
 本人がデプロイする参加者は **Subscription** と既存 **Resource group** だけを選びます。
 モデルバージョン、イメージのダイジェスト、ソースの SHA、自分のオブジェクト ID の調査は不要です。
 
@@ -45,6 +45,7 @@ RG やサブスクリプションスコープのデプロイ・ロール割り�
 | `sourceRevision` | `05bd80776c0091ae03d8cfae9312a14b0db00b5f`。上書きは `matayuuu/Microsoft-Foundry-Agent-Service-Handson` で公開済みの小文字 40 桁のコミット SHA に限定し、ブランチ名や別リポジトリは使いません。 |
 | `participantObjectIdOverride` | 既定値は空で、ルートの `deployer().objectId` を参加者とします。管理者・自動処理によるデプロイや再デプロイでは、対象参加者の Entra **User** オブジェクト ID を指定します。 |
 | `bootstrapRunId` | 既定値は `1`。通常の再デプロイでは維持し、初期化を意図的に再実行する場合に変更します。 |
+| `enableBootstrapPolicyExclusion` | 既定値は `true`。組織が `SecurityControl=Ignore` の利用を承認したハンズオン環境向けです。除外を利用しない環境では `false` にします。タグの追加先は初期化用 Deployment Script に限定します。 |
 
 モデルの既定値は、2026-09-12 時点で Japan East / GlobalStandard の対象 3 モデルについて
 確認したバージョンを固定したものです。`latest` を動的に解決しません。
@@ -192,6 +193,26 @@ Dev Container で `az login --use-device-code` を実行した後、
 デプロイの状態、スコープ、スキーマ、エンドポイントを検証し、候補が曖昧な環境を拒否します。
 別プロジェクトの接続情報は上書きしません。対象を明示する場合は `--deployment <name>` を使えます。
 資格情報、SAS リンク、参加者固有の設定を GitHub へ公開しません。
+
+### 承認済み環境で初期化用の除外タグを使う
+
+`enableBootstrapPolicyExclusion` は、承認済みのハンズオン環境向けに既定で `true` としています。
+組織のポリシーが `SecurityControl=Ignore` を除外条件として扱い、その利用を承認しているか
+事前に確認してください。承認されていない環境や除外が不要な環境では `false` にします。
+このタグ自体に、任意の Azure Policy を無効化する機能はありません。
+
+有効にすると、`bootstrap` の既存タグにだけ `SecurityControl=Ignore` を追加します。
+共通のタグ、RG、Foundry、Search、初期化用 ID など、ほかのリソースのタグは変更しません。
+Deployment Scripts の仕様により、タグはサービスが自動作成する補助 Storage と ACI にも渡されます。
+恒久的な Storage や、ポリシー割り当て・Policy Exemption リソースは追加しません。
+
+承認済みの設定で新規作成し、補助 Storage のタグと必要な認証・ネットワーク設定、
+デプロイ全体の `Succeeded`、`workshopContext.setup_status = complete` を確認します。
+このオプションは、既にポリシーで変更された既存 Storage の設定を復元する処理ではありません。
+初期化の失敗を無視したり、成功条件や片付けの設定を緩めたりするものでもありません。
+対象テナントでの有効時・無効時の実行結果は、分けて記録してください。
+
+- 参考 : [Deployment Scripts のタグと補助リソース](https://learn.microsoft.com/azure/azure-resource-manager/templates/deployment-script-template)
 
 ### 再試行・補助リソース・片付け
 

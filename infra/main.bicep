@@ -42,6 +42,9 @@ param participantObjectIdOverride string = ''
 @maxLength(64)
 param bootstrapRunId string = '1'
 
+@description('Enabled by default for hands-on environments approved to use SecurityControl=Ignore. Set false when this exclusion is not permitted or needed. Tags only the bootstrap Deployment Script and its automatically generated Storage/ACI, not the resource group or other workshop resources.')
+param enableBootstrapPolicyExclusion bool = true
+
 // ARM parameters have no regex constraint. Reject invalid immutable inputs before
 // they can be used as an image or source URL; fail() never supplies a fallback.
 var sourceRevisionIsImmutable = length(sourceRevision) == 40 && empty(filter(
@@ -634,7 +637,9 @@ var initialWorkshopContext = {
 resource bootstrap 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   name: names.bootstrap
   location: location
-  tags: tags
+  tags: enableBootstrapPolicyExclusion
+    ? union(tags, { SecurityControl: 'Ignore' })
+    : tags
   kind: 'AzureCLI'
   identity: {
     type: 'UserAssigned'

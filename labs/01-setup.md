@@ -44,6 +44,10 @@ Azure Portal で準備します。この Lab では CLI や Notebook は使い�
    **Create new** は使いません。
 5. その他の項目は**既定値のまま**にします。自分自身がデプロイするため、
    **Participant Object Id Override** は空欄、**Bootstrap Run Id** は `1` のままです。
+   **Enable Bootstrap Policy Exclusion** の既定値は **true** です。
+   組織の管理者が初期化用の除外タグを承認したハンズオン環境向けの設定です。
+   承認されていない環境や除外が不要な環境では **false** に変更します。
+   [管理者向けの適用条件](../docs/admin/prerequisites.md#初期化用のポリシー除外を承認した場合)を確認してください。
 6. **Review + create > Create** を選びます。
 
 ## 3. 初期化の成功を待つ
